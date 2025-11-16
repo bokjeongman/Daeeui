@@ -15,6 +15,7 @@ interface Report {
   accessibility_level: string;
   category: string;
   details: string | null;
+  photo_url: string | null;
   status: string;
   created_at: string;
   user_id: string;
@@ -258,6 +259,17 @@ const Admin = () => {
                       <div>
                         <p className="text-sm font-medium mb-1">상세 설명</p>
                         <p className="text-sm text-muted-foreground">{report.details}</p>
+                      </div>
+                    )}
+                    
+                    {report.photo_url && (
+                      <div>
+                        <p className="text-sm font-medium mb-1">첨부 사진</p>
+                        <img 
+                          src={report.photo_url} 
+                          alt="제보 사진" 
+                          className="w-full h-48 object-cover rounded-lg border"
+                        />
                       </div>
                     )}
                     

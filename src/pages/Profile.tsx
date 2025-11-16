@@ -15,6 +15,7 @@ interface AccessibilityReport {
   accessibility_level: string;
   category: string;
   details: string | null;
+  photo_url: string | null;
   status: string;
   created_at: string;
   reviewed_at: string | null;
@@ -243,6 +244,16 @@ const Profile = () => {
 
                           {report.details && (
                             <p className="text-sm text-muted-foreground mt-2">{report.details}</p>
+                          )}
+
+                          {report.photo_url && (
+                            <div className="mt-2">
+                              <img 
+                                src={report.photo_url} 
+                                alt="제보 사진" 
+                                className="w-full max-w-md h-48 object-cover rounded-lg border"
+                              />
+                            </div>
                           )}
 
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">

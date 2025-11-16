@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { MapPin } from "lucide-react";
+import { MapPin, Upload, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -33,6 +33,8 @@ const ReviewModal = ({ open, onOpenChange }: ReviewModalProps) => {
   const [accessibility, setAccessibility] = useState("");
   const [category, setCategory] = useState("");
   const [details, setDetails] = useState("");
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [user, setUser] = useState<any>(null);
   const navigate = useNavigate();
@@ -51,6 +53,26 @@ const ReviewModal = ({ open, onOpenChange }: ReviewModalProps) => {
     return () => subscription.unsubscribe();
   }, []);
 
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast.error("사진 크기는 5MB 이하여야 합니다.");
+        return;
+      }
+      setPhoto(file);
+      setPhotoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    setPhoto(null);
+    if (photoPreview) {
+      URL.revokeObjectURL(photoPreview);
+      setPhotoPreview(null);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -68,6 +90,26 @@ const ReviewModal = ({ open, onOpenChange }: ReviewModalProps) => {
     setIsSubmitting(true);
 
     try {
+      let photoUrl = null;
+
+      // Upload photo if provided
+      if (photo) {
+        const fileExt = photo.name.split('.').pop();
+        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('accessibility-photos')
+          .upload(fileName, photo);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('accessibility-photos')
+          .getPublicUrl(fileName);
+
+        photoUrl = publicUrl;
+      }
+
       const { error } = await supabase
         .from("accessibility_reports")
         .insert({
@@ -78,6 +120,7 @@ const ReviewModal = ({ open, onOpenChange }: ReviewModalProps) => {
           accessibility_level: accessibility,
           category: category,
           details: details || null,
+          photo_url: photoUrl,
         });
 
       if (error) throw error;
@@ -92,6 +135,7 @@ const ReviewModal = ({ open, onOpenChange }: ReviewModalProps) => {
       setAccessibility("");
       setCategory("");
       setDetails("");
+      handleRemovePhoto();
     } catch (error: any) {
       console.error("제보 등록 실패:", error);
       toast.error("제보 등록에 실패했습니다. 다시 시도해주세요.");
@@ -163,9 +207,9 @@ const ReviewModal = ({ open, onOpenChange }: ReviewModalProps) => {
                 <SelectValue placeholder="선택하세요" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="good">접근 용이</SelectItem>
-                <SelectItem value="moderate">보통</SelectItem>
-                <SelectItem value="difficult">접근 어려움</SelectItem>
+                <SelectItem value="accessible">접근 가능</SelectItem>
+                <SelectItem value="partially_accessible">부분 접근 가능</SelectItem>
+                <SelectItem value="not_accessible">접근 불가</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -202,6 +246,45 @@ const ReviewModal = ({ open, onOpenChange }: ReviewModalProps) => {
               onChange={(e) => setDetails(e.target.value)}
               rows={4}
             />
+          </div>
+
+          {/* 사진 첨부 */}
+          <div className="space-y-2">
+            <Label htmlFor="photo">사진 첨부 (선택)</Label>
+            {photoPreview ? (
+              <div className="relative">
+                <img
+                  src={photoPreview}
+                  alt="미리보기"
+                  className="w-full h-48 object-cover rounded-lg border"
+                />
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  className="absolute top-2 right-2"
+                  onClick={handleRemovePhoto}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer">
+                <input
+                  id="photo"
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoChange}
+                  className="hidden"
+                />
+                <label htmlFor="photo" className="cursor-pointer flex flex-col items-center gap-2">
+                  <Upload className="h-8 w-8 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">
+                    클릭하여 사진 선택 (최대 5MB)
+                  </span>
+                </label>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2">
