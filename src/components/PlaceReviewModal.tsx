@@ -6,12 +6,21 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { z } from "zod";
 
 interface PlaceReviewModalProps {
   open: boolean;
   onClose: () => void;
   place: { name: string; lat: number; lon: number } | null;
 }
+
+const reviewSchema = z.object({
+  details: z.string().trim().min(1, "후기 내용을 입력해주세요.").max(2000, "후기는 2000자 이하여야 합니다."),
+  latitude: z.number().min(-90, "위도는 -90에서 90 사이여야 합니다.").max(90, "위도는 -90에서 90 사이여야 합니다."),
+  longitude: z.number().min(-180, "경도는 -180에서 180 사이여야 합니다.").max(180, "경도는 -180에서 180 사이여야 합니다."),
+  location_name: z.string().max(200, "장소명은 200자 이하여야 합니다."),
+  accessibility_level: z.enum(["good", "moderate", "difficult"], { errorMap: () => ({ message: "유효한 접근성 수준을 선택해주세요." }) }),
+});
 
 const PlaceReviewModal = ({ open, onClose, place }: PlaceReviewModalProps) => {
   const [reviews, setReviews] = useState<any[]>([]);
@@ -38,21 +47,45 @@ const PlaceReviewModal = ({ open, onClose, place }: PlaceReviewModalProps) => {
   };
 
   const handleSubmitReview = async () => {
-    if (!place || !newReview.trim()) {
-      toast.error("후기 내용을 입력해주세요.");
+    if (!place) {
+      toast.error("장소 정보가 없습니다.");
       return;
     }
+    
     try {
+      // Validate input
+      const validationResult = reviewSchema.safeParse({
+        details: newReview,
+        latitude: place.lat,
+        longitude: place.lon,
+        location_name: place.name,
+        accessibility_level: accessibilityLevel,
+      });
+
+      if (!validationResult.success) {
+        const firstError = validationResult.error.errors[0];
+        toast.error(firstError.message);
+        return;
+      }
+
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         toast.error("후기를 작성하려면 로그인이 필요합니다.");
         return;
       }
+      
       const { error } = await supabase.from("accessibility_reports").insert({
-        user_id: user.id, location_name: place.name, latitude: place.lat, longitude: place.lon,
-        accessibility_level: accessibilityLevel, category: "시설", details: newReview, status: "pending",
+        user_id: user.id, 
+        location_name: place.name, 
+        latitude: place.lat, 
+        longitude: place.lon,
+        accessibility_level: accessibilityLevel, 
+        category: "시설", 
+        details: newReview.trim(), 
+        status: "pending",
       });
+      
       if (error) throw error;
       toast.success("후기가 제출되었습니다. 관리자 승인 후 표시됩니다.");
       setNewReview("");
