@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SearchBar from "@/components/SearchBar";
@@ -11,12 +13,18 @@ import ReviewModal from "@/components/ReviewModal";
 import PlaceReviewModal from "@/components/PlaceReviewModal";
 import WheelchairBadge from "@/components/WheelchairBadge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { MapPin, AlertTriangle } from "lucide-react";
+import { toast } from "sonner";
 
 const Index = () => {
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [placeReviewModalOpen, setPlaceReviewModalOpen] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState<{ name: string; lat: number; lon: number } | null>(null);
+  const [selectedBarrier, setSelectedBarrier] = useState<any>(null);
+  const [barrierDetailOpen, setBarrierDetailOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"default" | "yellow">("default");
   const [hasRoute, setHasRoute] = useState(false);
   const [startPoint, setStartPoint] = useState<{ lat: number; lon: number; name: string } | null>(null);
@@ -45,6 +53,27 @@ const Index = () => {
     };
   }>>([]);
   const [selectedRouteType, setSelectedRouteType] = useState<"transit" | "walk" | "car" | null>(null);
+
+  // 로그인 체크
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("로그인이 필요합니다.");
+        navigate("/auth");
+      }
+    };
+    checkAuth();
+
+    // 실시간 인증 상태 변경 감지
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) {
+        navigate("/auth");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   const handleSelectPlace = (place: { lat: number; lon: number; name: string }, type: "start" | "end") => {
     if (type === "start") {
@@ -99,6 +128,10 @@ const Index = () => {
           endPoint={endPoint}
           selectedRouteType={selectedRouteType}
           onRoutesCalculated={setRouteOptions}
+          onBarrierClick={(barrier: any) => {
+            setSelectedBarrier(barrier);
+            setBarrierDetailOpen(true);
+          }}
           onPlaceClick={(place: { name: string; lat: number; lon: number }) => {
             setSelectedPlace(place);
             setPlaceReviewModalOpen(true);
@@ -168,6 +201,66 @@ const Index = () => {
         }}
         place={selectedPlace}
       />
+
+      {/* 배리어 상세 정보 Dialog */}
+      <Dialog open={barrierDetailOpen} onOpenChange={setBarrierDetailOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" />
+              배리어 상세 정보
+            </DialogTitle>
+          </DialogHeader>
+          {selectedBarrier && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <h3 className="font-semibold text-lg">{selectedBarrier.name}</h3>
+                <div className="flex items-center gap-2">
+                  {selectedBarrier.severity === "safe" && (
+                    <Badge className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20">
+                      양호
+                    </Badge>
+                  )}
+                  {selectedBarrier.severity === "warning" && (
+                    <Badge className="bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20">
+                      보통
+                    </Badge>
+                  )}
+                  {selectedBarrier.severity === "danger" && (
+                    <Badge className="bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20">
+                      어려움
+                    </Badge>
+                  )}
+                  <Badge variant="outline">{selectedBarrier.type}</Badge>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <MapPin className="h-4 w-4" />
+                <span>위도: {selectedBarrier.lat?.toFixed(6)}, 경도: {selectedBarrier.lon?.toFixed(6)}</span>
+              </div>
+
+              {selectedBarrier.details && (
+                <div className="space-y-1">
+                  <h4 className="font-medium text-sm">상세 정보</h4>
+                  <p className="text-sm text-muted-foreground">{selectedBarrier.details}</p>
+                </div>
+              )}
+
+              {selectedBarrier.photo_url && (
+                <div className="space-y-1">
+                  <h4 className="font-medium text-sm">사진</h4>
+                  <img
+                    src={selectedBarrier.photo_url}
+                    alt={selectedBarrier.name}
+                    className="w-full rounded-lg border"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* 로드뷰 Dialog */}
       <Dialog open={roadViewOpen} onOpenChange={setRoadViewOpen}>
