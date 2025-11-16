@@ -63,7 +63,7 @@ const MyReviews = () => {
 
       await fetchReviews(user.id);
     } catch (error) {
-      console.error("사용자 확인 실패:", error);
+      if (import.meta.env.DEV) console.error("사용자 확인 실패:", error);
       toast.error("사용자 정보를 확인할 수 없습니다.");
     }
   };
@@ -81,7 +81,7 @@ const MyReviews = () => {
 
       setReviews(data || []);
     } catch (error) {
-      console.error("후기 조회 실패:", error);
+      if (import.meta.env.DEV) console.error("후기 조회 실패:", error);
       toast.error("후기를 불러오는데 실패했습니다.");
     } finally {
       setLoading(false);
@@ -127,7 +127,7 @@ const MyReviews = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) await fetchReviews(user.id);
     } catch (error) {
-      console.error("후기 수정 실패:", error);
+      if (import.meta.env.DEV) console.error("후기 수정 실패:", error);
       toast.error("후기 수정에 실패했습니다.");
     }
   };
@@ -149,7 +149,7 @@ const MyReviews = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) await fetchReviews(user.id);
     } catch (error) {
-      console.error("후기 삭제 실패:", error);
+      if (import.meta.env.DEV) console.error("후기 삭제 실패:", error);
       toast.error("후기 삭제에 실패했습니다.");
     }
   };

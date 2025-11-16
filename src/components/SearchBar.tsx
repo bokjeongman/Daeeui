@@ -64,7 +64,7 @@ const SearchBar = ({
         setShowResults(true);
       }
     } catch (error) {
-      console.error("POI 검색 실패:", error);
+      if (import.meta.env.DEV) console.error("POI 검색 실패:", error);
       setSearchResults([]);
     }
   };

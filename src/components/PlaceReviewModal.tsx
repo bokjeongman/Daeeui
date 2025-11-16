@@ -42,7 +42,7 @@ const PlaceReviewModal = ({ open, onClose, place }: PlaceReviewModalProps) => {
       if (error) throw error;
       setReviews(data || []);
     } catch (error) {
-      console.error("후기 조회 실패:", error);
+      if (import.meta.env.DEV) console.error("후기 조회 실패:", error);
     }
   };
 
@@ -92,7 +92,7 @@ const PlaceReviewModal = ({ open, onClose, place }: PlaceReviewModalProps) => {
       setAccessibilityLevel("good");
       fetchReviews();
     } catch (error) {
-      console.error("후기 제출 실패:", error);
+      if (import.meta.env.DEV) console.error("후기 제출 실패:", error);
       toast.error("후기 제출에 실패했습니다.");
     } finally {
       setLoading(false);

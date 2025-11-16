@@ -185,7 +185,7 @@ const MapView = ({
 
         setBarrierData(barriers);
       } catch (error) {
-        console.error("제보 데이터 로딩 실패:", error);
+        if (import.meta.env.DEV) console.error("제보 데이터 로딩 실패:", error);
       }
     };
 
@@ -229,7 +229,7 @@ const MapView = ({
 
         setFavorites(data || []);
       } catch (error) {
-        console.error("즐겨찾기 데이터 로딩 실패:", error);
+        if (import.meta.env.DEV) console.error("즐겨찾기 데이터 로딩 실패:", error);
       }
     };
 
@@ -309,11 +309,11 @@ const MapView = ({
             });
           }
         } catch (error) {
-          console.error("POI 검색 실패:", error);
+          if (import.meta.env.DEV) console.error("POI 검색 실패:", error);
         }
       });
     } catch (err) {
-      console.error("지도 초기화 실패:", err);
+      if (import.meta.env.DEV) console.error("지도 초기화 실패:", err);
       setError("지도를 불러오는데 실패했습니다.");
       setLoading(false);
     }
@@ -733,7 +733,7 @@ const MapView = ({
               }
             }
           } catch (error) {
-            console.error(`${routeType} 경로 계산 실패:`, error);
+            if (import.meta.env.DEV) console.error(`${routeType} 경로 계산 실패:`, error);
             // 에러가 발생해도 다음 경로는 계속 시도
             continue;
           }
@@ -809,7 +809,7 @@ const MapView = ({
           }
         }
       } catch (error) {
-        console.error("경로 탐색 실패:", error);
+        if (import.meta.env.DEV) console.error("경로 탐색 실패:", error);
         toast.error("경로를 찾을 수 없습니다.");
       }
     };

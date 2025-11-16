@@ -50,11 +50,8 @@ const Auth = () => {
         });
 
         if (error) {
-          if (error.message.includes("Invalid login credentials")) {
-            toast.error("이메일 또는 비밀번호가 올바르지 않습니다.");
-          } else {
-            toast.error(error.message);
-          }
+          toast.error("로그인 정보가 올바르지 않습니다.");
+          if (import.meta.env.DEV) console.error("인증 오류:", error);
           return;
         }
 
@@ -70,11 +67,8 @@ const Auth = () => {
         });
 
         if (error) {
-          if (error.message.includes("already registered")) {
-            toast.error("이미 가입된 이메일입니다.");
-          } else {
-            toast.error(error.message);
-          }
+          toast.error("회원가입 처리 중 오류가 발생했습니다.");
+          if (import.meta.env.DEV) console.error("회원가입 오류:", error);
           return;
         }
 
@@ -82,7 +76,7 @@ const Auth = () => {
         setIsLogin(true);
       }
     } catch (error: any) {
-      console.error("인증 오류:", error);
+      if (import.meta.env.DEV) console.error("인증 오류:", error);
       toast.error("오류가 발생했습니다. 다시 시도해주세요.");
     } finally {
       setIsLoading(false);

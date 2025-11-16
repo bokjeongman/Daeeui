@@ -52,7 +52,7 @@ const Profile = () => {
       setUser(session.user);
       await fetchReports(session.user.id);
     } catch (error) {
-      console.error("초기화 오류:", error);
+      if (import.meta.env.DEV) console.error("초기화 오류:", error);
       toast.error("페이지 로딩 중 오류가 발생했습니다.");
     } finally {
       setLoading(false);
@@ -80,7 +80,7 @@ const Profile = () => {
         rejected: reports.filter(r => r.status === "rejected").length,
       });
     } catch (error) {
-      console.error("제보 조회 실패:", error);
+      if (import.meta.env.DEV) console.error("제보 조회 실패:", error);
       toast.error("제보 내역을 불러오는데 실패했습니다.");
     }
   };

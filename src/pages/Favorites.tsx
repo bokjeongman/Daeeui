@@ -39,7 +39,7 @@ const Favorites = () => {
       setUser(session.user);
       await fetchFavorites();
     } catch (error) {
-      console.error("초기화 오류:", error);
+      if (import.meta.env.DEV) console.error("초기화 오류:", error);
       toast.error("페이지 로딩 중 오류가 발생했습니다.");
     } finally {
       setLoading(false);
@@ -56,7 +56,7 @@ const Favorites = () => {
       if (error) throw error;
       setFavorites(data || []);
     } catch (error) {
-      console.error("즐겨찾기 조회 실패:", error);
+      if (import.meta.env.DEV) console.error("즐겨찾기 조회 실패:", error);
       toast.error("즐겨찾기를 불러오는데 실패했습니다.");
     }
   };
@@ -75,7 +75,7 @@ const Favorites = () => {
       toast.success("즐겨찾기가 삭제되었습니다.");
       await fetchFavorites();
     } catch (error) {
-      console.error("삭제 실패:", error);
+      if (import.meta.env.DEV) console.error("삭제 실패:", error);
       toast.error("삭제에 실패했습니다.");
     } finally {
       setDeletingIds(prev => {

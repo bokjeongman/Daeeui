@@ -119,7 +119,7 @@ const ReviewModal = ({ open, onOpenChange }: ReviewModalProps) => {
         setShowResults(true);
       }
     } catch (error) {
-      console.error("POI 검색 실패:", error);
+      if (import.meta.env.DEV) console.error("POI 검색 실패:", error);
       setSearchResults([]);
     }
   };
@@ -219,7 +219,7 @@ const ReviewModal = ({ open, onOpenChange }: ReviewModalProps) => {
       setShowResults(false);
       handleRemovePhoto();
     } catch (error: any) {
-      console.error("제보 등록 실패:", error);
+      if (import.meta.env.DEV) console.error("제보 등록 실패:", error);
       toast.error("제보 등록에 실패했습니다. 다시 시도해주세요.");
     } finally {
       setIsSubmitting(false);

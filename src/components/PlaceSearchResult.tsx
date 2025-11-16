@@ -69,7 +69,7 @@ const PlaceSearchResult = ({ results, onSelect, onClose }: PlaceSearchResultProp
         toast.success("즐겨찾기에 추가되었습니다.");
       }
     } catch (error: any) {
-      console.error("즐겨찾기 추가 실패:", error);
+      if (import.meta.env.DEV) console.error("즐겨찾기 추가 실패:", error);
       toast.error("즐겨찾기 추가에 실패했습니다.");
     } finally {
       setIsSaving(false);

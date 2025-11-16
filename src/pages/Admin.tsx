@@ -69,7 +69,7 @@ const Admin = () => {
       setIsAdmin(true);
       await fetchReports();
     } catch (error) {
-      console.error("초기화 오류:", error);
+      if (import.meta.env.DEV) console.error("초기화 오류:", error);
       toast.error("페이지 로딩 중 오류가 발생했습니다.");
       navigate("/");
     } finally {
@@ -83,7 +83,7 @@ const Admin = () => {
       if (error) throw error;
       setReports(data || []);
     } catch (error) {
-      console.error("제보 목록 조회 실패:", error);
+      if (import.meta.env.DEV) console.error("제보 목록 조회 실패:", error);
       toast.error("제보 목록을 불러오는데 실패했습니다.");
     }
   };
@@ -104,7 +104,7 @@ const Admin = () => {
       toast.success(newStatus === "approved" ? "제보가 승인되었습니다." : "제보가 거부되었습니다.");
       await fetchReports();
     } catch (error) {
-      console.error("상태 변경 실패:", error);
+      if (import.meta.env.DEV) console.error("상태 변경 실패:", error);
       toast.error("상태 변경에 실패했습니다.");
     } finally {
       setProcessingIds(prev => { const newSet = new Set(prev); newSet.delete(reportId); return newSet; });
@@ -125,7 +125,7 @@ const Admin = () => {
       setSelectedReports(new Set());
       await fetchReports();
     } catch (error) {
-      console.error("일괄 처리 실패:", error);
+      if (import.meta.env.DEV) console.error("일괄 처리 실패:", error);
       toast.error("일괄 처리에 실패했습니다.");
     }
   };

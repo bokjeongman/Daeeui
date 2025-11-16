@@ -38,7 +38,7 @@ const SaveRouteButton = ({ startPoint, endPoint, distance, duration }: SaveRoute
 
       toast.success("경로가 저장되었습니다!");
     } catch (error) {
-      console.error("경로 저장 실패:", error);
+      if (import.meta.env.DEV) console.error("경로 저장 실패:", error);
       toast.error("경로 저장에 실패했습니다.");
     }
   };
