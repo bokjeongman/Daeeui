@@ -12,10 +12,12 @@ declare global {
   }
 }
 
+// MapView component for route planning and navigation
 interface MapViewProps {
   startPoint?: { lat: number; lon: number; name: string } | null;
   endPoint?: { lat: number; lon: number; name: string } | null;
   selectedRouteType?: "transit" | "walk" | "car" | null;
+  onPlaceClick?: (place: { name: string; lat: number; lon: number }) => void;
   onRoutesCalculated?: (routes: Array<{
     type: "transit" | "walk" | "car";
     distance: number;
@@ -36,10 +38,15 @@ interface MapViewProps {
       transfers: number;
     };
   }>) => void;
-  onPlaceClick?: (place: { name: string; lat: number; lon: number }) => void;
 }
 
-const MapView = ({ startPoint, endPoint, selectedRouteType, onRoutesCalculated, onPlaceClick }: MapViewProps) => {
+const MapView = ({ 
+  startPoint, 
+  endPoint, 
+  selectedRouteType, 
+  onRoutesCalculated, 
+  onPlaceClick 
+}: MapViewProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<any>(null);
   const [loading, setLoading] = useState(true);

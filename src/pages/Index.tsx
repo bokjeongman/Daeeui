@@ -96,7 +96,7 @@ const Index = () => {
           endPoint={endPoint}
           selectedRouteType={selectedRouteType}
           onRoutesCalculated={setRouteOptions}
-          onPlaceClick={(place) => {
+          onPlaceClick={(place: { name: string; lat: number; lon: number }) => {
             setSelectedPlace(place);
             setPlaceReviewModalOpen(true);
           }}
