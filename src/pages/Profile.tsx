@@ -19,6 +19,7 @@ interface AccessibilityReport {
   status: string;
   created_at: string;
   reviewed_at: string | null;
+  address?: string;
 }
 
 interface Stats {
@@ -59,6 +60,28 @@ const Profile = () => {
     }
   };
 
+  const reverseGeocode = async (lat: number, lon: number): Promise<string> => {
+    try {
+      const response = await fetch(
+        `https://apis.openapi.sk.com/tmap/geo/reversegeocoding?version=1&lat=${lat}&lon=${lon}&coordType=WGS84GEO&addressType=A10`,
+        {
+          method: "GET",
+          headers: {
+            appKey: "KZDXJtx63R735Qktn8zkkaJv4tbaUqDc1lXzyjLT",
+          },
+        }
+      );
+      const data = await response.json();
+      if (data.addressInfo) {
+        const fullAddress = data.addressInfo.fullAddress || "";
+        return fullAddress.replace(/^[^,]+,\s*/, "");
+      }
+      return `위도: ${lat.toFixed(6)}, 경도: ${lon.toFixed(6)}`;
+    } catch (error) {
+      return `위도: ${lat.toFixed(6)}, 경도: ${lon.toFixed(6)}`;
+    }
+  };
+
   const fetchReports = async (userId: string) => {
     try {
       const { data, error } = await supabase
@@ -69,15 +92,24 @@ const Profile = () => {
 
       if (error) throw error;
 
-      const reports = data || [];
-      setReports(reports);
+      const reportsData = data || [];
+      
+      // 각 제보에 대해 주소 변환
+      const reportsWithAddress = await Promise.all(
+        reportsData.map(async (report) => {
+          const address = await reverseGeocode(report.latitude, report.longitude);
+          return { ...report, address };
+        })
+      );
+      
+      setReports(reportsWithAddress);
 
       // Calculate statistics
       setStats({
-        total: reports.length,
-        approved: reports.filter(r => r.status === "approved").length,
-        pending: reports.filter(r => r.status === "pending").length,
-        rejected: reports.filter(r => r.status === "rejected").length,
+        total: reportsWithAddress.length,
+        approved: reportsWithAddress.filter(r => r.status === "approved").length,
+        pending: reportsWithAddress.filter(r => r.status === "pending").length,
+        rejected: reportsWithAddress.filter(r => r.status === "rejected").length,
       });
     } catch (error) {
       if (import.meta.env.DEV) console.error("제보 조회 실패:", error);
@@ -237,7 +269,7 @@ const Profile = () => {
                           <div className="flex items-center gap-4 text-sm text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <MapPin className="h-4 w-4" />
-                              {Number(report.latitude).toFixed(6)}, {Number(report.longitude).toFixed(6)}
+                              {report.address || `위도: ${Number(report.latitude).toFixed(6)}, 경도: ${Number(report.longitude).toFixed(6)}`}
                             </span>
                             <Badge variant="outline">{categoryLabels[report.category] || report.category}</Badge>
                           </div>
