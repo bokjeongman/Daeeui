@@ -49,6 +49,9 @@ const MapView = ({ startPoint, endPoint, selectedRouteType, onRoutesCalculated }
   const [favorites, setFavorites] = useState<any[]>([]);
   const [filter, setFilter] = useState({ safe: true, warning: true, danger: true });
   const [showFilter, setShowFilter] = useState(false);
+  const [previousDuration, setPreviousDuration] = useState<number | null>(null);
+  const [routeUpdateTrigger, setRouteUpdateTrigger] = useState(0);
+  const updateIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const currentMarkerRef = useRef<any>(null);
   const accuracyCircleRef = useRef<any>(null);
   const watchIdRef = useRef<number | null>(null);
@@ -533,7 +536,8 @@ const MapView = ({ startPoint, endPoint, selectedRouteType, onRoutesCalculated }
             apiUrl = "https://apis.openapi.sk.com/tmap/routes/pedestrian?version=1";
           } else if (routeType === "car") {
             apiUrl = "https://apis.openapi.sk.com/tmap/routes?version=1";
-            requestBody.searchOption = "0"; // 추천 경로
+            requestBody.searchOption = "10"; // 실시간 빠른 경로
+            requestBody.trafficInfo = "Y"; // 실시간 교통정보 반영
           } else if (routeType === "transit") {
             // 대중교통 경로
             apiUrl = "https://apis.openapi.sk.com/transit/routes?version=1";
@@ -644,6 +648,28 @@ const MapView = ({ startPoint, endPoint, selectedRouteType, onRoutesCalculated }
               barriers: nearbyBarriers,
               lineStrings,
             });
+
+            // 자동차 경로일 때 이전 시간과 비교하여 알림
+            if (routeType === "car" && previousDuration !== null && routeUpdateTrigger > 1) {
+              const timeDiff = totalTime - previousDuration;
+              const minuteDiff = Math.abs(Math.round(timeDiff / 60));
+              
+              if (minuteDiff > 2) {
+                if (timeDiff > 0) {
+                  toast.error(`⚠️ 교통 정체로 ${minuteDiff}분 지연 예상`, {
+                    description: "실시간 교통 정보가 반영되었습니다."
+                  });
+                } else {
+                  toast.success(`✅ 교통 상황 개선! ${minuteDiff}분 단축`, {
+                    description: "실시간 교통 정보가 반영되었습니다."
+                  });
+                }
+              }
+            }
+            
+            if (routeType === "car") {
+              setPreviousDuration(totalTime);
+            }
           }
         }
 
@@ -708,7 +734,36 @@ const MapView = ({ startPoint, endPoint, selectedRouteType, onRoutesCalculated }
     };
 
     calculateAllRoutes();
-  }, [map, startPoint, endPoint, userLocation, barrierData, onRoutesCalculated, selectedRouteType]);
+  }, [map, startPoint, endPoint, userLocation, barrierData, onRoutesCalculated, selectedRouteType, routeUpdateTrigger]);
+
+  // 실시간 교통 정보 자동 업데이트 (자동차 경로가 선택되었을 때만)
+  useEffect(() => {
+    // 기존 interval 정리
+    if (updateIntervalRef.current) {
+      clearInterval(updateIntervalRef.current);
+      updateIntervalRef.current = null;
+    }
+
+    // 자동차 경로가 선택되었을 때만 실시간 업데이트 시작
+    if (selectedRouteType === "car" && map && endPoint) {
+      toast.info("🚗 실시간 교통 정보 업데이트 시작", {
+        description: "30초마다 경로를 자동 업데이트합니다."
+      });
+
+      // 30초마다 경로 재탐색
+      updateIntervalRef.current = setInterval(() => {
+        setRouteUpdateTrigger(prev => prev + 1);
+      }, 30000);
+    }
+
+    // cleanup
+    return () => {
+      if (updateIntervalRef.current) {
+        clearInterval(updateIntervalRef.current);
+        updateIntervalRef.current = null;
+      }
+    };
+  }, [selectedRouteType, map, endPoint]);
 
   // 화살표 마커 추가 함수
   const addArrowMarkers = (path: any[]) => {
