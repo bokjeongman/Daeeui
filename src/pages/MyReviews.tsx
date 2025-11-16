@@ -19,6 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { z } from "zod";
 
 interface Review {
   id: string;
@@ -31,6 +32,11 @@ interface Review {
   status: string;
   created_at: string;
 }
+
+const editReviewSchema = z.object({
+  details: z.string().trim().min(1, "상세 내용을 입력해주세요.").max(2000, "상세 내용은 2000자 이하여야 합니다."),
+  accessibility_level: z.enum(["good", "moderate", "difficult"], { errorMap: () => ({ message: "유효한 접근성 수준을 선택해주세요." }) }),
+});
 
 const MyReviews = () => {
   const navigate = useNavigate();
@@ -92,10 +98,22 @@ const MyReviews = () => {
     if (!editingReview) return;
 
     try {
+      // Validate input
+      const validationResult = editReviewSchema.safeParse({
+        details: editedDetails,
+        accessibility_level: editedLevel,
+      });
+
+      if (!validationResult.success) {
+        const firstError = validationResult.error.errors[0];
+        toast.error(firstError.message);
+        return;
+      }
+
       const { error } = await supabase
         .from("accessibility_reports")
         .update({
-          details: editedDetails,
+          details: editedDetails.trim(),
           accessibility_level: editedLevel,
           status: "pending", // 수정 시 다시 승인 대기
         })

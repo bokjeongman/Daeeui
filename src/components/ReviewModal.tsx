@@ -20,11 +20,21 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { z } from "zod";
 
 interface ReviewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
+const reportSchema = z.object({
+  location_name: z.string().trim().min(1, "장소명을 입력해주세요.").max(200, "장소명은 200자 이하여야 합니다."),
+  latitude: z.number().min(-90, "위도는 -90에서 90 사이여야 합니다.").max(90, "위도는 -90에서 90 사이여야 합니다."),
+  longitude: z.number().min(-180, "경도는 -180에서 180 사이여야 합니다.").max(180, "경도는 -180에서 180 사이여야 합니다."),
+  accessibility_level: z.enum(["good", "moderate", "difficult"], { errorMap: () => ({ message: "접근성 수준을 선택해주세요." }) }),
+  category: z.string().trim().min(1, "카테고리를 선택해주세요.").max(50, "카테고리는 50자 이하여야 합니다."),
+  details: z.string().trim().min(1, "상세 내용을 입력해주세요.").max(2000, "상세 내용은 2000자 이하여야 합니다."),
+});
 
 const ReviewModal = ({ open, onOpenChange }: ReviewModalProps) => {
   const [location, setLocation] = useState("");
@@ -130,15 +140,35 @@ const ReviewModal = ({ open, onOpenChange }: ReviewModalProps) => {
       navigate("/auth");
       return;
     }
-    
-    if (!location || !latitude || !longitude || !accessibility || !category) {
-      toast.error("필수 항목을 모두 입력해주세요.");
-      return;
-    }
-
-    setIsSubmitting(true);
 
     try {
+      // Parse and validate coordinates
+      const lat = parseFloat(latitude);
+      const lon = parseFloat(longitude);
+
+      if (isNaN(lat) || isNaN(lon)) {
+        toast.error("올바른 좌표를 입력해주세요.");
+        return;
+      }
+
+      // Validate all input
+      const validationResult = reportSchema.safeParse({
+        location_name: location,
+        latitude: lat,
+        longitude: lon,
+        accessibility_level: accessibility,
+        category: category,
+        details: details,
+      });
+
+      if (!validationResult.success) {
+        const firstError = validationResult.error.errors[0];
+        toast.error(firstError.message);
+        return;
+      }
+
+      setIsSubmitting(true);
+
       let photoUrl = null;
 
       // Upload photo if provided
@@ -163,12 +193,12 @@ const ReviewModal = ({ open, onOpenChange }: ReviewModalProps) => {
         .from("accessibility_reports")
         .insert({
           user_id: user.id,
-          location_name: location,
-          latitude: parseFloat(latitude),
-          longitude: parseFloat(longitude),
+          location_name: location.trim(),
+          latitude: lat,
+          longitude: lon,
           accessibility_level: accessibility,
-          category: category,
-          details: details || null,
+          category: category.trim(),
+          details: details.trim() || null,
           photo_url: photoUrl,
         });
 
