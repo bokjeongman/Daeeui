@@ -10,6 +10,7 @@ import Sidebar from "@/components/Sidebar";
 import ReviewModal from "@/components/ReviewModal";
 import PlaceReviewModal from "@/components/PlaceReviewModal";
 import WheelchairBadge from "@/components/WheelchairBadge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -21,6 +22,8 @@ const Index = () => {
   const [startPoint, setStartPoint] = useState<{ lat: number; lon: number; name: string } | null>(null);
   const [endPoint, setEndPoint] = useState<{ lat: number; lon: number; name: string } | null>(null);
   const [searchMode, setSearchMode] = useState<"start" | "end" | null>(null);
+  const [roadViewOpen, setRoadViewOpen] = useState(false);
+  const [roadViewLocation, setRoadViewLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [routeOptions, setRouteOptions] = useState<Array<{
     type: "transit" | "walk" | "car";
     distance: number;
@@ -100,6 +103,10 @@ const Index = () => {
             setSelectedPlace(place);
             setPlaceReviewModalOpen(true);
           }}
+          onMapClick={(location: { lat: number; lon: number }) => {
+            setRoadViewLocation(location);
+            setRoadViewOpen(true);
+          }}
         />
         
         {/* 후기 등록 버튼 */}
@@ -161,6 +168,22 @@ const Index = () => {
         }}
         place={selectedPlace}
       />
+
+      {/* 로드뷰 Dialog */}
+      <Dialog open={roadViewOpen} onOpenChange={setRoadViewOpen}>
+        <DialogContent className="max-w-4xl h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>로드뷰</DialogTitle>
+          </DialogHeader>
+          {roadViewLocation && (
+            <iframe
+              src={`https://map.kakao.com/?map_type=TYPE_MAP&from=roughmap&srcid=&eName=&eX=&eY=&target=car&rt=&rt1=&rt2=&rtIds=&rtTypes=&mIds=&roadview=true&pan=${roadViewLocation.lon},${roadViewLocation.lat}`}
+              className="w-full h-full rounded-lg"
+              style={{ border: "none" }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

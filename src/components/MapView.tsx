@@ -18,6 +18,7 @@ interface MapViewProps {
   endPoint?: { lat: number; lon: number; name: string } | null;
   selectedRouteType?: "transit" | "walk" | "car" | null;
   onPlaceClick?: (place: { name: string; lat: number; lon: number }) => void;
+  onMapClick?: (location: { lat: number; lon: number }) => void;
   onRoutesCalculated?: (routes: Array<{
     type: "transit" | "walk" | "car";
     distance: number;
@@ -45,7 +46,8 @@ const MapView = ({
   endPoint, 
   selectedRouteType, 
   onRoutesCalculated, 
-  onPlaceClick 
+  onPlaceClick,
+  onMapClick 
 }: MapViewProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<any>(null);
@@ -275,12 +277,18 @@ const MapView = ({
       // 최초 진입 시 현재 위치 자동 요청
       getCurrentLocation();
       
-      // 지도 클릭 이벤트 - POI 검색
+      // 지도 클릭 이벤트 - POI 검색 및 로드뷰
       tmapInstance.addListener("click", async (evt: any) => {
-        if (!onPlaceClick) return;
-        
         const lat = evt.latLng.lat();
         const lon = evt.latLng.lng();
+        
+        // 로드뷰 콜백 실행
+        if (onMapClick) {
+          onMapClick({ lat, lon });
+        }
+        
+        // POI 검색 (장소 후기용)
+        if (!onPlaceClick) return;
         
         try {
           // 클릭한 위치 주변의 POI 검색
@@ -561,13 +569,33 @@ const MapView = ({
               endName: endPoint.name,
             };
 
+            // 위험한 배리어 찾기 (우회 경로용)
+            const dangerousBarriers = barrierData.filter(
+              (b) => b.accessibility_level === "매우위험"
+            );
+
             // 교통수단별 API 엔드포인트 설정
             if (routeType === "walk") {
               apiUrl = "https://apis.openapi.sk.com/tmap/routes/pedestrian?version=1";
+              
+              // 위험한 배리어를 피하기 위한 경유지 추가
+              if (dangerousBarriers.length > 0 && dangerousBarriers.length <= 3) {
+                const passList = dangerousBarriers.map((barrier, index) => ({
+                  [`passList${index}`]: `${barrier.longitude},${barrier.latitude}`
+                })).reduce((acc, curr) => ({ ...acc, ...curr }), {});
+                
+                // searchOption 161: 배리어 회피 옵션
+                requestBody = { ...requestBody, ...passList, searchOption: "161" };
+              }
             } else if (routeType === "car") {
               apiUrl = "https://apis.openapi.sk.com/tmap/routes?version=1";
               requestBody.searchOption = "10"; // 실시간 빠른 경로
               requestBody.trafficInfo = "Y"; // 실시간 교통정보 반영
+              
+              // 자동차는 위험 배리어가 많으면 우회 경로 탐색
+              if (dangerousBarriers.length > 0) {
+                requestBody.searchOption = "4"; // 교통 최적+실시간
+              }
             } else if (routeType === "transit") {
               // 대중교통 경로
               apiUrl = "https://apis.openapi.sk.com/transit/routes?version=1";
