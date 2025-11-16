@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Edit, Trash2, MapPin, Calendar, MessageSquare } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, MapPin, Calendar, MessageSquare, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +31,7 @@ interface Review {
   details: string | null;
   status: string;
   created_at: string;
+  address?: string;
 }
 
 const editReviewSchema = z.object({
@@ -46,6 +47,7 @@ const MyReviews = () => {
   const [editedDetails, setEditedDetails] = useState("");
   const [editedLevel, setEditedLevel] = useState("");
   const [deletingReviewId, setDeletingReviewId] = useState<string | null>(null);
+  const [roadViewReview, setRoadViewReview] = useState<Review | null>(null);
 
   useEffect(() => {
     checkUserAndFetchReviews();
@@ -79,12 +81,38 @@ const MyReviews = () => {
 
       if (error) throw error;
 
-      setReviews(data || []);
+      // 각 리뷰에 대해 역지오코딩으로 주소 가져오기
+      const reviewsWithAddress = await Promise.all(
+        (data || []).map(async (review) => {
+          const address = await reverseGeocode(review.latitude, review.longitude);
+          return { ...review, address };
+        })
+      );
+
+      setReviews(reviewsWithAddress);
     } catch (error) {
       if (import.meta.env.DEV) console.error("후기 조회 실패:", error);
       toast.error("후기를 불러오는데 실패했습니다.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const reverseGeocode = async (lat: number, lon: number): Promise<string> => {
+    try {
+      const response = await fetch(
+        `https://apis.openapi.sk.com/tmap/geo/reversegeocoding?version=1&format=json&callback=result&coordType=WGS84GEO&addressType=A10&lon=${lon}&lat=${lat}&appKey=KZDXJtx63R735Qktn8zkkaJv4tbaUqDc1lXzyjLT`
+      );
+      const data = await response.json();
+      
+      if (data.addressInfo) {
+        const addr = data.addressInfo;
+        return `${addr.city_do || ''} ${addr.gu_gun || ''} ${addr.eup_myun || ''} ${addr.adminDong || ''} ${addr.ri || ''}`.trim();
+      }
+      return `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+    } catch (error) {
+      if (import.meta.env.DEV) console.error("역지오코딩 실패:", error);
+      return `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
     }
   };
 
@@ -266,16 +294,26 @@ const MyReviews = () => {
                     </p>
                   )}
 
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground mb-2">
                     <div className="flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
                       {new Date(review.created_at).toLocaleDateString('ko-KR')}
                     </div>
                     <div className="flex items-center gap-1">
                       <MapPin className="h-3 w-3" />
-                      {review.latitude.toFixed(6)}, {review.longitude.toFixed(6)}
+                      {review.address || `${review.latitude.toFixed(6)}, ${review.longitude.toFixed(6)}`}
                     </div>
                   </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setRoadViewReview(review)}
+                    className="w-full"
+                  >
+                    <Eye className="h-4 w-4 mr-2" />
+                    로드뷰 보기
+                  </Button>
 
                   {review.status === "approved" && (
                     <p className="text-xs text-muted-foreground mt-2 italic">
@@ -358,6 +396,24 @@ const MyReviews = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 로드뷰 다이얼로그 */}
+      <Dialog open={roadViewReview !== null} onOpenChange={(open) => !open && setRoadViewReview(null)}>
+        <DialogContent className="max-w-4xl h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>{roadViewReview?.location_name} - 로드뷰</DialogTitle>
+          </DialogHeader>
+          {roadViewReview && (
+            <div className="flex-1 overflow-hidden">
+              <iframe
+                src={`https://map.kakao.com/link/roadview/${roadViewReview.latitude},${roadViewReview.longitude}`}
+                className="w-full h-full border-0 rounded-lg"
+                title="Kakao Road View"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
