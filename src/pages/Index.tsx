@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import SearchBar from "@/components/SearchBar";
 import MapView from "@/components/MapView";
 import RouteInfo from "@/components/RouteInfo";
+import RouteOptions from "@/components/RouteOptions";
 import ReviewButton from "@/components/ReviewButton";
 import Sidebar from "@/components/Sidebar";
 import ReviewModal from "@/components/ReviewModal";
@@ -17,11 +18,16 @@ const Index = () => {
   const [startPoint, setStartPoint] = useState<{ lat: number; lon: number; name: string } | null>(null);
   const [endPoint, setEndPoint] = useState<{ lat: number; lon: number; name: string } | null>(null);
   const [searchMode, setSearchMode] = useState<"start" | "end" | null>(null);
-  const [routeData, setRouteData] = useState<{
+  const [routeOptions, setRouteOptions] = useState<Array<{
+    type: "transit" | "walk" | "car";
     distance: number;
     duration: number;
+    safePercentage: number;
+    warningPercentage: number;
+    dangerPercentage: number;
     barriers: { type: string; severity: string; name: string }[];
-  } | null>(null);
+  }>>([]);
+  const [selectedRouteType, setSelectedRouteType] = useState<"transit" | "walk" | "car" | null>(null);
 
   const handleSelectPlace = (place: { lat: number; lon: number; name: string }, type: "start" | "end") => {
     if (type === "start") {
@@ -33,6 +39,8 @@ const Index = () => {
       setEndPoint(place);
       setSearchMode(null);
       setHasRoute(true);
+      setRouteOptions([]);
+      setSelectedRouteType(null);
     }
   };
 
@@ -72,32 +80,45 @@ const Index = () => {
         <MapView 
           startPoint={startPoint}
           endPoint={endPoint}
-          onRouteCalculated={setRouteData}
+          onRoutesCalculated={setRouteOptions}
         />
         
         {/* 후기 등록 버튼 */}
         <ReviewButton onClick={() => setReviewModalOpen(true)} />
       </div>
 
-      {/* 하단 경로 정보 - 경로 탐색 후에만 표시 */}
-      {hasRoute && routeData && (
-        <div className="relative z-10">
-          <RouteInfo
-            variant={viewMode}
-            distance={`${(routeData.distance / 1000).toFixed(1)} km`}
-            duration={`${Math.ceil(routeData.duration / 60)}분`}
-            safePercentage={Math.round(
-              ((routeData.barriers.filter(b => b.severity === "safe").length / Math.max(routeData.barriers.length, 1)) * 100)
-            )}
-            warningPercentage={Math.round(
-              ((routeData.barriers.filter(b => b.severity === "warning" || b.severity === "danger").length / Math.max(routeData.barriers.length, 1)) * 100)
-            )}
-            onStartNavigation={() => {
-              if (viewMode === "default") {
-                setViewMode("yellow");
-              }
-            }}
-          />
+      {/* 하단 경로 옵션 - 경로 탐색 후에만 표시 */}
+      {hasRoute && routeOptions.length > 0 && (
+        <div className="relative z-10 bg-background rounded-t-3xl border-t shadow-lg max-h-[50vh] overflow-y-auto">
+          {selectedRouteType ? (
+            <div className="p-4">
+              <button
+                onClick={() => setSelectedRouteType(null)}
+                className="text-sm text-primary hover:underline mb-2"
+              >
+                ← 다른 경로 보기
+              </button>
+              <RouteInfo
+                variant={viewMode}
+                distance={`${(routeOptions.find(r => r.type === selectedRouteType)?.distance / 1000).toFixed(1)} km`}
+                duration={`${Math.ceil(routeOptions.find(r => r.type === selectedRouteType)?.duration / 60)}분`}
+                safePercentage={routeOptions.find(r => r.type === selectedRouteType)?.safePercentage || 0}
+                warningPercentage={routeOptions.find(r => r.type === selectedRouteType)?.warningPercentage || 0}
+                dangerPercentage={routeOptions.find(r => r.type === selectedRouteType)?.dangerPercentage || 0}
+                onStartNavigation={() => {
+                  if (viewMode === "default") {
+                    setViewMode("yellow");
+                  }
+                }}
+              />
+            </div>
+          ) : (
+            <RouteOptions
+              options={routeOptions}
+              selectedType={selectedRouteType}
+              onSelectRoute={setSelectedRouteType}
+            />
+          )}
         </div>
       )}
 
