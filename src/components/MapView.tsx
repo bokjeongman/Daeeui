@@ -78,9 +78,7 @@ const MapView = () => {
       });
 
       setMap(tmapInstance);
-      
-      // 자동으로 현재 위치 가져오기
-      getCurrentLocation();
+      setLoading(false);
     } catch (err) {
       console.error("지도 초기화 실패:", err);
       setError("지도를 불러오는데 실패했습니다.");
@@ -104,7 +102,7 @@ const MapView = () => {
       currentMarkerRef.current.setMap(null);
     }
 
-    // 새 마커 생성
+    // 새 마커 생성 (핀 모양)
     const marker = new window.Tmapv2.Marker({
       position: position,
       map: map,
@@ -114,18 +112,6 @@ const MapView = () => {
     });
 
     currentMarkerRef.current = marker;
-
-    // 정확도 원 표시
-    const accuracyCircle = new window.Tmapv2.Circle({
-      center: position,
-      radius: 50, // 50m 반경
-      strokeColor: "#22c55e",
-      strokeOpacity: 0.8,
-      strokeWeight: 2,
-      fillColor: "#22c55e",
-      fillOpacity: 0.2,
-      map: map,
-    });
   }, [map, userLocation]);
 
   if (!window.Tmapv2) {
@@ -152,7 +138,7 @@ const MapView = () => {
       <div ref={mapRef} className="w-full h-full" />
 
       {/* 로딩 오버레이 */}
-      {loading && (
+      {loading && userLocation === null && (
         <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10">
           <div className="text-center space-y-4">
             <Loader2 className="h-12 w-12 text-primary mx-auto animate-spin" />
@@ -181,27 +167,20 @@ const MapView = () => {
         </div>
       )}
 
-      {/* 현재 위치로 이동 버튼 */}
-      {userLocation && !loading && (
-        <Button
-          onClick={getCurrentLocation}
-          size="icon"
-          className="absolute bottom-4 right-4 h-12 w-12 rounded-full shadow-lg bg-background hover:bg-muted z-10"
-          title="현재 위치로 이동"
-        >
+      {/* 현재 위치 버튼 */}
+      <Button
+        onClick={getCurrentLocation}
+        size="icon"
+        className="absolute bottom-4 right-4 h-12 w-12 rounded-full shadow-lg bg-background hover:bg-muted z-10"
+        title="현재 위치"
+        disabled={loading}
+      >
+        {loading && userLocation === null ? (
+          <Loader2 className="h-5 w-5 text-primary animate-spin" />
+        ) : (
           <MapPin className="h-5 w-5 text-primary" />
-        </Button>
-      )}
-
-      {/* 위치 정보 표시 */}
-      {userLocation && !loading && (
-        <div className="absolute top-4 left-4 bg-background/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-lg z-10">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-            <p className="text-sm font-medium">현재 위치 추적 중</p>
-          </div>
-        </div>
-      )}
+        )}
+      </Button>
     </div>
   );
 };

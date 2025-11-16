@@ -13,6 +13,7 @@ const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"default" | "yellow">("default");
+  const [hasRoute, setHasRoute] = useState(false);
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
@@ -30,12 +31,9 @@ const Index = () => {
             </Button>
             <div className="flex-1 min-w-0">
               <SearchBar
-                placeholder={
-                  viewMode === "yellow"
-                    ? "휠체어로 갈 목적지를 검색하세요"
-                    : "목적지"
-                }
+                placeholder="장소 검색"
                 variant={viewMode}
+                onRouteCreate={() => setHasRoute(true)}
               />
             </div>
           </div>
@@ -55,17 +53,19 @@ const Index = () => {
         <ReviewButton onClick={() => setReviewModalOpen(true)} />
       </div>
 
-      {/* 하단 경로 정보 */}
-      <div className="relative z-10">
-        <RouteInfo
-          variant={viewMode}
-          onStartNavigation={() => {
-            if (viewMode === "default") {
-              setViewMode("yellow");
-            }
-          }}
-        />
-      </div>
+      {/* 하단 경로 정보 - 경로 탐색 후에만 표시 */}
+      {hasRoute && (
+        <div className="relative z-10">
+          <RouteInfo
+            variant={viewMode}
+            onStartNavigation={() => {
+              if (viewMode === "default") {
+                setViewMode("yellow");
+              }
+            }}
+          />
+        </div>
+      )}
 
       {/* 사이드바 */}
       <Sidebar open={sidebarOpen} onOpenChange={setSidebarOpen} />

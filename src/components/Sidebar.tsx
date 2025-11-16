@@ -9,9 +9,9 @@ interface SidebarProps {
 
 const Sidebar = ({ open, onOpenChange }: SidebarProps) => {
   const menuItems = [
-    { icon: Home, label: "기능", disabled: false },
+    { icon: Home, label: "홈", disabled: false },
     { icon: MapPin, label: "내 경로", disabled: false },
-    { icon: FileText, label: "휠체어 접근성 제보", disabled: false },
+    { icon: FileText, label: "휠체어 접근성 제보", disabled: false, highlight: true },
     { icon: MessageSquare, label: "즐겨찾기", disabled: false },
     { icon: Settings, label: "설정", disabled: false },
   ];
@@ -25,9 +25,14 @@ const Sidebar = ({ open, onOpenChange }: SidebarProps) => {
 
         <div className="py-4">
           <div className="space-y-1 px-3">
-            <h3 className="px-3 py-2 text-sm font-semibold text-muted-foreground">기능</h3>
-            {menuItems.slice(0, 4).map((item) => (
-              <Button key={item.label} variant="ghost" className="w-full justify-start gap-3" disabled={item.disabled}>
+            <h3 className="px-3 py-2 text-sm font-semibold text-muted-foreground">메뉴</h3>
+            {menuItems.map((item) => (
+              <Button 
+                key={item.label} 
+                variant={item.highlight ? "default" : "ghost"} 
+                className={`w-full justify-start gap-3 ${item.highlight ? "bg-accent text-accent-foreground hover:bg-accent/90" : ""}`}
+                disabled={item.disabled}
+              >
                 <item.icon className="h-5 w-5" />
                 {item.label}
               </Button>
