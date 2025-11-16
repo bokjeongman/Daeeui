@@ -7,8 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { CheckCircle2, XCircle, MapPin, Loader2, Search, Filter } from "lucide-react";
+import { CheckCircle2, XCircle, MapPin, Loader2, Search, Filter, Eye } from "lucide-react";
 
 interface Report {
   id: string;
@@ -22,6 +23,7 @@ interface Report {
   status: string;
   created_at: string;
   user_id: string;
+  address?: string;
 }
 
 const Admin = () => {
@@ -34,6 +36,7 @@ const Admin = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [levelFilter, setLevelFilter] = useState<string>("all");
+  const [roadViewReport, setRoadViewReport] = useState<Report | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -81,10 +84,37 @@ const Admin = () => {
     try {
       const { data, error } = await supabase.from("accessibility_reports").select("*").order("created_at", { ascending: false });
       if (error) throw error;
-      setReports(data || []);
+      
+      // 각 제보에 대해 역지오코딩으로 주소 가져오기
+      const reportsWithAddress = await Promise.all(
+        (data || []).map(async (report) => {
+          const address = await reverseGeocode(report.latitude, report.longitude);
+          return { ...report, address };
+        })
+      );
+      
+      setReports(reportsWithAddress);
     } catch (error) {
       if (import.meta.env.DEV) console.error("제보 목록 조회 실패:", error);
       toast.error("제보 목록을 불러오는데 실패했습니다.");
+    }
+  };
+
+  const reverseGeocode = async (lat: number, lon: number): Promise<string> => {
+    try {
+      const response = await fetch(
+        `https://apis.openapi.sk.com/tmap/geo/reversegeocoding?version=1&format=json&callback=result&coordType=WGS84GEO&addressType=A10&lon=${lon}&lat=${lat}&appKey=KZDXJtx63R735Qktn8zkkaJv4tbaUqDc1lXzyjLT`
+      );
+      const data = await response.json();
+      
+      if (data.addressInfo) {
+        const addr = data.addressInfo;
+        return `${addr.city_do || ''} ${addr.gu_gun || ''} ${addr.eup_myun || ''} ${addr.adminDong || ''} ${addr.ri || ''}`.trim();
+      }
+      return `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+    } catch (error) {
+      if (import.meta.env.DEV) console.error("역지오코딩 실패:", error);
+      return `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
     }
   };
 
@@ -211,13 +241,28 @@ const Admin = () => {
                   onCheckedChange={() => setSelectedReports(prev => { const s = new Set(prev); s.has(report.id) ? s.delete(report.id) : s.add(report.id); return s; })} className="mt-1" />}
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2"><CardTitle>{report.location_name}</CardTitle>{getStatusBadge(report.status)}</div>
-                  <CardDescription className="flex items-center gap-2"><MapPin className="h-4 w-4" />{report.latitude.toFixed(6)}, {report.longitude.toFixed(6)}</CardDescription>
+                  <CardDescription className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    {report.address || `${report.latitude.toFixed(6)}, ${report.longitude.toFixed(6)}`}
+                  </CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
               <div className="flex gap-2 mb-2">{getAccessibilityBadge(report.accessibility_level)}</div>
               {report.details && <p className="text-sm mb-3">{report.details}</p>}
+              
+              <div className="flex gap-2 mb-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setRoadViewReport(report)}
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  로드뷰 보기
+                </Button>
+              </div>
+              
               {report.status === "pending" && (
                 <div className="flex gap-2">
                   <Button onClick={() => handleStatusChange(report.id, "approved")} disabled={processingIds.has(report.id)} className="bg-green-600">
@@ -232,6 +277,24 @@ const Admin = () => {
           </Card>
         ))}
       </div>
+
+      {/* 로드뷰 다이얼로그 */}
+      <Dialog open={roadViewReport !== null} onOpenChange={(open) => !open && setRoadViewReport(null)}>
+        <DialogContent className="max-w-4xl h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>{roadViewReport?.location_name} - 로드뷰</DialogTitle>
+          </DialogHeader>
+          {roadViewReport && (
+            <div className="flex-1 overflow-hidden">
+              <iframe
+                src={`https://map.kakao.com/link/roadview/${roadViewReport.latitude},${roadViewReport.longitude}`}
+                className="w-full h-full border-0 rounded-lg"
+                title="Kakao Road View"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
