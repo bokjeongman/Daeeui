@@ -571,7 +571,7 @@ const MapView = ({
 
             // 위험한 배리어 찾기 (우회 경로용)
             const dangerousBarriers = barrierData.filter(
-              (b) => b.accessibility_level === "매우위험"
+              (b) => b.severity === "danger"
             );
 
             // 교통수단별 API 엔드포인트 설정
@@ -703,10 +703,10 @@ const MapView = ({
 
               // 안전도 계산
               const dangerCount = nearbyBarriers.filter(
-                (b) => b.accessibility_level === "매우위험" && filter.danger
+                (b) => b.severity === "danger" && filter.danger
               ).length;
               const warningCount = nearbyBarriers.filter(
-                (b) => b.accessibility_level === "주의" && filter.warning
+                (b) => b.severity === "warning" && filter.warning
               ).length;
               const totalBarriers = dangerCount + warningCount;
               
@@ -737,6 +737,16 @@ const MapView = ({
                 barriers: nearbyBarriers,
                 lineStrings,
               });
+
+              if (import.meta.env.DEV) {
+                console.log(`✅ ${routeType} 경로 계산 완료:`, {
+                  distance: totalDistance,
+                  duration: totalTime,
+                  dangerPercentage,
+                  warningPercentage,
+                  safePercentage
+                });
+              }
 
               // 자동차 경로일 때 이전 시간과 비교하여 알림
               if (routeType === "car" && previousDuration !== null && routeUpdateTrigger > 1) {
@@ -769,6 +779,10 @@ const MapView = ({
 
         // 모든 경로 계산 후 콜백 호출
         if (calculatedRoutes.length > 0) {
+          if (import.meta.env.DEV) {
+            console.log("📍 모든 경로 계산 완료:", calculatedRoutes.length, "개");
+          }
+          
           if (onRoutesCalculated) {
             onRoutesCalculated(calculatedRoutes);
           }
@@ -784,12 +798,18 @@ const MapView = ({
             toast.info(`${routeNames} 경로를 제외한 경로를 표시합니다.`);
           }
         } else {
+          if (import.meta.env.DEV) {
+            console.log("⚠️ 경로를 찾을 수 없습니다. 시도한 경로:", routesToCalculate);
+          }
           toast.error("경로를 찾을 수 없습니다. 다시 시도해주세요.");
         }
 
         // 선택된 경로가 있으면 해당 경로만 지도에 표시
         if (selectedRouteType && calculatedRoutes.length > 0) {
           const selectedRoute = calculatedRoutes.find(r => r.type === selectedRouteType);
+          if (import.meta.env.DEV) {
+            console.log("🗺️ 선택된 경로 표시:", selectedRouteType, selectedRoute ? "찾음" : "없음");
+          }
           if (selectedRoute && selectedRoute.lineStrings) {
             // 경로 그리기
             const routeSegments = createRouteSegments(selectedRoute.lineStrings);
