@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { MapPin, Loader2, AlertCircle } from "lucide-react";
+import { MapPin, Loader2, AlertCircle, Navigation } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,14 +27,16 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [heading, setHeading] = useState<number | null>(null);
   const [barrierData, setBarrierData] = useState<any[]>([]);
   const currentMarkerRef = useRef<any>(null);
   const accuracyCircleRef = useRef<any>(null);
+  const watchIdRef = useRef<number | null>(null);
   const routeLayerRef = useRef<any[]>([]);
   const markersRef = useRef<any[]>([]);
   const barrierMarkersRef = useRef<any[]>([]);
 
-  // 현재 위치 가져오기
+  // 현재 위치 가져오기 및 지속적 추적
   const getCurrentLocation = () => {
     setLoading(true);
     setError(null);
@@ -45,12 +47,20 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
+    // 기존 watch 정리
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+    }
+
+    // 지속적으로 위치 추적
+    const watchId = navigator.geolocation.watchPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
         setUserLocation({ lat: latitude, lon: longitude });
         setLoading(false);
-        toast.success("현재 위치를 찾았습니다!");
+        if (watchIdRef.current === null) {
+          toast.success("현재 위치를 찾았습니다!");
+        }
       },
       (error) => {
         let errorMessage = "위치를 가져올 수 없습니다.";
@@ -77,7 +87,36 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
         maximumAge: 0,
       }
     );
+
+    watchIdRef.current = watchId;
+
+    // 나침반 방향 추적 (지원하는 경우)
+    if (window.DeviceOrientationEvent && 'ontouchstart' in window) {
+      window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+      window.addEventListener('deviceorientation', handleOrientation, true);
+    }
   };
+
+  const handleOrientation = (event: DeviceOrientationEvent) => {
+    if (event.alpha !== null) {
+      // alpha는 0-360도 값, 북쪽이 0도
+      setHeading(360 - event.alpha);
+    } else if ((event as any).webkitCompassHeading !== undefined) {
+      // iOS Safari용
+      setHeading((event as any).webkitCompassHeading);
+    }
+  };
+
+  // 컴포넌트 언마운트 시 watch 정리
+  useEffect(() => {
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+      window.removeEventListener('deviceorientationabsolute', handleOrientation, true);
+      window.removeEventListener('deviceorientation', handleOrientation, true);
+    };
+  }, []);
 
   // 승인된 제보 데이터 가져오기
   useEffect(() => {
@@ -180,12 +219,47 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
       accuracyCircleRef.current.setMap(null);
     }
 
-    // 현재 위치 마커 생성 (파란색 핀)
+    // 나침반 방향을 고려한 SVG 마커 생성
+    const rotation = heading !== null ? heading : 0;
+    const svgIcon = `
+      <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" style="transform: rotate(${rotation}deg); transition: transform 0.3s ease;">
+        <defs>
+          <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+            <feOffset dx="0" dy="2" result="offsetblur"/>
+            <feComponentTransfer>
+              <feFuncA type="linear" slope="0.3"/>
+            </feComponentTransfer>
+            <feMerge>
+              <feMergeNode/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+        <!-- 외부 원 (흰색 테두리) -->
+        <circle cx="24" cy="24" r="16" fill="white" filter="url(#shadow)"/>
+        <!-- 내부 원 (파란색) -->
+        <circle cx="24" cy="24" r="14" fill="#3b82f6"/>
+        <!-- 나침반 화살표 -->
+        <path d="M 24 10 L 28 24 L 24 20 L 20 24 Z" fill="white"/>
+        <path d="M 24 38 L 20 24 L 24 28 L 28 24 Z" fill="#93c5fd"/>
+        <!-- 중심점 -->
+        <circle cx="24" cy="24" r="3" fill="white"/>
+      </svg>
+    `;
+
+    // HTML 마커로 생성
+    const markerDiv = document.createElement('div');
+    markerDiv.innerHTML = svgIcon;
+    markerDiv.style.width = '48px';
+    markerDiv.style.height = '48px';
+    markerDiv.style.cursor = 'pointer';
+
     const marker = new window.Tmapv2.Marker({
       position: position,
       map: map,
-      icon: "https://tmapapi.sktelecom.com/upload/tmap/marker/pin_b_m_c.png",
-      iconSize: new window.Tmapv2.Size(24, 38),
+      icon: markerDiv,
+      iconSize: new window.Tmapv2.Size(48, 48),
       title: "현재 위치",
       zIndex: 9999,
     });
@@ -196,9 +270,11 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
     const circle = new window.Tmapv2.Circle({
       center: position,
       radius: 30,
-      strokeWeight: 0,
+      strokeWeight: 2,
+      strokeColor: "#3b82f6",
+      strokeOpacity: 0.5,
       fillColor: "#3b82f6",
-      fillOpacity: 0.2,
+      fillOpacity: 0.15,
       map: map,
     });
     accuracyCircleRef.current = circle;
@@ -208,7 +284,7 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
       map.setCenter(position);
       map.setZoom(16);
     }
-  }, [map, userLocation, startPoint, endPoint]);
+  }, [map, userLocation, heading, startPoint, endPoint]);
 
   // 배리어 마커 표시
   useEffect(() => {
@@ -521,15 +597,15 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
       {/* 현재 위치 버튼 */}
       <Button
         onClick={getCurrentLocation}
-        size="icon"
-        className="absolute bottom-4 right-4 h-12 w-12 rounded-full shadow-lg bg-background hover:bg-muted z-10"
+        size="lg"
+        className="absolute bottom-4 right-4 h-14 w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground z-10 border-4 border-background"
         title="현재 위치"
         disabled={loading}
       >
         {loading && userLocation === null ? (
-          <Loader2 className="h-5 w-5 text-primary animate-spin" />
+          <Loader2 className="h-6 w-6 animate-spin" />
         ) : (
-          <MapPin className="h-5 w-5 text-primary" />
+          <Navigation className="h-6 w-6" />
         )}
       </Button>
     </div>

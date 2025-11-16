@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { MapPin, Upload, X } from "lucide-react";
+import { MapPin, Upload, X, Search } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -37,6 +37,9 @@ const ReviewModal = ({ open, onOpenChange }: ReviewModalProps) => {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showResults, setShowResults] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -71,6 +74,52 @@ const ReviewModal = ({ open, onOpenChange }: ReviewModalProps) => {
       URL.revokeObjectURL(photoPreview);
       setPhotoPreview(null);
     }
+  };
+
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+    
+    if (!query.trim()) {
+      setSearchResults([]);
+      setShowResults(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `https://apis.openapi.sk.com/tmap/pois?version=1&searchKeyword=${encodeURIComponent(query)}&resCoordType=WGS84GEO&reqCoordType=WGS84GEO&count=10`,
+        {
+          headers: {
+            appKey: "KZDXJtx63R735Qktn8zkkaJv4tbaUqDc1lXzyjLT",
+          },
+        }
+      );
+
+      const data = await response.json();
+      
+      if (data.searchPoiInfo?.pois?.poi) {
+        const results = data.searchPoiInfo.pois.poi.map((poi: any, index: number) => ({
+          id: index,
+          name: poi.name,
+          address: poi.upperAddrName + " " + poi.middleAddrName + " " + poi.lowerAddrName,
+          lat: parseFloat(poi.noorLat),
+          lon: parseFloat(poi.noorLon),
+        }));
+        setSearchResults(results);
+        setShowResults(true);
+      }
+    } catch (error) {
+      console.error("POI 검색 실패:", error);
+      setSearchResults([]);
+    }
+  };
+
+  const handleSelectPlace = (place: any) => {
+    setLocation(place.name);
+    setLatitude(place.lat.toString());
+    setLongitude(place.lon.toString());
+    setShowResults(false);
+    setSearchQuery("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -135,6 +184,9 @@ const ReviewModal = ({ open, onOpenChange }: ReviewModalProps) => {
       setAccessibility("");
       setCategory("");
       setDetails("");
+      setSearchQuery("");
+      setSearchResults([]);
+      setShowResults(false);
       handleRemovePhoto();
     } catch (error: any) {
       console.error("제보 등록 실패:", error);
@@ -154,47 +206,58 @@ const ReviewModal = ({ open, onOpenChange }: ReviewModalProps) => {
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* 위치 */}
+          {/* 장소 검색 */}
           <div className="space-y-2">
-            <Label htmlFor="location">
-              위치명 *
+            <Label htmlFor="search">
+              장소 검색 *
             </Label>
             <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                id="location"
-                placeholder="예: 서울역"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                className="pr-10"
+                id="search"
+                placeholder="장소명을 검색하세요"
+                value={searchQuery}
+                onChange={(e) => handleSearch(e.target.value)}
+                className="pl-10 pr-10"
               />
-              <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setShowResults(false);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                >
+                  <X className="h-4 w-4 text-muted-foreground" />
+                </button>
+              )}
             </div>
-          </div>
+            
+            {/* 검색 결과 */}
+            {showResults && searchResults.length > 0 && (
+              <div className="border rounded-lg max-h-60 overflow-y-auto">
+                {searchResults.map((result) => (
+                  <button
+                    key={result.id}
+                    type="button"
+                    onClick={() => handleSelectPlace(result)}
+                    className="w-full p-3 text-left hover:bg-accent transition-colors border-b last:border-b-0"
+                  >
+                    <div className="font-medium">{result.name}</div>
+                    <div className="text-sm text-muted-foreground">{result.address}</div>
+                  </button>
+                ))}
+              </div>
+            )}
 
-          {/* 좌표 */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="latitude">위도 *</Label>
-              <Input
-                id="latitude"
-                type="number"
-                step="any"
-                placeholder="37.5665"
-                value={latitude}
-                onChange={(e) => setLatitude(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="longitude">경도 *</Label>
-              <Input
-                id="longitude"
-                type="number"
-                step="any"
-                placeholder="126.9780"
-                value={longitude}
-                onChange={(e) => setLongitude(e.target.value)}
-              />
-            </div>
+            {/* 선택된 장소 표시 */}
+            {location && (
+              <div className="flex items-center gap-2 p-3 bg-accent rounded-lg">
+                <MapPin className="h-4 w-4 text-primary" />
+                <span className="font-medium">{location}</span>
+              </div>
+            )}
           </div>
 
           {/* 접근성 선택 */}
