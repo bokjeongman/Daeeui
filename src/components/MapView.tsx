@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { MapPin, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 // T Map 타입 선언
 declare global {
@@ -26,6 +27,7 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [barrierData, setBarrierData] = useState<any[]>([]);
   const currentMarkerRef = useRef<any>(null);
   const accuracyCircleRef = useRef<any>(null);
   const routeLayerRef = useRef<any[]>([]);
@@ -76,6 +78,67 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
       }
     );
   };
+
+  // 승인된 제보 데이터 가져오기
+  useEffect(() => {
+    const fetchApprovedReports = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("accessibility_reports")
+          .select("*")
+          .eq("status", "approved");
+
+        if (error) throw error;
+
+        // 제보 데이터를 barrierData 형식으로 변환
+        const barriers = (data || []).map((report) => {
+          let severity = "safe";
+          if (report.accessibility_level === "difficult") {
+            severity = "danger";
+          } else if (report.accessibility_level === "moderate") {
+            severity = "warning";
+          }
+
+          return {
+            id: report.id,
+            lat: Number(report.latitude),
+            lon: Number(report.longitude),
+            type: report.category,
+            severity: severity,
+            name: report.location_name,
+            details: report.details,
+          };
+        });
+
+        setBarrierData(barriers);
+      } catch (error) {
+        console.error("제보 데이터 로딩 실패:", error);
+      }
+    };
+
+    fetchApprovedReports();
+
+    // 실시간 업데이트 구독
+    const channel = supabase
+      .channel("accessibility_reports_changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "accessibility_reports",
+          filter: "status=eq.approved",
+        },
+        () => {
+          fetchApprovedReports();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // 지도 초기화
   useEffect(() => {
@@ -147,17 +210,9 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
     }
   }, [map, userLocation, startPoint, endPoint]);
 
-  // 배리어 데이터 (더미 데이터 - 추후 실제 DB 연동)
-  const barrierData = [
-    { id: 1, lat: 37.5665, lon: 126.9780, type: "slope", severity: "safe", name: "경사로" },
-    { id: 2, lat: 37.5670, lon: 126.9785, type: "curb", severity: "warning", name: "위험한 턱" },
-    { id: 3, lat: 37.5660, lon: 126.9775, type: "elevator", severity: "safe", name: "엘리베이터" },
-    { id: 4, lat: 37.5675, lon: 126.9790, type: "curb", severity: "danger", name: "높은 턱" },
-  ];
-
   // 배리어 마커 표시
   useEffect(() => {
-    if (!map || !window.Tmapv2) return;
+    if (!map || !window.Tmapv2 || barrierData.length === 0) return;
 
     // 기존 배리어 마커 제거
     barrierMarkersRef.current.forEach((marker) => marker.setMap(null));
@@ -167,12 +222,10 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
     barrierData.forEach((barrier) => {
       const position = new window.Tmapv2.LatLng(barrier.lat, barrier.lon);
       
-      // 배리어 타입과 심각도에 따라 마커 색상 결정
+      // 배리어 심각도에 따라 마커 색상 결정
       let iconUrl = "";
-      if (barrier.type === "slope") {
+      if (barrier.severity === "safe") {
         iconUrl = "https://tmapapi.sktelecom.com/upload/tmap/marker/pin_g_m_p.png"; // 녹색
-      } else if (barrier.type === "elevator") {
-        iconUrl = "https://tmapapi.sktelecom.com/upload/tmap/marker/pin_b_m_p.png"; // 파란색
       } else if (barrier.severity === "warning") {
         iconUrl = "https://tmapapi.sktelecom.com/upload/tmap/marker/pin_y_m_p.png"; // 노란색
       } else {
@@ -189,9 +242,20 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
 
       // 마커 클릭 이벤트 - 인포윈도우
       marker.addListener("click", () => {
+        const categoryLabels: Record<string, string> = {
+          ramp: "경사로",
+          elevator: "엘리베이터",
+          curb: "턱",
+          stairs: "계단",
+          parking: "주차장",
+          restroom: "화장실",
+          entrance: "출입구",
+          other: "기타",
+        };
+        
         const infoWindow = new window.Tmapv2.InfoWindow({
           position: position,
-          content: `<div style="padding:10px;"><strong>${barrier.name}</strong><br/>${barrier.type === "slope" ? "경사로 있음" : barrier.type === "elevator" ? "엘리베이터 있음" : "턱 주의"}</div>`,
+          content: `<div style="padding:10px;"><strong>${barrier.name}</strong><br/>${categoryLabels[barrier.type] || barrier.type}${barrier.details ? `<br/>${barrier.details}` : ""}</div>`,
           type: 2,
           map: map,
         });
@@ -199,7 +263,7 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
 
       barrierMarkersRef.current.push(marker);
     });
-  }, [map]);
+  }, [map, barrierData]);
 
   // 도보 경로 탐색 및 배리어 오버레이
   useEffect(() => {
