@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { MapPin, Loader2, AlertCircle, Navigation } from "lucide-react";
+import { MapPin, Loader2, AlertCircle, Navigation, Filter, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -29,12 +30,16 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [heading, setHeading] = useState<number | null>(null);
   const [barrierData, setBarrierData] = useState<any[]>([]);
+  const [favorites, setFavorites] = useState<any[]>([]);
+  const [filter, setFilter] = useState({ safe: true, warning: true, danger: true });
+  const [showFilter, setShowFilter] = useState(false);
   const currentMarkerRef = useRef<any>(null);
   const accuracyCircleRef = useRef<any>(null);
   const watchIdRef = useRef<number | null>(null);
   const routeLayerRef = useRef<any[]>([]);
   const markersRef = useRef<any[]>([]);
   const barrierMarkersRef = useRef<any[]>([]);
+  const favoriteMarkersRef = useRef<any[]>([]);
 
   // 현재 위치 가져오기 및 지속적 추적
   const getCurrentLocation = () => {
@@ -179,6 +184,49 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
     };
   }, []);
 
+  // 즐겨찾기 데이터 가져오기
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      try {
+        const { data, error } = await supabase
+          .from("favorites")
+          .select("*")
+          .eq("user_id", session.user.id);
+
+        if (error) throw error;
+
+        setFavorites(data || []);
+      } catch (error) {
+        console.error("즐겨찾기 데이터 로딩 실패:", error);
+      }
+    };
+
+    fetchFavorites();
+
+    // 실시간 업데이트 구독
+    const channel = supabase
+      .channel("favorites_changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "favorites",
+        },
+        () => {
+          fetchFavorites();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   // 지도 초기화
   useEffect(() => {
     if (!mapRef.current || !window.Tmapv2) {
@@ -294,8 +342,17 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
     barrierMarkersRef.current.forEach((marker) => marker.setMap(null));
     barrierMarkersRef.current = [];
 
-    // 배리어 마커 생성
+    // 배리어 마커 생성 (필터 적용)
     barrierData.forEach((barrier) => {
+      // 필터 상태에 따라 표시 여부 결정
+      if (
+        (barrier.severity === "safe" && !filter.safe) ||
+        (barrier.severity === "warning" && !filter.warning) ||
+        (barrier.severity === "danger" && !filter.danger)
+      ) {
+        return;
+      }
+
       const position = new window.Tmapv2.LatLng(barrier.lat, barrier.lon);
       
       // 배리어 심각도에 따라 마커 색상 결정
@@ -339,7 +396,79 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
 
       barrierMarkersRef.current.push(marker);
     });
-  }, [map, barrierData]);
+  }, [map, barrierData, filter]);
+
+  // 즐겨찾기 마커 표시
+  useEffect(() => {
+    if (!map || !window.Tmapv2) return;
+
+    // 기존 즐겨찾기 마커 제거
+    favoriteMarkersRef.current.forEach((marker) => marker.setMap(null));
+    favoriteMarkersRef.current = [];
+
+    // 즐겨찾기 마커 생성
+    favorites.forEach((favorite) => {
+      const position = new window.Tmapv2.LatLng(Number(favorite.latitude), Number(favorite.longitude));
+      
+      // 별표 SVG 아이콘
+      const starIcon = `
+        <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <filter id="star-shadow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="1"/>
+              <feOffset dx="0" dy="1" result="offsetblur"/>
+              <feComponentTransfer>
+                <feFuncA type="linear" slope="0.4"/>
+              </feComponentTransfer>
+              <feMerge>
+                <feMergeNode/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+          </defs>
+          <path d="M16 2 L19.5 12 L30 12 L21.5 18.5 L25 28 L16 22 L7 28 L10.5 18.5 L2 12 L12.5 12 Z" 
+                fill="#fbbf24" 
+                stroke="#f59e0b" 
+                stroke-width="1.5" 
+                filter="url(#star-shadow)"/>
+        </svg>
+      `;
+
+      const markerDiv = document.createElement('div');
+      markerDiv.innerHTML = starIcon;
+      markerDiv.style.width = '32px';
+      markerDiv.style.height = '32px';
+      markerDiv.style.cursor = 'pointer';
+
+      const marker = new window.Tmapv2.Marker({
+        position: position,
+        map: map,
+        icon: markerDiv,
+        iconSize: new window.Tmapv2.Size(32, 32),
+        title: favorite.place_name,
+      });
+
+      // 마커 클릭 이벤트
+      marker.addListener("click", () => {
+        const infoWindow = new window.Tmapv2.InfoWindow({
+          position: position,
+          content: `<div style="padding:10px;">
+            <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
+              <svg width="16" height="16" viewBox="0 0 16 16" style="fill:#fbbf24;">
+                <path d="M8 1 L9.75 6 L15 6 L10.75 9.25 L12.5 14 L8 11 L3.5 14 L5.25 9.25 L1 6 L6.25 6 Z"/>
+              </svg>
+              <strong>${favorite.place_name}</strong>
+            </div>
+            <div style="font-size:12px;color:#666;">${favorite.address || ''}</div>
+          </div>`,
+          type: 2,
+          map: map,
+        });
+      });
+
+      favoriteMarkersRef.current.push(marker);
+    });
+  }, [map, favorites]);
 
   // 도보 경로 탐색 및 배리어 오버레이
   useEffect(() => {
@@ -593,6 +722,60 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
           </div>
         </div>
       )}
+
+      {/* 필터 버튼 */}
+      <div className="absolute top-4 right-4 z-10 space-y-2">
+        <Button
+          onClick={() => setShowFilter(!showFilter)}
+          size="lg"
+          className="h-12 w-12 rounded-full shadow-xl bg-background hover:bg-muted text-foreground border-2 border-border"
+          title="필터"
+        >
+          <Filter className="h-5 w-5" />
+        </Button>
+        
+        {showFilter && (
+          <div className="bg-background border-2 border-border rounded-lg shadow-xl p-3 space-y-2 min-w-[160px]">
+            <div className="text-sm font-semibold mb-2 text-foreground">접근성 필터</div>
+            
+            <button
+              onClick={() => setFilter({ ...filter, safe: !filter.safe })}
+              className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors"
+            >
+              <div className={`w-4 h-4 rounded border-2 ${filter.safe ? 'bg-green-500 border-green-500' : 'border-muted-foreground'}`}>
+                {filter.safe && <div className="text-white text-xs text-center leading-none">✓</div>}
+              </div>
+              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                안심
+              </Badge>
+            </button>
+            
+            <button
+              onClick={() => setFilter({ ...filter, warning: !filter.warning })}
+              className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors"
+            >
+              <div className={`w-4 h-4 rounded border-2 ${filter.warning ? 'bg-yellow-500 border-yellow-500' : 'border-muted-foreground'}`}>
+                {filter.warning && <div className="text-white text-xs text-center leading-none">✓</div>}
+              </div>
+              <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                주의
+              </Badge>
+            </button>
+            
+            <button
+              onClick={() => setFilter({ ...filter, danger: !filter.danger })}
+              className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors"
+            >
+              <div className={`w-4 h-4 rounded border-2 ${filter.danger ? 'bg-red-500 border-red-500' : 'border-muted-foreground'}`}>
+                {filter.danger && <div className="text-white text-xs text-center leading-none">✓</div>}
+              </div>
+              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                위험
+              </Badge>
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* 현재 위치 버튼 */}
       <Button
