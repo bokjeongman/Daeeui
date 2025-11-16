@@ -519,163 +519,215 @@ const MapView = ({ startPoint, endPoint, selectedRouteType, onRoutesCalculated }
         const calculatedRoutes: any[] = [];
 
         for (const routeType of routesToCalculate) {
-          let apiUrl = "";
-          let requestBody: any = {
-            startX: start.lon.toString(),
-            startY: start.lat.toString(),
-            endX: endPoint.lon.toString(),
-            endY: endPoint.lat.toString(),
-            reqCoordType: "WGS84GEO",
-            resCoordType: "WGS84GEO",
-            startName: startPoint?.name || "현재 위치",
-            endName: endPoint.name,
-          };
+          try {
+            let apiUrl = "";
+            let requestBody: any = {
+              startX: start.lon.toString(),
+              startY: start.lat.toString(),
+              endX: endPoint.lon.toString(),
+              endY: endPoint.lat.toString(),
+              reqCoordType: "WGS84GEO",
+              resCoordType: "WGS84GEO",
+              startName: startPoint?.name || "현재 위치",
+              endName: endPoint.name,
+            };
 
-          // 교통수단별 API 엔드포인트 설정
-          if (routeType === "walk") {
-            apiUrl = "https://apis.openapi.sk.com/tmap/routes/pedestrian?version=1";
-          } else if (routeType === "car") {
-            apiUrl = "https://apis.openapi.sk.com/tmap/routes?version=1";
-            requestBody.searchOption = "10"; // 실시간 빠른 경로
-            requestBody.trafficInfo = "Y"; // 실시간 교통정보 반영
-          } else if (routeType === "transit") {
-            // 대중교통 경로
-            apiUrl = "https://apis.openapi.sk.com/transit/routes?version=1";
-            requestBody.format = "json";
-          }
+            // 교통수단별 API 엔드포인트 설정
+            if (routeType === "walk") {
+              apiUrl = "https://apis.openapi.sk.com/tmap/routes/pedestrian?version=1";
+            } else if (routeType === "car") {
+              apiUrl = "https://apis.openapi.sk.com/tmap/routes?version=1";
+              requestBody.searchOption = "10"; // 실시간 빠른 경로
+              requestBody.trafficInfo = "Y"; // 실시간 교통정보 반영
+            } else if (routeType === "transit") {
+              // 대중교통 경로
+              apiUrl = "https://apis.openapi.sk.com/transit/routes?version=1";
+              requestBody.format = "json";
+            }
 
-          const response = await fetch(apiUrl, {
-            method: "POST",
-            headers: {
-              appKey: "KZDXJtx63R735Qktn8zkkaJv4tbaUqDc1lXzyjLT",
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(requestBody),
-          });
+            const response = await fetch(apiUrl, {
+              method: "POST",
+              headers: {
+                appKey: "KZDXJtx63R735Qktn8zkkaJv4tbaUqDc1lXzyjLT",
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(requestBody),
+            });
 
-          const data = await response.json();
+            const data = await response.json();
 
-          if (routeType === "transit" && data.metaData && data.metaData.plan) {
-            // 대중교통 경로 처리
-            const itinerary = data.metaData.plan.itineraries[0];
-            if (itinerary) {
+            // API 에러 응답 체크
+            if (data.error) {
+              console.warn(`${routeType} API 에러:`, data.error);
+              if (routeType === "transit" && data.error.code === "QUOTA_EXCEEDED") {
+                toast.warning("대중교통 경로는 일시적으로 이용할 수 없습니다.", {
+                  description: "API 할당량이 초과되었습니다."
+                });
+              } else {
+                toast.warning(`${routeType === "walk" ? "도보" : routeType === "car" ? "자동차" : "대중교통"} 경로를 찾을 수 없습니다.`);
+              }
+              continue; // 다음 경로 계산 계속 진행
+            }
+
+            if (routeType === "transit" && data.metaData && data.metaData.plan) {
+              // 대중교통 경로 처리
+              const itinerary = data.metaData.plan.itineraries[0];
+              if (itinerary) {
+                let totalDistance = 0;
+                let totalTime = itinerary.totalTime || 0;
+                const transitInfo: any = {
+                  legs: [],
+                  transfers: 0,
+                };
+
+                itinerary.legs.forEach((leg: any) => {
+                  totalDistance += leg.distance || 0;
+                  if (leg.mode === "BUS" || leg.mode === "SUBWAY") {
+                    transitInfo.legs.push({
+                      mode: leg.mode,
+                      route: leg.route || leg.routeId,
+                      from: leg.from?.name,
+                      to: leg.to?.name,
+                      distance: leg.distance,
+                      time: leg.sectionTime,
+                    });
+                    if (transitInfo.legs.length > 1) {
+                      transitInfo.transfers++;
+                    }
+                  }
+                });
+
+                setTransitDetails(transitInfo);
+                calculatedRoutes.push({
+                  type: "transit",
+                  distance: totalDistance,
+                  duration: totalTime,
+                  safePercentage: 85,
+                  warningPercentage: 15,
+                  dangerPercentage: 0,
+                  barriers: [],
+                  transitInfo,
+                });
+              }
+            } else if (data.features) {
+              // 도보/자동차 경로 처리
+              const lineStrings: any[] = [];
               let totalDistance = 0;
-              let totalTime = itinerary.totalTime || 0;
-              const transitInfo: any = {
-                legs: [],
-                transfers: 0,
-              };
-
-              itinerary.legs.forEach((leg: any) => {
-                totalDistance += leg.distance || 0;
-                if (leg.mode === "BUS" || leg.mode === "SUBWAY") {
-                  transitInfo.legs.push({
-                    mode: leg.mode,
-                    route: leg.route || leg.routeId,
-                    from: leg.from?.name,
-                    to: leg.to?.name,
-                    distance: leg.distance,
-                    time: leg.sectionTime,
+              let totalTime = 0;
+              
+              data.features.forEach((feature: any) => {
+                if (feature.geometry.type === "LineString") {
+                  feature.geometry.coordinates.forEach((coord: any) => {
+                    lineStrings.push(new window.Tmapv2.LatLng(coord[1], coord[0]));
                   });
-                  if (transitInfo.legs.length > 1) {
-                    transitInfo.transfers++;
+                }
+                if (feature.properties) {
+                  if (feature.properties.distance) {
+                    totalDistance += feature.properties.distance;
+                  }
+                  if (feature.properties.time) {
+                    totalTime += feature.properties.time;
                   }
                 }
               });
 
-              setTransitDetails(transitInfo);
+              // 경로 근처의 배리어 찾기
+              const nearbyBarriers = barrierData.filter((barrier) => {
+                return lineStrings.some((point) => {
+                  const distance = calculateDistance(
+                    point.lat(),
+                    point.lng(),
+                    barrier.latitude,
+                    barrier.longitude
+                  );
+                  return distance < 0.05; // 50m 이내
+                });
+              });
+
+              // 안전도 계산
+              const dangerCount = nearbyBarriers.filter(
+                (b) => b.accessibility_level === "매우위험" && filter.danger
+              ).length;
+              const warningCount = nearbyBarriers.filter(
+                (b) => b.accessibility_level === "주의" && filter.warning
+              ).length;
+              const totalBarriers = dangerCount + warningCount;
+              
+              let dangerPercentage = 0;
+              let warningPercentage = 0;
+              let safePercentage = 100;
+              
+              if (totalBarriers > 0) {
+                dangerPercentage = (dangerCount / totalBarriers) * 100;
+                warningPercentage = (warningCount / totalBarriers) * 100;
+                safePercentage = 100 - dangerPercentage - warningPercentage;
+              }
+
+              // 첫 번째 feature의 정보 가져오기
+              const firstFeature = data.features[0];
+              if (firstFeature && firstFeature.properties) {
+                totalDistance = firstFeature.properties.totalDistance || totalDistance;
+                totalTime = firstFeature.properties.totalTime || totalTime;
+              }
+
               calculatedRoutes.push({
-                type: "transit",
+                type: routeType,
                 distance: totalDistance,
                 duration: totalTime,
-                safePercentage: 85,
-                warningPercentage: 15,
-                dangerPercentage: 0,
-                barriers: [],
-                transitInfo,
+                safePercentage,
+                warningPercentage,
+                dangerPercentage,
+                barriers: nearbyBarriers,
+                lineStrings,
               });
-            }
-          } else if (data.features) {
-          } else if (data.features) {
-            // 도보/자동차 경로 처리
-            const lineStrings: any[] = [];
-            let totalDistance = 0;
-            let totalTime = 0;
-            
-            data.features.forEach((feature: any) => {
-              if (feature.geometry.type === "LineString") {
-                feature.geometry.coordinates.forEach((coord: any) => {
-                  lineStrings.push(new window.Tmapv2.LatLng(coord[1], coord[0]));
-                });
-              }
-              if (feature.properties) {
-                if (feature.properties.distance) {
-                  totalDistance += feature.properties.distance;
-                }
-                if (feature.properties.time) {
-                  totalTime += feature.properties.time;
+
+              // 자동차 경로일 때 이전 시간과 비교하여 알림
+              if (routeType === "car" && previousDuration !== null && routeUpdateTrigger > 1) {
+                const timeDiff = totalTime - previousDuration;
+                const minuteDiff = Math.abs(Math.round(timeDiff / 60));
+                
+                if (minuteDiff > 2) {
+                  if (timeDiff > 0) {
+                    toast.error(`⚠️ 교통 정체로 ${minuteDiff}분 지연 예상`, {
+                      description: "실시간 교통 정보가 반영되었습니다."
+                    });
+                  } else {
+                    toast.success(`✅ 교통 상황 개선! ${minuteDiff}분 단축`, {
+                      description: "실시간 교통 정보가 반영되었습니다."
+                    });
+                  }
                 }
               }
-            });
-
-            // 경로 근처의 배리어 찾기
-            const nearbyBarriers: { type: string; severity: string; name: string }[] = [];
-            lineStrings.forEach((point) => {
-              barrierData.forEach((barrier) => {
-                const distance = calculateDistance(
-                  point.lat(),
-                  point.lng(),
-                  barrier.lat,
-                  barrier.lon
-                );
-                if (distance < 20 && !nearbyBarriers.find(b => b.name === barrier.name)) {
-                  nearbyBarriers.push({
-                    type: barrier.type,
-                    severity: barrier.severity,
-                    name: barrier.name
-                  });
-                }
-              });
-            });
-
-            calculatedRoutes.push({
-              type: routeType as "transit" | "walk" | "car",
-              distance: totalDistance,
-              duration: totalTime,
-              safePercentage: Math.round((nearbyBarriers.filter(b => b.severity === "safe").length / Math.max(nearbyBarriers.length, 1)) * 100),
-              warningPercentage: Math.round((nearbyBarriers.filter(b => b.severity === "warning").length / Math.max(nearbyBarriers.length, 1)) * 100),
-              dangerPercentage: Math.round((nearbyBarriers.filter(b => b.severity === "danger").length / Math.max(nearbyBarriers.length, 1)) * 100),
-              barriers: nearbyBarriers,
-              lineStrings,
-            });
-
-            // 자동차 경로일 때 이전 시간과 비교하여 알림
-            if (routeType === "car" && previousDuration !== null && routeUpdateTrigger > 1) {
-              const timeDiff = totalTime - previousDuration;
-              const minuteDiff = Math.abs(Math.round(timeDiff / 60));
               
-              if (minuteDiff > 2) {
-                if (timeDiff > 0) {
-                  toast.error(`⚠️ 교통 정체로 ${minuteDiff}분 지연 예상`, {
-                    description: "실시간 교통 정보가 반영되었습니다."
-                  });
-                } else {
-                  toast.success(`✅ 교통 상황 개선! ${minuteDiff}분 단축`, {
-                    description: "실시간 교통 정보가 반영되었습니다."
-                  });
-                }
+              if (routeType === "car") {
+                setPreviousDuration(totalTime);
               }
             }
-            
-            if (routeType === "car") {
-              setPreviousDuration(totalTime);
-            }
+          } catch (error) {
+            console.error(`${routeType} 경로 계산 실패:`, error);
+            // 에러가 발생해도 다음 경로는 계속 시도
+            continue;
           }
         }
 
         // 모든 경로 계산 후 콜백 호출
-        if (onRoutesCalculated && calculatedRoutes.length > 0) {
-          onRoutesCalculated(calculatedRoutes);
+        if (calculatedRoutes.length > 0) {
+          if (onRoutesCalculated) {
+            onRoutesCalculated(calculatedRoutes);
+          }
+          
+          // 일부 경로만 성공한 경우 알림
+          const failedRoutes = routesToCalculate.filter(
+            rt => !calculatedRoutes.find(cr => cr.type === rt)
+          );
+          if (failedRoutes.length > 0 && failedRoutes.length < routesToCalculate.length) {
+            const routeNames = failedRoutes.map(rt => 
+              rt === "walk" ? "도보" : rt === "car" ? "자동차" : "대중교통"
+            ).join(", ");
+            toast.info(`${routeNames} 경로를 제외한 경로를 표시합니다.`);
+          }
+        } else {
+          toast.error("경로를 찾을 수 없습니다. 다시 시도해주세요.");
         }
 
         // 선택된 경로가 있으면 해당 경로만 지도에 표시
