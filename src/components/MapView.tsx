@@ -10,13 +10,21 @@ declare global {
   }
 }
 
-const MapView = () => {
+interface MapViewProps {
+  startPoint?: { lat: number; lon: number; name: string } | null;
+  endPoint?: { lat: number; lon: number; name: string } | null;
+}
+
+const MapView = ({ startPoint, endPoint }: MapViewProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const currentMarkerRef = useRef<any>(null);
+  const routeLayerRef = useRef<any>(null);
+  const markersRef = useRef<any[]>([]);
+  const barrierMarkersRef = useRef<any[]>([]);
 
   // 현재 위치 가져오기
   const getCurrentLocation = () => {
@@ -113,6 +121,199 @@ const MapView = () => {
 
     currentMarkerRef.current = marker;
   }, [map, userLocation]);
+
+  // 배리어 데이터 (더미 데이터 - 추후 실제 DB 연동)
+  const barrierData = [
+    { id: 1, lat: 37.5665, lon: 126.9780, type: "slope", severity: "safe", name: "경사로" },
+    { id: 2, lat: 37.5670, lon: 126.9785, type: "curb", severity: "warning", name: "위험한 턱" },
+    { id: 3, lat: 37.5660, lon: 126.9775, type: "elevator", severity: "safe", name: "엘리베이터" },
+    { id: 4, lat: 37.5675, lon: 126.9790, type: "curb", severity: "danger", name: "높은 턱" },
+  ];
+
+  // 배리어 마커 표시
+  useEffect(() => {
+    if (!map || !window.Tmapv2) return;
+
+    // 기존 배리어 마커 제거
+    barrierMarkersRef.current.forEach((marker) => marker.setMap(null));
+    barrierMarkersRef.current = [];
+
+    // 배리어 마커 생성
+    barrierData.forEach((barrier) => {
+      const position = new window.Tmapv2.LatLng(barrier.lat, barrier.lon);
+      
+      // 배리어 타입과 심각도에 따라 마커 색상 결정
+      let iconUrl = "";
+      if (barrier.type === "slope") {
+        iconUrl = "https://tmapapi.sktelecom.com/upload/tmap/marker/pin_g_m_p.png"; // 녹색
+      } else if (barrier.type === "elevator") {
+        iconUrl = "https://tmapapi.sktelecom.com/upload/tmap/marker/pin_b_m_p.png"; // 파란색
+      } else if (barrier.severity === "warning") {
+        iconUrl = "https://tmapapi.sktelecom.com/upload/tmap/marker/pin_y_m_p.png"; // 노란색
+      } else {
+        iconUrl = "https://tmapapi.sktelecom.com/upload/tmap/marker/pin_r_m_p.png"; // 빨간색
+      }
+
+      const marker = new window.Tmapv2.Marker({
+        position: position,
+        map: map,
+        icon: iconUrl,
+        iconSize: new window.Tmapv2.Size(24, 38),
+        title: barrier.name,
+      });
+
+      // 마커 클릭 이벤트 - 인포윈도우
+      marker.addListener("click", () => {
+        const infoWindow = new window.Tmapv2.InfoWindow({
+          position: position,
+          content: `<div style="padding:10px;"><strong>${barrier.name}</strong><br/>${barrier.type === "slope" ? "경사로 있음" : barrier.type === "elevator" ? "엘리베이터 있음" : "턱 주의"}</div>`,
+          type: 2,
+          map: map,
+        });
+      });
+
+      barrierMarkersRef.current.push(marker);
+    });
+  }, [map]);
+
+  // 도보 경로 탐색 및 배리어 오버레이
+  useEffect(() => {
+    if (!map || !window.Tmapv2 || !startPoint || !endPoint) return;
+
+    const drawRoute = async () => {
+      try {
+        // 기존 경로 및 마커 제거
+        if (routeLayerRef.current) {
+          routeLayerRef.current.setMap(null);
+        }
+        markersRef.current.forEach((marker) => marker.setMap(null));
+        markersRef.current = [];
+
+        // T Map 도보 경로 API 호출
+        const response = await fetch("https://apis.openapi.sk.com/tmap/routes/pedestrian?version=1", {
+          method: "POST",
+          headers: {
+            appKey: "KZDXJtx63R735Qktn8zkkaJv4tbaUqDc1lXzyjLT",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            startX: startPoint.lon.toString(),
+            startY: startPoint.lat.toString(),
+            endX: endPoint.lon.toString(),
+            endY: endPoint.lat.toString(),
+            reqCoordType: "WGS84GEO",
+            resCoordType: "WGS84GEO",
+            startName: startPoint.name,
+            endName: endPoint.name,
+          }),
+        });
+
+        const data = await response.json();
+        
+        if (data.features) {
+          const lineStrings: any[] = [];
+          
+          data.features.forEach((feature: any) => {
+            if (feature.geometry.type === "LineString") {
+              feature.geometry.coordinates.forEach((coord: any) => {
+                lineStrings.push(new window.Tmapv2.LatLng(coord[1], coord[0]));
+              });
+            }
+          });
+
+          // 경로를 여러 세그먼트로 나눠서 배리어 근처는 다른 색으로 표시
+          const routeSegments = createRouteSegments(lineStrings);
+          
+          routeSegments.forEach((segment) => {
+            const polyline = new window.Tmapv2.Polyline({
+              path: segment.path,
+              strokeColor: segment.color,
+              strokeWeight: 6,
+              map: map,
+            });
+          });
+
+          // 출발지 마커
+          const startMarker = new window.Tmapv2.Marker({
+            position: new window.Tmapv2.LatLng(startPoint.lat, startPoint.lon),
+            icon: "https://tmapapi.sktelecom.com/upload/tmap/marker/pin_b_m_s.png",
+            iconSize: new window.Tmapv2.Size(24, 38),
+            map: map,
+            title: "출발",
+          });
+
+          // 도착지 마커
+          const endMarker = new window.Tmapv2.Marker({
+            position: new window.Tmapv2.LatLng(endPoint.lat, endPoint.lon),
+            icon: "https://tmapapi.sktelecom.com/upload/tmap/marker/pin_r_m_e.png",
+            iconSize: new window.Tmapv2.Size(24, 38),
+            map: map,
+            title: "도착",
+          });
+
+          markersRef.current = [startMarker, endMarker];
+
+          // 경로가 모두 보이도록 지도 범위 조정
+          const bounds = new window.Tmapv2.LatLngBounds();
+          lineStrings.forEach((point) => bounds.extend(point));
+          map.fitBounds(bounds);
+        }
+      } catch (error) {
+        console.error("경로 탐색 실패:", error);
+        toast.error("경로를 찾을 수 없습니다.");
+      }
+    };
+
+    drawRoute();
+  }, [map, startPoint, endPoint]);
+
+  // 경로 세그먼트 생성 (배리어 근처는 다른 색상)
+  const createRouteSegments = (path: any[]) => {
+    const segments: { path: any[]; color: string }[] = [];
+    let currentSegment: any[] = [];
+    let currentColor = "#22c55e"; // 기본 안전 색상 (녹색)
+
+    path.forEach((point, index) => {
+      // 배리어와의 거리 계산하여 색상 결정
+      const nearbyBarrier = barrierData.find((barrier) => {
+        const distance = calculateDistance(
+          point.lat(),
+          point.lng(),
+          barrier.lat,
+          barrier.lon
+        );
+        return distance < 0.02; // 약 20m 이내
+      });
+
+      let segmentColor = "#22c55e"; // 안심 (녹색)
+      if (nearbyBarrier) {
+        if (nearbyBarrier.severity === "warning") {
+          segmentColor = "#f59e0b"; // 경고 (주황색)
+        } else if (nearbyBarrier.severity === "danger") {
+          segmentColor = "#ef4444"; // 위험 (빨간색)
+        }
+      }
+
+      if (segmentColor !== currentColor && currentSegment.length > 0) {
+        segments.push({ path: [...currentSegment], color: currentColor });
+        currentSegment = [point];
+        currentColor = segmentColor;
+      } else {
+        currentSegment.push(point);
+      }
+
+      if (index === path.length - 1 && currentSegment.length > 0) {
+        segments.push({ path: currentSegment, color: currentColor });
+      }
+    });
+
+    return segments.length > 0 ? segments : [{ path, color: currentColor }];
+  };
+
+  // 두 지점 간 거리 계산 (간단한 유클리드 거리)
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    return Math.sqrt(Math.pow(lat1 - lat2, 2) + Math.pow(lon1 - lon2, 2));
+  };
 
   if (!window.Tmapv2) {
     return (

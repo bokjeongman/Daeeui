@@ -14,6 +14,8 @@ const Index = () => {
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"default" | "yellow">("default");
   const [hasRoute, setHasRoute] = useState(false);
+  const [startPoint, setStartPoint] = useState<{ lat: number; lon: number; name: string } | null>(null);
+  const [endPoint, setEndPoint] = useState<{ lat: number; lon: number; name: string } | null>(null);
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
@@ -33,7 +35,11 @@ const Index = () => {
               <SearchBar
                 placeholder="장소 검색"
                 variant={viewMode}
-                onRouteCreate={() => setHasRoute(true)}
+                onSelectStart={(place) => setStartPoint(place)}
+                onSelectEnd={(place) => {
+                  setEndPoint(place);
+                  setHasRoute(true);
+                }}
               />
             </div>
           </div>
@@ -47,7 +53,10 @@ const Index = () => {
 
       {/* 지도 영역 */}
       <div className="flex-1 relative">
-        <MapView />
+        <MapView 
+          startPoint={startPoint}
+          endPoint={endPoint}
+        />
         
         {/* 후기 등록 버튼 */}
         <ReviewButton onClick={() => setReviewModalOpen(true)} />
