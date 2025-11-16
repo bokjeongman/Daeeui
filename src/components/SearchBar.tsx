@@ -6,43 +6,74 @@ import PlaceSearchResult from "./PlaceSearchResult";
 interface SearchBarProps {
   placeholder?: string;
   variant?: "default" | "yellow";
-  onRouteCreate?: () => void;
+  onSelectStart?: (place: { lat: number; lon: number; name: string }) => void;
+  onSelectEnd?: (place: { lat: number; lon: number; name: string }) => void;
 }
 
 const SearchBar = ({ 
   placeholder = "장소 검색", 
   variant = "default",
-  onRouteCreate
+  onSelectStart,
+  onSelectEnd
 }: SearchBarProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showResults, setShowResults] = useState(false);
 
-  const handleSearch = (query: string) => {
+  const handleSearch = async (query: string) => {
     setSearchQuery(query);
     
-    // TODO: T Map POI 검색 API 연동
-    if (query.trim()) {
-      // 임시 더미 데이터
-      setSearchResults([
-        { id: 1, name: "서울역", address: "서울특별시 중구 봉래동2가", lat: 37.5547, lon: 126.9707 },
-        { id: 2, name: "강남역", address: "서울특별시 강남구 역삼동", lat: 37.4979, lon: 127.0276 },
-      ]);
-      setShowResults(true);
-    } else {
+    if (!query.trim()) {
       setSearchResults([]);
       setShowResults(false);
+      return;
+    }
+
+    try {
+      // T Map POI 통합 검색 API
+      const response = await fetch(
+        `https://apis.openapi.sk.com/tmap/pois?version=1&searchKeyword=${encodeURIComponent(query)}&resCoordType=WGS84GEO&reqCoordType=WGS84GEO&count=10`,
+        {
+          headers: {
+            appKey: "KZDXJtx63R735Qktn8zkkaJv4tbaUqDc1lXzyjLT",
+          },
+        }
+      );
+
+      const data = await response.json();
+      
+      if (data.searchPoiInfo?.pois?.poi) {
+        const results = data.searchPoiInfo.pois.poi.map((poi: any, index: number) => ({
+          id: index,
+          name: poi.name,
+          address: poi.upperAddrName + " " + poi.middleAddrName + " " + poi.lowerAddrName,
+          lat: parseFloat(poi.noorLat),
+          lon: parseFloat(poi.noorLon),
+        }));
+        setSearchResults(results);
+        setShowResults(true);
+      }
+    } catch (error) {
+      console.error("POI 검색 실패:", error);
+      setSearchResults([]);
     }
   };
 
   const handleSelectPlace = (place: any, type: "start" | "end") => {
-    console.log(`Selected ${type}:`, place);
+    const selectedPlace = {
+      lat: place.lat,
+      lon: place.lon,
+      name: place.name
+    };
+    
+    if (type === "start" && onSelectStart) {
+      onSelectStart(selectedPlace);
+    } else if (type === "end" && onSelectEnd) {
+      onSelectEnd(selectedPlace);
+    }
+    
     setShowResults(false);
     setSearchQuery("");
-    
-    if (type === "end" && onRouteCreate) {
-      onRouteCreate();
-    }
   };
 
   return (
