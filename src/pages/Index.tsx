@@ -17,6 +17,11 @@ const Index = () => {
   const [startPoint, setStartPoint] = useState<{ lat: number; lon: number; name: string } | null>(null);
   const [endPoint, setEndPoint] = useState<{ lat: number; lon: number; name: string } | null>(null);
   const [searchMode, setSearchMode] = useState<"start" | "end" | null>(null);
+  const [routeData, setRouteData] = useState<{
+    distance: number;
+    duration: number;
+    barriers: { type: string; severity: string; name: string }[];
+  } | null>(null);
 
   const handleSelectPlace = (place: { lat: number; lon: number; name: string }, type: "start" | "end") => {
     if (type === "start") {
@@ -67,6 +72,7 @@ const Index = () => {
         <MapView 
           startPoint={startPoint}
           endPoint={endPoint}
+          onRouteCalculated={setRouteData}
         />
         
         {/* 후기 등록 버튼 */}
@@ -74,10 +80,18 @@ const Index = () => {
       </div>
 
       {/* 하단 경로 정보 - 경로 탐색 후에만 표시 */}
-      {hasRoute && (
+      {hasRoute && routeData && (
         <div className="relative z-10">
           <RouteInfo
             variant={viewMode}
+            distance={`${(routeData.distance / 1000).toFixed(1)} km`}
+            duration={`${Math.ceil(routeData.duration / 60)}분`}
+            safePercentage={Math.round(
+              ((routeData.barriers.filter(b => b.severity === "safe").length / Math.max(routeData.barriers.length, 1)) * 100)
+            )}
+            warningPercentage={Math.round(
+              ((routeData.barriers.filter(b => b.severity === "warning" || b.severity === "danger").length / Math.max(routeData.barriers.length, 1)) * 100)
+            )}
             onStartNavigation={() => {
               if (viewMode === "default") {
                 setViewMode("yellow");

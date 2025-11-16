@@ -1,4 +1,4 @@
-import { MapPin, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
+import { MapPin, Clock, CheckCircle2, AlertTriangle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
@@ -7,6 +7,7 @@ interface RouteInfoProps {
   duration?: string;
   safePercentage?: number;
   warningPercentage?: number;
+  dangerPercentage?: number;
   showButton?: boolean;
   variant?: "default" | "yellow";
   onStartNavigation?: () => void;
@@ -15,8 +16,9 @@ interface RouteInfoProps {
 const RouteInfo = ({
   distance = "1.2 km",
   duration = "15분",
-  safePercentage = 85,
-  warningPercentage = 15,
+  safePercentage = 70,
+  warningPercentage = 20,
+  dangerPercentage = 10,
   showButton = true,
   variant = "default",
   onStartNavigation,
@@ -50,21 +52,33 @@ const RouteInfo = ({
 
         {/* 구간 정보 */}
         <div className="space-y-3">
+          <h4 className="text-sm font-semibold text-muted-foreground mb-2">구간별 장애물 정보</h4>
+          
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-primary" />
+              <CheckCircle2 className="h-5 w-5 text-green-500" />
               <span className="font-medium">안심 구간</span>
             </div>
-            <span className="font-bold text-primary">{safePercentage}%</span>
+            <span className="font-bold text-green-500">{safePercentage}%</span>
           </div>
           
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-secondary" />
+              <AlertTriangle className="h-5 w-5 text-yellow-500" />
               <span className="font-medium">경고 구간</span>
             </div>
-            <span className="font-bold text-secondary">{warningPercentage}%</span>
+            <span className="font-bold text-yellow-500">{warningPercentage}%</span>
           </div>
+
+          {dangerPercentage > 0 && (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-red-500" />
+                <span className="font-medium">위험 구간</span>
+              </div>
+              <span className="font-bold text-red-500">{dangerPercentage}%</span>
+            </div>
+          )}
         </div>
 
         {showButton && (

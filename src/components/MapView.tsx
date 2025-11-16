@@ -13,9 +13,14 @@ declare global {
 interface MapViewProps {
   startPoint?: { lat: number; lon: number; name: string } | null;
   endPoint?: { lat: number; lon: number; name: string } | null;
+  onRouteCalculated?: (routeData: {
+    distance: number;
+    duration: number;
+    barriers: { type: string; severity: string; name: string }[];
+  }) => void;
 }
 
-const MapView = ({ startPoint, endPoint }: MapViewProps) => {
+const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -221,6 +226,8 @@ const MapView = ({ startPoint, endPoint }: MapViewProps) => {
         
         if (data.features) {
           const lineStrings: any[] = [];
+          let totalDistance = 0;
+          let totalTime = 0;
           
           data.features.forEach((feature: any) => {
             if (feature.geometry.type === "LineString") {
@@ -228,10 +235,48 @@ const MapView = ({ startPoint, endPoint }: MapViewProps) => {
                 lineStrings.push(new window.Tmapv2.LatLng(coord[1], coord[0]));
               });
             }
+            // 거리와 시간 정보 수집
+            if (feature.properties) {
+              if (feature.properties.distance) {
+                totalDistance += feature.properties.distance;
+              }
+              if (feature.properties.time) {
+                totalTime += feature.properties.time;
+              }
+            }
           });
 
           // 경로를 여러 세그먼트로 나눠서 배리어 근처는 다른 색으로 표시
           const routeSegments = createRouteSegments(lineStrings);
+          
+          // 경로 근처의 배리어 찾기
+          const nearbyBarriers: { type: string; severity: string; name: string }[] = [];
+          lineStrings.forEach((point) => {
+            barrierData.forEach((barrier) => {
+              const distance = calculateDistance(
+                point.lat(),
+                point.lng(),
+                barrier.lat,
+                barrier.lon
+              );
+              if (distance < 0.02 && !nearbyBarriers.find(b => b.name === barrier.name)) {
+                nearbyBarriers.push({
+                  type: barrier.type,
+                  severity: barrier.severity,
+                  name: barrier.name
+                });
+              }
+            });
+          });
+
+          // 경로 정보를 부모 컴포넌트로 전달
+          if (onRouteCalculated) {
+            onRouteCalculated({
+              distance: totalDistance,
+              duration: totalTime,
+              barriers: nearbyBarriers
+            });
+          }
           
           routeSegments.forEach((segment) => {
             const polyline = new window.Tmapv2.Polyline({
