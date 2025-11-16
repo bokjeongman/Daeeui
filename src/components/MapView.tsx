@@ -15,14 +15,18 @@ declare global {
 interface MapViewProps {
   startPoint?: { lat: number; lon: number; name: string } | null;
   endPoint?: { lat: number; lon: number; name: string } | null;
-  onRouteCalculated?: (routeData: {
+  onRoutesCalculated?: (routes: Array<{
+    type: "transit" | "walk" | "car";
     distance: number;
     duration: number;
+    safePercentage: number;
+    warningPercentage: number;
+    dangerPercentage: number;
     barriers: { type: string; severity: string; name: string }[];
-  }) => void;
+  }>) => void;
 }
 
-const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
+const MapView = ({ startPoint, endPoint, onRoutesCalculated }: MapViewProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -470,11 +474,11 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
     });
   }, [map, favorites]);
 
-  // 도보 경로 탐색 및 배리어 오버레이
+  // 여러 교통수단으로 경로 탐색
   useEffect(() => {
     if (!map || !window.Tmapv2 || !endPoint) return;
 
-    const drawRoute = async () => {
+    const calculateAllRoutes = async () => {
       try {
         // 기존 경로 및 마커 제거
         if (routeLayerRef.current && routeLayerRef.current.length) {
@@ -486,11 +490,11 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
         // 출발지가 없으면 현재 위치 사용
         const start = startPoint || userLocation;
         if (!start) {
-          toast.error("현재 위치를 찾을 수 없습니다. 위치 권한을 허용해주세요.");
+          toast.error("현재 위치를 찾을 수 없습니다.");
           return;
         }
 
-        // T Map 도보 경로 API 호출
+        // 3가지 교통수단 동시 탐색
         const response = await fetch("https://apis.openapi.sk.com/tmap/routes/pedestrian?version=1", {
           method: "POST",
           headers: {
@@ -556,13 +560,17 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
             });
           });
 
-          // 경로 정보를 부모 컴포넌트로 전달
-          if (onRouteCalculated) {
-            onRouteCalculated({
+          // 경로 정보를 부모 컴포넌트로 전달 (임시로 단일 경로 형태로 전달)
+          if (onRoutesCalculated) {
+            onRoutesCalculated([{
+              type: "walk",
               distance: totalDistance,
               duration: totalTime,
+              safePercentage: Math.round((nearbyBarriers.filter(b => b.severity === "safe").length / Math.max(nearbyBarriers.length, 1)) * 100),
+              warningPercentage: Math.round((nearbyBarriers.filter(b => b.severity === "warning").length / Math.max(nearbyBarriers.length, 1)) * 100),
+              dangerPercentage: Math.round((nearbyBarriers.filter(b => b.severity === "danger").length / Math.max(nearbyBarriers.length, 1)) * 100),
               barriers: nearbyBarriers
-            });
+            }]);
           }
           
           const createdPolylines: any[] = [];
@@ -610,8 +618,8 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
       }
     };
 
-    drawRoute();
-  }, [map, startPoint, endPoint, userLocation]);
+    calculateAllRoutes();
+  }, [map, startPoint, endPoint, userLocation, barrierData, onRoutesCalculated]);
 
   // 경로 세그먼트 생성 (배리어 근처는 다른 색상)
   const createRouteSegments = (path: any[]) => {
