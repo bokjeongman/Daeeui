@@ -1,6 +1,7 @@
-import { MapPin, FileText, MessageSquare } from "lucide-react";
+import { MapPin, FileText, MessageSquare, User } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 interface SidebarProps {
   open: boolean;
@@ -8,11 +9,18 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ open, onOpenChange }: SidebarProps) => {
+  const navigate = useNavigate();
+
   const menuItems = [
-    { icon: MapPin, label: "내 경로", disabled: false },
-    { icon: FileText, label: "휠체어 접근성 제보", disabled: false, highlight: true },
-    { icon: MessageSquare, label: "즐겨찾기", disabled: false },
+    { icon: MapPin, label: "내 경로", disabled: false, path: "/my-routes" },
+    { icon: MessageSquare, label: "즐겨찾기", disabled: false, path: "/favorites" },
+    { icon: User, label: "내 프로필", disabled: false, path: "/profile" },
   ];
+
+  const handleNavigation = (path: string) => {
+    navigate(path);
+    onOpenChange(false);
+  };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -27,9 +35,10 @@ const Sidebar = ({ open, onOpenChange }: SidebarProps) => {
             {menuItems.map((item) => (
               <Button 
                 key={item.label} 
-                variant={item.highlight ? "default" : "ghost"} 
-                className={`w-full justify-start gap-3 ${item.highlight ? "bg-accent text-accent-foreground hover:bg-accent/90" : ""}`}
+                variant="ghost" 
+                className="w-full justify-start gap-3"
                 disabled={item.disabled}
+                onClick={() => handleNavigation(item.path)}
               >
                 <item.icon className="h-5 w-5" />
                 {item.label}
