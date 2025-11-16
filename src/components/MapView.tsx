@@ -27,7 +27,8 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
   const [error, setError] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const currentMarkerRef = useRef<any>(null);
-  const routeLayerRef = useRef<any>(null);
+  const accuracyCircleRef = useRef<any>(null);
+  const routeLayerRef = useRef<any[]>([]);
   const markersRef = useRef<any[]>([]);
   const barrierMarkersRef = useRef<any[]>([]);
 
@@ -92,6 +93,8 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
 
       setMap(tmapInstance);
       setLoading(false);
+      // 최초 진입 시 현재 위치 자동 요청
+      getCurrentLocation();
     } catch (err) {
       console.error("지도 초기화 실패:", err);
       setError("지도를 불러오는데 실패했습니다.");
@@ -106,9 +109,12 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
     const { lat, lon } = userLocation;
     const position = new window.Tmapv2.LatLng(lat, lon);
 
-    // 기존 마커 제거
+    // 기존 마커 및 정확도 원 제거
     if (currentMarkerRef.current) {
       currentMarkerRef.current.setMap(null);
+    }
+    if (accuracyCircleRef.current) {
+      accuracyCircleRef.current.setMap(null);
     }
 
     // 현재 위치 마커 생성 (파란색 핀)
@@ -118,9 +124,21 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
       icon: "https://tmapapi.sktelecom.com/upload/tmap/marker/pin_b_m_c.png",
       iconSize: new window.Tmapv2.Size(24, 38),
       title: "현재 위치",
+      zIndex: 9999,
     });
 
     currentMarkerRef.current = marker;
+
+    // 정확도 원(약 30m)
+    const circle = new window.Tmapv2.Circle({
+      center: position,
+      radius: 30,
+      strokeWeight: 0,
+      fillColor: "#3b82f6",
+      fillOpacity: 0.2,
+      map: map,
+    });
+    accuracyCircleRef.current = circle;
 
     // 경로가 없을 때만 지도 중심 이동
     if (!startPoint && !endPoint) {
@@ -190,12 +208,12 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
     const drawRoute = async () => {
       try {
         // 기존 경로 및 마커 제거
-        if (routeLayerRef.current) {
-          routeLayerRef.current.setMap(null);
+        if (routeLayerRef.current && routeLayerRef.current.length) {
+          routeLayerRef.current.forEach((layer: any) => layer.setMap(null));
+          routeLayerRef.current = [];
         }
         markersRef.current.forEach((marker) => marker.setMap(null));
         markersRef.current = [];
-
         // 출발지가 없으면 현재 위치 사용
         const start = startPoint || userLocation;
         if (!start) {
@@ -259,7 +277,7 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
                 barrier.lat,
                 barrier.lon
               );
-              if (distance < 0.02 && !nearbyBarriers.find(b => b.name === barrier.name)) {
+              if (distance < 20 && !nearbyBarriers.find(b => b.name === barrier.name)) {
                 nearbyBarriers.push({
                   type: barrier.type,
                   severity: barrier.severity,
@@ -278,6 +296,7 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
             });
           }
           
+          const createdPolylines: any[] = [];
           routeSegments.forEach((segment) => {
             const polyline = new window.Tmapv2.Polyline({
               path: segment.path,
@@ -285,7 +304,9 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
               strokeWeight: 6,
               map: map,
             });
+            createdPolylines.push(polyline);
           });
+          routeLayerRef.current = createdPolylines;
 
           // 출발지 마커 (startPoint가 있을 때만)
           if (startPoint) {
@@ -338,7 +359,7 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
           barrier.lat,
           barrier.lon
         );
-        return distance < 0.02; // 약 20m 이내
+        return distance < 20; // 20m 이내
       });
 
       let segmentColor = "#22c55e"; // 안심 (녹색)
@@ -366,9 +387,18 @@ const MapView = ({ startPoint, endPoint, onRouteCalculated }: MapViewProps) => {
     return segments.length > 0 ? segments : [{ path, color: currentColor }];
   };
 
-  // 두 지점 간 거리 계산 (간단한 유클리드 거리)
+  // 두 지점 간 거리 계산 (하버사인 공식, 미터 단위)
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    return Math.sqrt(Math.pow(lat1 - lat2, 2) + Math.pow(lon1 - lon2, 2));
+    const toRad = (deg: number) => (deg * Math.PI) / 180;
+    const R = 6371000; // 지구 반지름 (m)
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
   };
 
   if (!window.Tmapv2) {
