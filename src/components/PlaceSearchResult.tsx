@@ -1,7 +1,10 @@
-import { useState } from "react";
-import { MapPin, Navigation } from "lucide-react";
+import { useState, useEffect } from "react";
+import { MapPin, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 interface Place {
   id: number;
@@ -19,6 +22,59 @@ interface PlaceSearchResultProps {
 
 const PlaceSearchResult = ({ results, onSelect, onClose }: PlaceSearchResultProps) => {
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+  const [user, setUser] = useState<any>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user ?? null);
+    };
+    checkUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleAddToFavorites = async (place: Place) => {
+    if (!user) {
+      toast.error("로그인이 필요합니다.");
+      navigate("/auth");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from("favorites")
+        .insert({
+          user_id: user.id,
+          place_name: place.name,
+          latitude: place.lat,
+          longitude: place.lon,
+          address: place.address,
+        });
+
+      if (error) {
+        if (error.code === "23505") {
+          toast.error("이미 즐겨찾기에 추가된 장소입니다.");
+        } else {
+          throw error;
+        }
+      } else {
+        toast.success("즐겨찾기에 추가되었습니다.");
+      }
+    } catch (error: any) {
+      console.error("즐겨찾기 추가 실패:", error);
+      toast.error("즐겨찾기 추가에 실패했습니다.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   if (selectedPlace) {
     return (
@@ -31,7 +87,7 @@ const PlaceSearchResult = ({ results, onSelect, onClose }: PlaceSearchResultProp
               <p className="text-sm text-muted-foreground">{selectedPlace.address}</p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 mb-2">
             <Button
               variant="outline"
               size="default"
@@ -56,9 +112,19 @@ const PlaceSearchResult = ({ results, onSelect, onClose }: PlaceSearchResultProp
             </Button>
           </div>
           <Button
+            variant="outline"
+            size="sm"
+            className="w-full mb-2"
+            onClick={() => handleAddToFavorites(selectedPlace)}
+            disabled={isSaving}
+          >
+            <Star className="h-4 w-4 mr-2" />
+            {isSaving ? "추가 중..." : "즐겨찾기 추가"}
+          </Button>
+          <Button
             variant="ghost"
             size="sm"
-            className="w-full mt-2"
+            className="w-full"
             onClick={() => setSelectedPlace(null)}
           >
             다른 장소 선택

@@ -1,4 +1,4 @@
-import { X, Home, MapPin, FileText, MessageSquare, Settings } from "lucide-react";
+import { MapPin, FileText, MessageSquare } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
@@ -9,11 +9,9 @@ interface SidebarProps {
 
 const Sidebar = ({ open, onOpenChange }: SidebarProps) => {
   const menuItems = [
-    { icon: Home, label: "홈", disabled: false },
     { icon: MapPin, label: "내 경로", disabled: false },
     { icon: FileText, label: "휠체어 접근성 제보", disabled: false, highlight: true },
     { icon: MessageSquare, label: "즐겨찾기", disabled: false },
-    { icon: Settings, label: "설정", disabled: false },
   ];
 
   return (
@@ -37,24 +35,6 @@ const Sidebar = ({ open, onOpenChange }: SidebarProps) => {
                 {item.label}
               </Button>
             ))}
-          </div>
-
-          <div className="mt-6 space-y-1 px-3">
-            <h3 className="px-3 py-2 text-sm font-semibold text-muted-foreground">범례</h3>
-            <div className="space-y-2 px-3 py-2">
-              <div className="flex items-center gap-3">
-                <div className="w-4 h-4 rounded-full bg-primary" />
-                <span className="text-sm">안심 구간</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-4 h-4 rounded-full bg-secondary" />
-                <span className="text-sm">경고 구간</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-4 h-4 rounded-full bg-destructive" />
-                <span className="text-sm">위험 구간</span>
-              </div>
-            </div>
           </div>
         </div>
       </SheetContent>
