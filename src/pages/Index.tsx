@@ -80,6 +80,7 @@ const Index = () => {
         <MapView 
           startPoint={startPoint}
           endPoint={endPoint}
+          selectedRouteType={selectedRouteType}
           onRoutesCalculated={setRouteOptions}
         />
         

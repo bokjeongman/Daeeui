@@ -15,6 +15,7 @@ declare global {
 interface MapViewProps {
   startPoint?: { lat: number; lon: number; name: string } | null;
   endPoint?: { lat: number; lon: number; name: string } | null;
+  selectedRouteType?: "transit" | "walk" | "car" | null;
   onRoutesCalculated?: (routes: Array<{
     type: "transit" | "walk" | "car";
     distance: number;
@@ -26,7 +27,7 @@ interface MapViewProps {
   }>) => void;
 }
 
-const MapView = ({ startPoint, endPoint, onRoutesCalculated }: MapViewProps) => {
+const MapView = ({ startPoint, endPoint, selectedRouteType, onRoutesCalculated }: MapViewProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -621,11 +622,26 @@ const MapView = ({ startPoint, endPoint, onRoutesCalculated }: MapViewProps) => 
     calculateAllRoutes();
   }, [map, startPoint, endPoint, userLocation, barrierData, onRoutesCalculated]);
 
+  // 교통수단별 기본 색상
+  const getRouteColor = (routeType: "transit" | "walk" | "car" | null | undefined) => {
+    switch (routeType) {
+      case "transit":
+        return "#3b82f6"; // 파란색
+      case "walk":
+        return "#22c55e"; // 초록색
+      case "car":
+        return "#ef4444"; // 빨간색
+      default:
+        return "#22c55e"; // 기본 초록색
+    }
+  };
+
   // 경로 세그먼트 생성 (배리어 근처는 다른 색상)
   const createRouteSegments = (path: any[]) => {
     const segments: { path: any[]; color: string }[] = [];
     let currentSegment: any[] = [];
-    let currentColor = "#22c55e"; // 기본 안전 색상 (녹색)
+    const baseColor = getRouteColor(selectedRouteType);
+    let currentColor = baseColor; // 선택된 교통수단 색상
 
     path.forEach((point, index) => {
       // 배리어와의 거리 계산하여 색상 결정
@@ -639,7 +655,7 @@ const MapView = ({ startPoint, endPoint, onRoutesCalculated }: MapViewProps) => 
         return distance < 20; // 20m 이내
       });
 
-      let segmentColor = "#22c55e"; // 안심 (녹색)
+      let segmentColor = baseColor; // 선택된 교통수단 색상
       if (nearbyBarrier) {
         if (nearbyBarrier.severity === "warning") {
           segmentColor = "#f59e0b"; // 경고 (주황색)
