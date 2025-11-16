@@ -26,6 +26,17 @@ const Index = () => {
     warningPercentage: number;
     dangerPercentage: number;
     barriers: { type: string; severity: string; name: string }[];
+    transitInfo?: {
+      legs: Array<{
+        mode: string;
+        route: string;
+        from: string;
+        to: string;
+        distance: number;
+        time: number;
+      }>;
+      transfers: number;
+    };
   }>>([]);
   const [selectedRouteType, setSelectedRouteType] = useState<"transit" | "walk" | "car" | null>(null);
 
@@ -106,6 +117,7 @@ const Index = () => {
                 safePercentage={routeOptions.find(r => r.type === selectedRouteType)?.safePercentage || 0}
                 warningPercentage={routeOptions.find(r => r.type === selectedRouteType)?.warningPercentage || 0}
                 dangerPercentage={routeOptions.find(r => r.type === selectedRouteType)?.dangerPercentage || 0}
+                transitInfo={routeOptions.find(r => r.type === selectedRouteType)?.transitInfo}
                 onStartNavigation={() => {
                   if (viewMode === "default") {
                     setViewMode("yellow");

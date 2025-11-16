@@ -24,6 +24,17 @@ interface MapViewProps {
     warningPercentage: number;
     dangerPercentage: number;
     barriers: { type: string; severity: string; name: string }[];
+    transitInfo?: {
+      legs: Array<{
+        mode: string;
+        route: string;
+        from: string;
+        to: string;
+        distance: number;
+        time: number;
+      }>;
+      transfers: number;
+    };
   }>) => void;
 }
 
@@ -45,6 +56,8 @@ const MapView = ({ startPoint, endPoint, selectedRouteType, onRoutesCalculated }
   const markersRef = useRef<any[]>([]);
   const barrierMarkersRef = useRef<any[]>([]);
   const favoriteMarkersRef = useRef<any[]>([]);
+  const arrowMarkersRef = useRef<any[]>([]);
+  const [transitDetails, setTransitDetails] = useState<any>(null);
 
   // 현재 위치 가져오기 및 지속적 추적
   const getCurrentLocation = () => {
@@ -488,6 +501,9 @@ const MapView = ({ startPoint, endPoint, selectedRouteType, onRoutesCalculated }
         }
         markersRef.current.forEach((marker) => marker.setMap(null));
         markersRef.current = [];
+        arrowMarkersRef.current.forEach((marker) => marker.setMap(null));
+        arrowMarkersRef.current = [];
+        
         // 출발지가 없으면 현재 위치 사용
         const start = startPoint || userLocation;
         if (!start) {
@@ -495,14 +511,13 @@ const MapView = ({ startPoint, endPoint, selectedRouteType, onRoutesCalculated }
           return;
         }
 
-        // 3가지 교통수단 동시 탐색
-        const response = await fetch("https://apis.openapi.sk.com/tmap/routes/pedestrian?version=1", {
-          method: "POST",
-          headers: {
-            appKey: "KZDXJtx63R735Qktn8zkkaJv4tbaUqDc1lXzyjLT",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
+        // 선택된 교통수단이 없으면 3가지 모두 계산
+        const routesToCalculate = selectedRouteType ? [selectedRouteType] : ["transit", "walk", "car"];
+        const calculatedRoutes: any[] = [];
+
+        for (const routeType of routesToCalculate) {
+          let apiUrl = "";
+          let requestBody: any = {
             startX: start.lon.toString(),
             startY: start.lat.toString(),
             endX: endPoint.lon.toString(),
@@ -511,107 +526,180 @@ const MapView = ({ startPoint, endPoint, selectedRouteType, onRoutesCalculated }
             resCoordType: "WGS84GEO",
             startName: startPoint?.name || "현재 위치",
             endName: endPoint.name,
-          }),
-        });
+          };
 
-        const data = await response.json();
-        
-        if (data.features) {
-          const lineStrings: any[] = [];
-          let totalDistance = 0;
-          let totalTime = 0;
-          
-          data.features.forEach((feature: any) => {
-            if (feature.geometry.type === "LineString") {
-              feature.geometry.coordinates.forEach((coord: any) => {
-                lineStrings.push(new window.Tmapv2.LatLng(coord[1], coord[0]));
+          // 교통수단별 API 엔드포인트 설정
+          if (routeType === "walk") {
+            apiUrl = "https://apis.openapi.sk.com/tmap/routes/pedestrian?version=1";
+          } else if (routeType === "car") {
+            apiUrl = "https://apis.openapi.sk.com/tmap/routes?version=1";
+            requestBody.searchOption = "0"; // 추천 경로
+          } else if (routeType === "transit") {
+            // 대중교통 경로
+            apiUrl = "https://apis.openapi.sk.com/transit/routes?version=1";
+            requestBody.format = "json";
+          }
+
+          const response = await fetch(apiUrl, {
+            method: "POST",
+            headers: {
+              appKey: "KZDXJtx63R735Qktn8zkkaJv4tbaUqDc1lXzyjLT",
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(requestBody),
+          });
+
+          const data = await response.json();
+
+          if (routeType === "transit" && data.metaData && data.metaData.plan) {
+            // 대중교통 경로 처리
+            const itinerary = data.metaData.plan.itineraries[0];
+            if (itinerary) {
+              let totalDistance = 0;
+              let totalTime = itinerary.totalTime || 0;
+              const transitInfo: any = {
+                legs: [],
+                transfers: 0,
+              };
+
+              itinerary.legs.forEach((leg: any) => {
+                totalDistance += leg.distance || 0;
+                if (leg.mode === "BUS" || leg.mode === "SUBWAY") {
+                  transitInfo.legs.push({
+                    mode: leg.mode,
+                    route: leg.route || leg.routeId,
+                    from: leg.from?.name,
+                    to: leg.to?.name,
+                    distance: leg.distance,
+                    time: leg.sectionTime,
+                  });
+                  if (transitInfo.legs.length > 1) {
+                    transitInfo.transfers++;
+                  }
+                }
+              });
+
+              setTransitDetails(transitInfo);
+              calculatedRoutes.push({
+                type: "transit",
+                distance: totalDistance,
+                duration: totalTime,
+                safePercentage: 85,
+                warningPercentage: 15,
+                dangerPercentage: 0,
+                barriers: [],
+                transitInfo,
               });
             }
-            // 거리와 시간 정보 수집
-            if (feature.properties) {
-              if (feature.properties.distance) {
-                totalDistance += feature.properties.distance;
-              }
-              if (feature.properties.time) {
-                totalTime += feature.properties.time;
-              }
-            }
-          });
-
-          // 경로를 여러 세그먼트로 나눠서 배리어 근처는 다른 색으로 표시
-          const routeSegments = createRouteSegments(lineStrings);
-          
-          // 경로 근처의 배리어 찾기
-          const nearbyBarriers: { type: string; severity: string; name: string }[] = [];
-          lineStrings.forEach((point) => {
-            barrierData.forEach((barrier) => {
-              const distance = calculateDistance(
-                point.lat(),
-                point.lng(),
-                barrier.lat,
-                barrier.lon
-              );
-              if (distance < 20 && !nearbyBarriers.find(b => b.name === barrier.name)) {
-                nearbyBarriers.push({
-                  type: barrier.type,
-                  severity: barrier.severity,
-                  name: barrier.name
+          } else if (data.features) {
+          } else if (data.features) {
+            // 도보/자동차 경로 처리
+            const lineStrings: any[] = [];
+            let totalDistance = 0;
+            let totalTime = 0;
+            
+            data.features.forEach((feature: any) => {
+              if (feature.geometry.type === "LineString") {
+                feature.geometry.coordinates.forEach((coord: any) => {
+                  lineStrings.push(new window.Tmapv2.LatLng(coord[1], coord[0]));
                 });
               }
+              if (feature.properties) {
+                if (feature.properties.distance) {
+                  totalDistance += feature.properties.distance;
+                }
+                if (feature.properties.time) {
+                  totalTime += feature.properties.time;
+                }
+              }
             });
-          });
 
-          // 경로 정보를 부모 컴포넌트로 전달 (임시로 단일 경로 형태로 전달)
-          if (onRoutesCalculated) {
-            onRoutesCalculated([{
-              type: "walk",
+            // 경로 근처의 배리어 찾기
+            const nearbyBarriers: { type: string; severity: string; name: string }[] = [];
+            lineStrings.forEach((point) => {
+              barrierData.forEach((barrier) => {
+                const distance = calculateDistance(
+                  point.lat(),
+                  point.lng(),
+                  barrier.lat,
+                  barrier.lon
+                );
+                if (distance < 20 && !nearbyBarriers.find(b => b.name === barrier.name)) {
+                  nearbyBarriers.push({
+                    type: barrier.type,
+                    severity: barrier.severity,
+                    name: barrier.name
+                  });
+                }
+              });
+            });
+
+            calculatedRoutes.push({
+              type: routeType as "transit" | "walk" | "car",
               distance: totalDistance,
               duration: totalTime,
               safePercentage: Math.round((nearbyBarriers.filter(b => b.severity === "safe").length / Math.max(nearbyBarriers.length, 1)) * 100),
               warningPercentage: Math.round((nearbyBarriers.filter(b => b.severity === "warning").length / Math.max(nearbyBarriers.length, 1)) * 100),
               dangerPercentage: Math.round((nearbyBarriers.filter(b => b.severity === "danger").length / Math.max(nearbyBarriers.length, 1)) * 100),
-              barriers: nearbyBarriers
-            }]);
-          }
-          
-          const createdPolylines: any[] = [];
-          routeSegments.forEach((segment) => {
-            const polyline = new window.Tmapv2.Polyline({
-              path: segment.path,
-              strokeColor: segment.color,
-              strokeWeight: 6,
-              map: map,
+              barriers: nearbyBarriers,
+              lineStrings,
             });
-            createdPolylines.push(polyline);
-          });
-          routeLayerRef.current = createdPolylines;
+          }
+        }
 
-          // 출발지 마커 (startPoint가 있을 때만)
-          if (startPoint) {
-            const startMarker = new window.Tmapv2.Marker({
-              position: new window.Tmapv2.LatLng(startPoint.lat, startPoint.lon),
-              icon: "https://tmapapi.sktelecom.com/upload/tmap/marker/pin_b_m_s.png",
+        // 모든 경로 계산 후 콜백 호출
+        if (onRoutesCalculated && calculatedRoutes.length > 0) {
+          onRoutesCalculated(calculatedRoutes);
+        }
+
+        // 선택된 경로가 있으면 해당 경로만 지도에 표시
+        if (selectedRouteType && calculatedRoutes.length > 0) {
+          const selectedRoute = calculatedRoutes.find(r => r.type === selectedRouteType);
+          if (selectedRoute && selectedRoute.lineStrings) {
+            // 경로 그리기
+            const routeSegments = createRouteSegments(selectedRoute.lineStrings);
+            const createdPolylines: any[] = [];
+            routeSegments.forEach((segment) => {
+              const polyline = new window.Tmapv2.Polyline({
+                path: segment.path,
+                strokeColor: segment.color,
+                strokeWeight: 6,
+                map: map,
+              });
+              createdPolylines.push(polyline);
+            });
+            routeLayerRef.current = createdPolylines;
+
+            // 화살표 마커 추가 (일정 간격으로)
+            addArrowMarkers(selectedRoute.lineStrings);
+
+            // 출발지 마커
+            if (startPoint) {
+              const startMarker = new window.Tmapv2.Marker({
+                position: new window.Tmapv2.LatLng(startPoint.lat, startPoint.lon),
+                icon: "https://tmapapi.sktelecom.com/upload/tmap/marker/pin_b_m_s.png",
+                iconSize: new window.Tmapv2.Size(24, 38),
+                map: map,
+                title: "출발",
+              });
+              markersRef.current.push(startMarker);
+            }
+
+            // 도착지 마커
+            const endMarker = new window.Tmapv2.Marker({
+              position: new window.Tmapv2.LatLng(endPoint.lat, endPoint.lon),
+              icon: "https://tmapapi.sktelecom.com/upload/tmap/marker/pin_r_m_e.png",
               iconSize: new window.Tmapv2.Size(24, 38),
               map: map,
-              title: "출발",
+              title: "도착",
             });
-            markersRef.current.push(startMarker);
+            markersRef.current.push(endMarker);
+
+            // 지도 범위 조정
+            const bounds = new window.Tmapv2.LatLngBounds();
+            selectedRoute.lineStrings.forEach((point: any) => bounds.extend(point));
+            map.fitBounds(bounds);
           }
-
-          // 도착지 마커
-          const endMarker = new window.Tmapv2.Marker({
-            position: new window.Tmapv2.LatLng(endPoint.lat, endPoint.lon),
-            icon: "https://tmapapi.sktelecom.com/upload/tmap/marker/pin_r_m_e.png",
-            iconSize: new window.Tmapv2.Size(24, 38),
-            map: map,
-            title: "도착",
-          });
-          markersRef.current.push(endMarker);
-
-          // 경로가 모두 보이도록 지도 범위 조정
-          const bounds = new window.Tmapv2.LatLngBounds();
-          lineStrings.forEach((point) => bounds.extend(point));
-          map.fitBounds(bounds);
         }
       } catch (error) {
         console.error("경로 탐색 실패:", error);
@@ -620,7 +708,70 @@ const MapView = ({ startPoint, endPoint, selectedRouteType, onRoutesCalculated }
     };
 
     calculateAllRoutes();
-  }, [map, startPoint, endPoint, userLocation, barrierData, onRoutesCalculated]);
+  }, [map, startPoint, endPoint, userLocation, barrierData, onRoutesCalculated, selectedRouteType]);
+
+  // 화살표 마커 추가 함수
+  const addArrowMarkers = (path: any[]) => {
+    // 기존 화살표 제거
+    arrowMarkersRef.current.forEach((marker) => marker.setMap(null));
+    arrowMarkersRef.current = [];
+
+    // 경로 길이에 따라 화살표 간격 조정 (약 100m마다)
+    const arrowInterval = Math.max(10, Math.floor(path.length / 10));
+
+    for (let i = arrowInterval; i < path.length; i += arrowInterval) {
+      const prevPoint = path[i - 1];
+      const currentPoint = path[i];
+
+      // 화살표 방향 계산
+      const angle = calculateBearing(
+        prevPoint.lat(),
+        prevPoint.lng(),
+        currentPoint.lat(),
+        currentPoint.lng()
+      );
+
+      // 화살표 SVG 생성
+      const arrowSvg = `
+        <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2 L12 18 M12 18 L6 12 M12 18 L18 12" 
+                stroke="${getRouteColor(selectedRouteType)}" 
+                stroke-width="3" 
+                stroke-linecap="round" 
+                stroke-linejoin="round" 
+                fill="none"/>
+        </svg>
+      `;
+
+      const arrowDiv = document.createElement('div');
+      arrowDiv.innerHTML = arrowSvg;
+      arrowDiv.style.transform = `rotate(${angle}deg)`;
+      arrowDiv.style.transformOrigin = 'center';
+
+      const arrowMarker = new window.Tmapv2.Marker({
+        position: currentPoint,
+        icon: arrowDiv,
+        iconSize: new window.Tmapv2.Size(24, 24),
+        map: map,
+      });
+
+      arrowMarkersRef.current.push(arrowMarker);
+    }
+  };
+
+  // 방향 계산 함수 (bearing)
+  const calculateBearing = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const lat1Rad = lat1 * Math.PI / 180;
+    const lat2Rad = lat2 * Math.PI / 180;
+
+    const y = Math.sin(dLon) * Math.cos(lat2Rad);
+    const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) -
+              Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
+
+    const bearing = Math.atan2(y, x) * 180 / Math.PI;
+    return (bearing + 360) % 360;
+  };
 
   // 교통수단별 기본 색상
   const getRouteColor = (routeType: "transit" | "walk" | "car" | null | undefined) => {

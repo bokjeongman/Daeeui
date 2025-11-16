@@ -1,4 +1,4 @@
-import { MapPin, Clock, CheckCircle2, AlertTriangle, AlertCircle } from "lucide-react";
+import { MapPin, Clock, CheckCircle2, AlertTriangle, AlertCircle, Bus, Train } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
@@ -10,6 +10,17 @@ interface RouteInfoProps {
   dangerPercentage?: number;
   showButton?: boolean;
   variant?: "default" | "yellow";
+  transitInfo?: {
+    legs: Array<{
+      mode: string;
+      route: string;
+      from: string;
+      to: string;
+      distance: number;
+      time: number;
+    }>;
+    transfers: number;
+  };
   onStartNavigation?: () => void;
 }
 
@@ -21,6 +32,7 @@ const RouteInfo = ({
   dangerPercentage = 10,
   showButton = true,
   variant = "default",
+  transitInfo,
   onStartNavigation,
 }: RouteInfoProps) => {
   return (
@@ -80,6 +92,37 @@ const RouteInfo = ({
             </div>
           )}
         </div>
+
+        {/* 대중교통 노선 정보 */}
+        {transitInfo && transitInfo.legs.length > 0 && (
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-muted-foreground mb-2">
+              대중교통 이용 정보 (환승 {transitInfo.transfers}회)
+            </h4>
+            {transitInfo.legs.map((leg, index) => (
+              <div key={index} className="bg-muted/50 rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  {leg.mode === "BUS" ? (
+                    <Bus className="h-5 w-5 text-blue-500" />
+                  ) : (
+                    <Train className="h-5 w-5 text-green-500" />
+                  )}
+                  <span className="font-semibold text-sm">
+                    {leg.mode === "BUS" ? "버스" : "지하철"} {leg.route}
+                  </span>
+                </div>
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <div>출발: {leg.from}</div>
+                  <div>도착: {leg.to}</div>
+                  <div className="flex gap-3 mt-2">
+                    <span>{(leg.distance / 1000).toFixed(1)}km</span>
+                    <span>{Math.ceil(leg.time / 60)}분</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {showButton && (
           <Button
