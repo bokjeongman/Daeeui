@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { toast } from "sonner";
 import { CheckCircle2, XCircle, MapPin, Loader2, Search, Filter, Eye } from "lucide-react";
 
@@ -251,6 +252,37 @@ const Admin = () => {
             <CardContent>
               <div className="flex gap-2 mb-2">{getAccessibilityBadge(report.accessibility_level)}</div>
               {report.details && <p className="text-sm mb-3">{report.details}</p>}
+              
+              {/* 제보 사진 캐러셀 */}
+              {report.photo_urls && report.photo_urls.length > 0 && (
+                <div className="mb-4">
+                  <Carousel className="w-full max-w-xs mx-auto">
+                    <CarouselContent>
+                      {report.photo_urls.map((url, index) => (
+                        <CarouselItem key={index}>
+                          <div className="aspect-video relative rounded-lg overflow-hidden bg-muted">
+                            <img
+                              src={url}
+                              alt={`제보 사진 ${index + 1}`}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                            />
+                          </div>
+                        </CarouselItem>
+                      ))}
+                    </CarouselContent>
+                    {report.photo_urls.length > 1 && (
+                      <>
+                        <CarouselPrevious className="-left-12" />
+                        <CarouselNext className="-right-12" />
+                      </>
+                    )}
+                  </Carousel>
+                  <p className="text-xs text-center text-muted-foreground mt-2">
+                    {report.photo_urls.length}장의 사진
+                  </p>
+                </div>
+              )}
               
               <div className="flex gap-2 mb-3">
                 <Button
