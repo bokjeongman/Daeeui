@@ -56,6 +56,7 @@ interface MapViewProps {
       transfers: number;
     };
   }>) => void;
+  className?: string;
 }
 const MapView = ({
   startPoint,
@@ -63,7 +64,8 @@ const MapView = ({
   selectedRouteType,
   onRoutesCalculated,
   onBarrierClick,
-  onPlaceClick
+  onPlaceClick,
+  className
 }: MapViewProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<any>(null);
@@ -337,7 +339,7 @@ const MapView = ({
     // 나침반 방향을 고려한 SVG 마커 생성
     const rotation = heading !== null ? heading : 0;
     const svgIcon = `
-      <svg width="52" height="52" viewBox="0 0 52 52" xmlns="http://www.w3.org/2000/svg" style="transform: rotate(${rotation}deg); transition: transform 0.3s ease;">
+      <svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" style="transform: rotate(${rotation}deg); transition: transform 0.3s ease;">
         <defs>
           <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
@@ -352,15 +354,15 @@ const MapView = ({
           </filter>
         </defs>
         <!-- 외부 원 (흰색 테두리) -->
-        <circle cx="26" cy="26" r="18" fill="white" filter="url(#shadow)" stroke="#3b82f6" stroke-width="2"/>
+        <circle cx="30" cy="30" r="22" fill="white" filter="url(#shadow)" stroke="hsl(var(--sidebar-ring))" stroke-width="2"/>
         <!-- 내부 원 (파란색) -->
-        <circle cx="26" cy="26" r="15" fill="#3b82f6"/>
+        <circle cx="30" cy="30" r="19" fill="hsl(var(--sidebar-ring))"/>
         <!-- 나침반 화살표 (북쪽 - 파란색) -->
-        <path d="M 26 8 L 32 26 L 26 22 L 20 26 Z" fill="#1d4ed8" stroke="white" stroke-width="1.5"/>
+        <path d="M 30 10 L 36 30 L 30 26 L 24 30 Z" fill="hsl(var(--sidebar-ring))" stroke="white" stroke-width="1.8"/>
         <!-- 나침반 화살표 (남쪽 - 연한 파란색) -->
-        <path d="M 26 44 L 20 26 L 26 30 L 32 26 Z" fill="#93c5fd" stroke="white" stroke-width="1"/>
+        <path d="M 30 50 L 24 30 L 30 34 L 36 30 Z" fill="hsl(var(--sidebar-ring))" opacity="0.6" stroke="white" stroke-width="1.2"/>
         <!-- 중심점 -->
-        <circle cx="26" cy="26" r="4" fill="white" stroke="#1d4ed8" stroke-width="2"/>
+        <circle cx="30" cy="30" r="4" fill="white" stroke="hsl(var(--sidebar-ring))" stroke-width="2"/>
       </svg>
     `;
 
@@ -855,11 +857,10 @@ const MapView = ({
               </feMerge>
             </filter>
           </defs>
-          <circle cx="25" cy="25" r="22" fill="white" stroke="${getRouteColor(selectedRouteType)}" stroke-width="3" filter="url(#shadow-${i})"/>
-          <circle cx="25" cy="25" r="19" fill="${getRouteColor(selectedRouteType)}" opacity="0.2"/>
+          <circle cx="25" cy="25" r="22" fill="hsl(var(--sidebar-ring))" stroke="white" stroke-width="3" filter="url(#shadow-${i})"/>
           <path d="M25 12 L25 35 M25 35 L17 27 M25 35 L33 27" 
-                stroke="${getRouteColor(selectedRouteType)}" 
-                stroke-width="4" 
+                stroke="white" 
+                stroke-width="5" 
                 stroke-linecap="round" 
                 stroke-linejoin="round" 
                 fill="none"/>
@@ -981,7 +982,7 @@ const MapView = ({
         </div>
       </div>;
   }
-  return <div className="relative w-full h-full">
+  return <div className={`relative w-full h-full ${className ?? ""}` }>
       {/* 지도 컨테이너 */}
       <div ref={mapRef} className="w-full h-full" />
 
@@ -1007,22 +1008,33 @@ const MapView = ({
         </div>}
 
       {/* 로드뷰 버튼 (상단 우측) */}
-      <div className="absolute top-4 right-4 z-10">
-        <Button size="icon" variant="outline" onClick={() => {
-        if (map) {
-          const center = map.getCenter();
-          const lat = center._lat;
-          const lon = center._lng;
-          window.open(`https://map.kakao.com/?urlX=${lon}&urlY=${lat}&urlLevel=3&map_type=TYPE_MAP&map_hybrid=false`, '_blank');
-        }
-      }} title="카카오맵 로드뷰 열기" className="shadow-lg h-12 w-12 rounded-full px-0 mx-[30px] my-0">
+      <div className="absolute top-4 right-4 z-40 pointer-events-auto">
+        <Button
+          size="icon"
+          variant="outline"
+          onClick={() => {
+            if (map) {
+              const center = map.getCenter();
+              const lat = center._lat;
+              const lon = center._lng;
+              window.open(`https://map.kakao.com/?urlX=${lon}&urlY=${lat}&urlLevel=3&map_type=TYPE_MAP&map_hybrid=false`, '_blank');
+            }
+          }}
+          title="카카오맵 로드뷰 열기"
+          className="shadow-lg h-12 w-12 rounded-full px-0"
+        >
           <Eye className="h-5 w-5" />
         </Button>
       </div>
 
       {/* 필터 버튼 (하단 우측) */}
-      <div className="absolute bottom-24 right-4 z-10 space-y-2">
-        <Button onClick={() => setShowFilter(!showFilter)} size="lg" title="필터" className="h-14 w-14 rounded-full shadow-xl bg-background hover:bg-muted text-foreground border-2 border-border mx-[28px] my-[210px]">
+      <div className="absolute bottom-24 right-4 z-40 space-y-2 pointer-events-auto">
+        <Button
+          onClick={() => setShowFilter(!showFilter)}
+          size="lg"
+          title="필터"
+          className="h-14 w-14 rounded-full shadow-xl bg-background hover:bg-muted text-foreground border-2 border-border"
+        >
           <Filter className="h-6 w-6" />
         </Button>
         
