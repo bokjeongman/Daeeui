@@ -345,13 +345,13 @@ const MapView = ({
     // 나침반 방향을 고려한 SVG 마커 생성
     const rotation = heading !== null ? heading : 0;
     const svgIcon = `
-      <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" style="transform: rotate(${rotation}deg); transition: transform 0.3s ease;">
+      <svg width="52" height="52" viewBox="0 0 52 52" xmlns="http://www.w3.org/2000/svg" style="transform: rotate(${rotation}deg); transition: transform 0.3s ease;">
         <defs>
           <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
-            <feOffset dx="0" dy="2" result="offsetblur"/>
+            <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+            <feOffset dx="0" dy="3" result="offsetblur"/>
             <feComponentTransfer>
-              <feFuncA type="linear" slope="0.3"/>
+              <feFuncA type="linear" slope="0.4"/>
             </feComponentTransfer>
             <feMerge>
               <feMergeNode/>
@@ -360,29 +360,30 @@ const MapView = ({
           </filter>
         </defs>
         <!-- 외부 원 (흰색 테두리) -->
-        <circle cx="24" cy="24" r="16" fill="white" filter="url(#shadow)"/>
+        <circle cx="26" cy="26" r="18" fill="white" filter="url(#shadow)" stroke="#3b82f6" stroke-width="2"/>
         <!-- 내부 원 (파란색) -->
-        <circle cx="24" cy="24" r="14" fill="#3b82f6"/>
-        <!-- 나침반 화살표 -->
-        <path d="M 24 10 L 28 24 L 24 20 L 20 24 Z" fill="white"/>
-        <path d="M 24 38 L 20 24 L 24 28 L 28 24 Z" fill="#93c5fd"/>
+        <circle cx="26" cy="26" r="15" fill="#3b82f6"/>
+        <!-- 나침반 화살표 (북쪽 - 파란색) -->
+        <path d="M 26 8 L 32 26 L 26 22 L 20 26 Z" fill="#1d4ed8" stroke="white" stroke-width="1.5"/>
+        <!-- 나침반 화살표 (남쪽 - 연한 파란색) -->
+        <path d="M 26 44 L 20 26 L 26 30 L 32 26 Z" fill="#93c5fd" stroke="white" stroke-width="1"/>
         <!-- 중심점 -->
-        <circle cx="24" cy="24" r="3" fill="white"/>
+        <circle cx="26" cy="26" r="4" fill="white" stroke="#1d4ed8" stroke-width="2"/>
       </svg>
     `;
 
     // HTML 마커로 생성
     const markerDiv = document.createElement('div');
     markerDiv.innerHTML = svgIcon;
-    markerDiv.style.width = '48px';
-    markerDiv.style.height = '48px';
+    markerDiv.style.width = '52px';
+    markerDiv.style.height = '52px';
     markerDiv.style.cursor = 'pointer';
 
     const marker = new window.Tmapv2.Marker({
       position: position,
       map: map,
       icon: markerDiv,
-      iconSize: new window.Tmapv2.Size(48, 48),
+      iconSize: new window.Tmapv2.Size(52, 52),
       title: "현재 위치",
       zIndex: 9999,
     });
@@ -891,20 +892,28 @@ const MapView = ({
 
       // 화살표 SVG 생성 (더 크고 명확하게)
       const arrowSvg = `
-        <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+        <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <filter id="shadow-${i}" x="-50%" y="-50%" width="200%" height="200%">
-              <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.3"/>
+              <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+              <feOffset dx="0" dy="3" result="offsetblur"/>
+              <feComponentTransfer>
+                <feFuncA type="linear" slope="0.5"/>
+              </feComponentTransfer>
+              <feMerge>
+                <feMergeNode/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
             </filter>
           </defs>
-          <circle cx="20" cy="20" r="18" fill="white" stroke="${getRouteColor(selectedRouteType)}" stroke-width="2"/>
-          <path d="M20 10 L20 28 M20 28 L14 22 M20 28 L26 22" 
+          <circle cx="25" cy="25" r="22" fill="white" stroke="${getRouteColor(selectedRouteType)}" stroke-width="3" filter="url(#shadow-${i})"/>
+          <circle cx="25" cy="25" r="19" fill="${getRouteColor(selectedRouteType)}" opacity="0.2"/>
+          <path d="M25 12 L25 35 M25 35 L17 27 M25 35 L33 27" 
                 stroke="${getRouteColor(selectedRouteType)}" 
-                stroke-width="3" 
+                stroke-width="4" 
                 stroke-linecap="round" 
                 stroke-linejoin="round" 
-                fill="none"
-                filter="url(#shadow-${i})"/>
+                fill="none"/>
         </svg>
       `;
 
@@ -912,12 +921,12 @@ const MapView = ({
       arrowDiv.innerHTML = arrowSvg;
       arrowDiv.style.transform = `rotate(${angle}deg)`;
       arrowDiv.style.transformOrigin = 'center';
-      arrowDiv.style.filter = 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))';
+      arrowDiv.style.filter = 'drop-shadow(0 3px 8px rgba(59, 130, 246, 0.4))';
 
       const arrowMarker = new window.Tmapv2.Marker({
         position: currentPoint,
         icon: arrowDiv,
-        iconSize: new window.Tmapv2.Size(40, 40),
+        iconSize: new window.Tmapv2.Size(50, 50),
         map: map,
       });
 
@@ -945,11 +954,11 @@ const MapView = ({
       case "transit":
         return "#3b82f6"; // 파란색
       case "walk":
-        return "#22c55e"; // 초록색
+        return "#3b82f6"; // 파란색
       case "car":
         return "#ef4444"; // 빨간색
       default:
-        return "#22c55e"; // 기본 초록색
+        return "#3b82f6"; // 기본 파란색
     }
   };
 
@@ -1067,8 +1076,8 @@ const MapView = ({
         </div>
       )}
 
-      {/* 로드뷰 및 필터 버튼 */}
-      <div className="absolute top-4 right-4 z-10 space-y-2">
+      {/* 로드뷰 버튼 (상단 우측) */}
+      <div className="absolute top-4 right-4 z-10">
         <Button
           size="icon"
           variant="outline"
@@ -1085,18 +1094,21 @@ const MapView = ({
         >
           <Eye className="h-5 w-5" />
         </Button>
-        
+      </div>
+
+      {/* 필터 버튼 (하단 우측) */}
+      <div className="absolute bottom-24 right-4 z-10 space-y-2">
         <Button
           onClick={() => setShowFilter(!showFilter)}
           size="lg"
-          className="h-12 w-12 rounded-full shadow-xl bg-background hover:bg-muted text-foreground border-2 border-border"
+          className="h-14 w-14 rounded-full shadow-xl bg-background hover:bg-muted text-foreground border-2 border-border"
           title="필터"
         >
-          <Filter className="h-5 w-5" />
+          <Filter className="h-6 w-6" />
         </Button>
         
         {showFilter && (
-          <div className="bg-background border-2 border-border rounded-lg shadow-xl p-3 space-y-2 min-w-[160px]">
+          <div className="absolute bottom-16 right-0 bg-background border-2 border-border rounded-lg shadow-xl p-3 space-y-2 min-w-[160px]">
             <div className="text-sm font-semibold mb-2 text-foreground">접근성 필터</div>
             
             <button
@@ -1119,7 +1131,7 @@ const MapView = ({
                 {filter.warning && <div className="text-white text-xs text-center leading-none">✓</div>}
               </div>
               <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-                주의
+                경고
               </Badge>
             </button>
             
