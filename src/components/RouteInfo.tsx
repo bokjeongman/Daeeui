@@ -143,16 +143,6 @@ const RouteInfo = ({
                 duration={rawDuration}
               />
             )}
-            <Button
-              className={`w-full h-14 text-base font-semibold ${
-                variant === "yellow"
-                  ? "bg-accent hover:bg-accent/90 text-accent-foreground"
-                  : "bg-primary hover:bg-primary/90"
-              }`}
-              onClick={onStartNavigation}
-            >
-              {variant === "yellow" ? "🦽 휠체어 경로 안내 시작" : "경로 안내 시작"}
-            </Button>
           </div>
         )}
       </div>

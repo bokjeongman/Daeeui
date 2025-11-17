@@ -1046,12 +1046,12 @@ const MapView = ({
       <div 
         ref={mapRef} 
         className={`w-full h-full ${roadViewMode ? "absolute inset-0" : ""}`}
-        style={roadViewMode ? { width: "50%", height: "100%" } : undefined}
+        style={roadViewMode ? { width: "70%", height: "100%" } : undefined}
       />
       
       {/* 로드뷰 패널 */}
       {roadViewMode && roadViewPosition && (
-        <div className="absolute right-0 top-0 w-1/2 h-full bg-background border-l-2 border-border">
+        <div className="absolute right-0 top-0 w-[30%] h-full bg-background border-l-2 border-border">
           <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
             <div className="flex gap-2">
               <Button

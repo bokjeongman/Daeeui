@@ -85,7 +85,7 @@ const Index = () => {
       setSearchMode(null);
       setHasRoute(true);
       setRouteOptions([]);
-      setSelectedRouteType(null);
+      setSelectedRouteType("walk");
     }
   };
 
@@ -164,11 +164,7 @@ const Index = () => {
                 endPoint={endPoint}
                 rawDistance={routeOptions.find(r => r.type === selectedRouteType)?.distance}
                 rawDuration={routeOptions.find(r => r.type === selectedRouteType)?.duration}
-                onStartNavigation={() => {
-                  if (viewMode === "default") {
-                    setViewMode("yellow");
-                  }
-                }}
+                showButton={false}
               />
             </div>
           ) : (

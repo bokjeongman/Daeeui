@@ -92,41 +92,39 @@ const RoadView = ({
       return;
     }
 
-    // 경로의 시작점으로 이동
-    if (currentPathIndex === 0 && routePath.length > 0) {
-      const startPoint = routePath[0];
-      if (onPositionChange) {
-        onPositionChange(startPoint.lat, startPoint.lon);
-      }
+    // 자동 재생 시작 시 처음부터
+    setCurrentPathIndex(0);
+    const startPoint = routePath[0];
+    if (onPositionChange) {
+      onPositionChange(startPoint.lat, startPoint.lon);
     }
 
-    // 2초마다 다음 지점으로 이동 (경로 간격에 따라 조정)
+    // 2초마다 다음 지점으로 이동
     const interval = 2000;
     const step = Math.max(1, Math.floor(routePath.length / 50)); // 최대 50개 지점만 표시
+    let currentIndex = 0;
 
     autoPlayIntervalRef.current = setInterval(() => {
-      setCurrentPathIndex((prevIndex) => {
-        const nextIndex = prevIndex + step;
-        
-        if (nextIndex >= routePath.length) {
-          // 경로 끝에 도달
-          if (autoPlayIntervalRef.current) {
-            clearInterval(autoPlayIntervalRef.current);
-            autoPlayIntervalRef.current = null;
-          }
-          if (onAutoPlayEnd) {
-            onAutoPlayEnd();
-          }
-          return 0;
+      currentIndex += step;
+      
+      if (currentIndex >= routePath.length) {
+        // 경로 끝에 도달
+        if (autoPlayIntervalRef.current) {
+          clearInterval(autoPlayIntervalRef.current);
+          autoPlayIntervalRef.current = null;
         }
-
-        const nextPoint = routePath[nextIndex];
-        if (onPositionChange) {
-          onPositionChange(nextPoint.lat, nextPoint.lon);
+        if (onAutoPlayEnd) {
+          onAutoPlayEnd();
         }
+        setCurrentPathIndex(0);
+        return;
+      }
 
-        return nextIndex;
-      });
+      const nextPoint = routePath[currentIndex];
+      if (onPositionChange) {
+        onPositionChange(nextPoint.lat, nextPoint.lon);
+      }
+      setCurrentPathIndex(currentIndex);
     }, interval);
 
     return () => {
