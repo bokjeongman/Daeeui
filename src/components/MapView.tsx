@@ -74,6 +74,8 @@ const MapView = ({
   const [transitDetails, setTransitDetails] = useState<any>(null);
   const [roadViewMode, setRoadViewMode] = useState(false);
   const [roadViewPosition, setRoadViewPosition] = useState<{ lat: number; lon: number } | null>(null);
+  const [routePath, setRoutePath] = useState<Array<{ lat: number; lon: number }> | null>(null);
+  const [autoPlayRoadView, setAutoPlayRoadView] = useState(false);
 
   // 현재 위치 가져오기 및 지속적 추적
   const getCurrentLocation = () => {
@@ -575,34 +577,13 @@ const MapView = ({
               endName: endPoint.name,
             };
 
-            // 위험한 배리어 찾기 (우회 경로용)
-            const dangerousBarriers = barrierData.filter(
-              (b) => b.severity === "danger"
-            );
-
             // 교통수단별 API 엔드포인트 설정
             if (routeType === "walk") {
               apiUrl = "https://apis.openapi.sk.com/tmap/routes/pedestrian?version=1";
-              
-              // 위험한 배리어를 피하기 위한 경유지 추가 (최대 3개)
-              if (dangerousBarriers.length > 0 && dangerousBarriers.length <= 3) {
-                // T Map API는 passList를 세미콜론 구분 단일 문자열로 요구
-                const passList = dangerousBarriers
-                  .map((barrier) => `${barrier.longitude},${barrier.latitude}`)
-                  .join(";");
-                
-                requestBody.passList = passList;
-                requestBody.searchOption = "161"; // 배리어 회피 옵션
-              }
             } else if (routeType === "car") {
               apiUrl = "https://apis.openapi.sk.com/tmap/routes?version=1";
               requestBody.searchOption = "10"; // 실시간 빠른 경로
               requestBody.trafficInfo = "Y"; // 실시간 교통정보 반영
-              
-              // 자동차는 위험 배리어가 많으면 우회 경로 탐색
-              if (dangerousBarriers.length > 0) {
-                requestBody.searchOption = "4"; // 교통 최적+실시간
-              }
             }
             // 대중교통 경로 주석 처리 (API 사용량 절약)
             // else if (routeType === "transit") {
@@ -625,49 +606,8 @@ const MapView = ({
             // API 에러 응답 체크
             if (data.error) {
               console.warn(`${routeType} API 에러:`, data.error);
-              
-              // 경유지 있는 요청이 실패하면 경유지 없이 재시도
-              if (routeType === "walk" && requestBody.passList) {
-                try {
-                  const fallbackBody = {
-                    startX: start.lon.toString(),
-                    startY: start.lat.toString(),
-                    endX: endPoint.lon.toString(),
-                    endY: endPoint.lat.toString(),
-                    reqCoordType: "WGS84GEO",
-                    resCoordType: "WGS84GEO",
-                    startName: startPoint?.name || "현재 위치",
-                    endName: endPoint.name,
-                  };
-                  
-                  const fallbackResponse = await fetch(apiUrl, {
-                    method: "POST",
-                    headers: {
-                      appKey: "KZDXJtx63R735Qktn8zkkaJv4tbaUqDc1lXzyjLT",
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify(fallbackBody),
-                  });
-                  
-                  const fallbackData = await fallbackResponse.json();
-                  
-                  if (!fallbackData.error && fallbackData.features) {
-                    toast.info("위험 장애물 회피 불가 - 기본 경로로 안내합니다");
-                    // 폴백 데이터를 data로 대체하여 계속 진행
-                    Object.assign(data, fallbackData);
-                  } else {
-                    toast.warning(`도보 경로를 찾을 수 없습니다.`);
-                    continue;
-                  }
-                } catch (fallbackError) {
-                  console.warn("폴백 경로도 실패:", fallbackError);
-                  toast.warning(`도보 경로를 찾을 수 없습니다.`);
-                  continue;
-                }
-              } else {
-                toast.warning(`${routeType === "walk" ? "도보" : "자동차"} 경로를 찾을 수 없습니다.`);
-                continue;
-              }
+              toast.warning(`${routeType === "walk" ? "도보" : "자동차"} 경로를 찾을 수 없습니다.`);
+              continue;
             }
 
             // 대중교통 경로 처리 주석 (대중교통 비활성화)
@@ -857,6 +797,13 @@ const MapView = ({
             console.log("🗺️ 선택된 경로 표시:", selectedRouteType, selectedRoute ? "찾음" : "없음");
           }
           if (selectedRoute && selectedRoute.lineStrings) {
+            // 경로 좌표를 state에 저장 (로드뷰용)
+            const pathCoords = selectedRoute.lineStrings.map((point: any) => ({
+              lat: point.lat(),
+              lon: point.lng()
+            }));
+            setRoutePath(pathCoords);
+
             // 경로 그리기
             const routeSegments = createRouteSegments(selectedRoute.lineStrings);
             const createdPolylines: any[] = [];
@@ -1105,55 +1052,71 @@ const MapView = ({
       {/* 로드뷰 패널 */}
       {roadViewMode && roadViewPosition && (
         <div className="absolute right-0 top-0 w-1/2 h-full bg-background border-l-2 border-border">
-          <div className="absolute top-4 right-4 z-10 flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                if (userLocation) {
-                  setRoadViewPosition({ lat: userLocation.lat, lon: userLocation.lon });
-                  if (map) {
-                    map.setCenter(new window.Tmapv2.LatLng(userLocation.lat, userLocation.lon));
-                  }
-                }
-              }}
-              disabled={!userLocation}
-            >
-              <Navigation className="h-4 w-4 mr-1" />
-              현위치
-            </Button>
-            {startPoint && (
+          <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
+            <div className="flex gap-2">
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => {
-                  setRoadViewPosition({ lat: startPoint.lat, lon: startPoint.lon });
-                  if (map) {
-                    map.setCenter(new window.Tmapv2.LatLng(startPoint.lat, startPoint.lon));
+                  if (userLocation) {
+                    setRoadViewPosition({ lat: userLocation.lat, lon: userLocation.lon });
+                    if (map) {
+                      map.setCenter(new window.Tmapv2.LatLng(userLocation.lat, userLocation.lon));
+                    }
                   }
                 }}
+                disabled={!userLocation}
               >
-                출발지
+                <Navigation className="h-4 w-4 mr-1" />
+                현위치
               </Button>
-            )}
-            {endPoint && (
+              {startPoint && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setRoadViewPosition({ lat: startPoint.lat, lon: startPoint.lon });
+                    if (map) {
+                      map.setCenter(new window.Tmapv2.LatLng(startPoint.lat, startPoint.lon));
+                    }
+                  }}
+                >
+                  출발지
+                </Button>
+              )}
+              {endPoint && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setRoadViewPosition({ lat: endPoint.lat, lon: endPoint.lon });
+                    if (map) {
+                      map.setCenter(new window.Tmapv2.LatLng(endPoint.lat, endPoint.lon));
+                    }
+                  }}
+                >
+                  도착지
+                </Button>
+              )}
+            </div>
+            {routePath && routePath.length > 0 && (
               <Button
                 size="sm"
-                variant="outline"
-                onClick={() => {
-                  setRoadViewPosition({ lat: endPoint.lat, lon: endPoint.lon });
-                  if (map) {
-                    map.setCenter(new window.Tmapv2.LatLng(endPoint.lat, endPoint.lon));
-                  }
-                }}
+                variant={autoPlayRoadView ? "default" : "outline"}
+                onClick={() => setAutoPlayRoadView(!autoPlayRoadView)}
+                className="w-full"
               >
-                도착지
+                {autoPlayRoadView ? "⏸️ 일시정지" : "▶️ 경로 따라보기"}
               </Button>
             )}
           </div>
           <RoadView
             latitude={roadViewPosition.lat}
             longitude={roadViewPosition.lon}
+            routePath={routePath}
+            autoPlay={autoPlayRoadView}
+            onPositionChange={(lat, lon) => setRoadViewPosition({ lat, lon })}
+            onAutoPlayEnd={() => setAutoPlayRoadView(false)}
             className="w-full h-full"
           />
         </div>
