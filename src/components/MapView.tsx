@@ -57,6 +57,7 @@ interface MapViewProps {
     };
   }>) => void;
   className?: string;
+  onRoadViewToggle?: (lat: number, lon: number) => void;
 }
 const MapView = ({
   startPoint,
@@ -65,7 +66,8 @@ const MapView = ({
   onRoutesCalculated,
   onBarrierClick,
   onPlaceClick,
-  className
+  className,
+  onRoadViewToggle
 }: MapViewProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<any>(null);
@@ -761,25 +763,109 @@ const MapView = ({
             // 화살표 마커 추가 (일정 간격으로)
             addArrowMarkers(selectedRoute.lineStrings);
 
-            // 출발지 마커
+            // 출발지 마커 (커스텀 SVG - 파란색 핀 with 애니메이션)
             if (startPoint) {
+              const startSvg = `
+                <svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg" class="animate-bounce">
+                  <defs>
+                    <filter id="start-shadow" x="-50%" y="-50%" width="200%" height="200%">
+                      <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+                      <feOffset dx="0" dy="4" result="offsetblur"/>
+                      <feComponentTransfer>
+                        <feFuncA type="linear" slope="0.5"/>
+                      </feComponentTransfer>
+                      <feMerge>
+                        <feMergeNode/>
+                        <feMergeNode in="SourceGraphic"/>
+                      </feMerge>
+                    </filter>
+                    <radialGradient id="start-gradient" cx="50%" cy="30%">
+                      <stop offset="0%" style="stop-color:hsl(var(--sidebar-ring));stop-opacity:1" />
+                      <stop offset="100%" style="stop-color:hsl(var(--sidebar-ring));stop-opacity:0.7" />
+                    </radialGradient>
+                  </defs>
+                  <!-- 핀 몸체 -->
+                  <path d="M24 2 C12 2 4 10 4 22 C4 36 24 58 24 58 C24 58 44 36 44 22 C44 10 36 2 24 2 Z" 
+                        fill="url(#start-gradient)" 
+                        stroke="white" 
+                        stroke-width="2" 
+                        filter="url(#start-shadow)"/>
+                  <!-- 내부 원 -->
+                  <circle cx="24" cy="22" r="10" fill="white"/>
+                  <!-- S 텍스트 -->
+                  <text x="24" y="28" text-anchor="middle" font-size="16" font-weight="bold" fill="hsl(var(--sidebar-ring))">S</text>
+                  <!-- Pulse 효과 -->
+                  <circle cx="24" cy="22" r="12" fill="hsl(var(--sidebar-ring))" opacity="0.3">
+                    <animate attributeName="r" from="12" to="18" dur="1.5s" repeatCount="indefinite"/>
+                    <animate attributeName="opacity" from="0.3" to="0" dur="1.5s" repeatCount="indefinite"/>
+                  </circle>
+                </svg>
+              `;
+              const startDiv = document.createElement('div');
+              startDiv.innerHTML = startSvg;
+              startDiv.style.width = '48px';
+              startDiv.style.height = '64px';
+              
               const startMarker = new window.Tmapv2.Marker({
                 position: new window.Tmapv2.LatLng(startPoint.lat, startPoint.lon),
-                icon: "https://tmapapi.sktelecom.com/upload/tmap/marker/pin_b_m_s.png",
-                iconSize: new window.Tmapv2.Size(24, 38),
+                icon: startDiv,
+                iconSize: new window.Tmapv2.Size(48, 64),
                 map: map,
-                title: "출발"
+                title: "출발",
+                zIndex: 1000
               });
               markersRef.current.push(startMarker);
             }
 
-            // 도착지 마커
+            // 도착지 마커 (커스텀 SVG - 빨간색 핀 with 애니메이션)
+            const endSvg = `
+              <svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg" class="animate-bounce">
+                <defs>
+                  <filter id="end-shadow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+                    <feOffset dx="0" dy="4" result="offsetblur"/>
+                    <feComponentTransfer>
+                      <feFuncA type="linear" slope="0.5"/>
+                    </feComponentTransfer>
+                    <feMerge>
+                      <feMergeNode/>
+                      <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                  </filter>
+                  <radialGradient id="end-gradient" cx="50%" cy="30%">
+                    <stop offset="0%" style="stop-color:hsl(var(--destructive));stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:hsl(var(--destructive));stop-opacity:0.7" />
+                  </radialGradient>
+                </defs>
+                <!-- 핀 몸체 -->
+                <path d="M24 2 C12 2 4 10 4 22 C4 36 24 58 24 58 C24 58 44 36 44 22 C44 10 36 2 24 2 Z" 
+                      fill="url(#end-gradient)" 
+                      stroke="white" 
+                      stroke-width="2" 
+                      filter="url(#end-shadow)"/>
+                <!-- 내부 원 -->
+                <circle cx="24" cy="22" r="10" fill="white"/>
+                <!-- E 텍스트 -->
+                <text x="24" y="28" text-anchor="middle" font-size="16" font-weight="bold" fill="hsl(var(--destructive))">E</text>
+                <!-- Pulse 효과 -->
+                <circle cx="24" cy="22" r="12" fill="hsl(var(--destructive))" opacity="0.3">
+                  <animate attributeName="r" from="12" to="18" dur="1.5s" repeatCount="indefinite"/>
+                  <animate attributeName="opacity" from="0.3" to="0" dur="1.5s" repeatCount="indefinite"/>
+                </circle>
+              </svg>
+            `;
+            const endDiv = document.createElement('div');
+            endDiv.innerHTML = endSvg;
+            endDiv.style.width = '48px';
+            endDiv.style.height = '64px';
+            
             const endMarker = new window.Tmapv2.Marker({
               position: new window.Tmapv2.LatLng(endPoint.lat, endPoint.lon),
-              icon: "https://tmapapi.sktelecom.com/upload/tmap/marker/pin_r_m_e.png",
-              iconSize: new window.Tmapv2.Size(24, 38),
+              icon: endDiv,
+              iconSize: new window.Tmapv2.Size(48, 64),
               map: map,
-              title: "도착"
+              title: "도착",
+              zIndex: 1000
             });
             markersRef.current.push(endMarker);
 
@@ -1013,14 +1099,14 @@ const MapView = ({
           size="icon"
           variant="outline"
           onClick={() => {
-            if (map) {
+            if (map && onRoadViewToggle) {
               const center = map.getCenter();
               const lat = center._lat;
               const lon = center._lng;
-              window.open(`https://map.kakao.com/?urlX=${lon}&urlY=${lat}&urlLevel=3&map_type=TYPE_MAP&map_hybrid=false`, '_blank');
+              onRoadViewToggle(lat, lon);
             }
           }}
-          title="카카오맵 로드뷰 열기"
+          title="로드뷰 보기"
           className="shadow-lg h-12 w-12 rounded-full px-0"
         >
           <Eye className="h-5 w-5" />

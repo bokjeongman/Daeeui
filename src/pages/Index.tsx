@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Menu } from "lucide-react";
+import { Menu, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SearchBar from "@/components/SearchBar";
 import MapView from "@/components/MapView";
@@ -12,6 +12,7 @@ import Sidebar from "@/components/Sidebar";
 import ReviewModal from "@/components/ReviewModal";
 import PlaceReviewModal from "@/components/PlaceReviewModal";
 import WheelchairBadge from "@/components/WheelchairBadge";
+import RoadView from "@/components/RoadView";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
@@ -67,6 +68,8 @@ const Index = () => {
     };
   }>>([]);
   const [selectedRouteType, setSelectedRouteType] = useState<"transit" | "walk" | "car" | null>(null);
+  const [roadViewMode, setRoadViewMode] = useState(false);
+  const [roadViewPosition, setRoadViewPosition] = useState<{ lat: number; lon: number } | null>(null);
 
   // 로그인 체크
   useEffect(() => {
@@ -113,6 +116,11 @@ const Index = () => {
       setSelectedRouteType("walk");
     }
   };
+
+  const handleRoadViewToggle = (lat: number, lon: number) => {
+    setRoadViewPosition({ lat, lon });
+    setRoadViewMode(!roadViewMode);
+  };
   return <div className="h-screen flex flex-col overflow-hidden">
       {/* 헤더 */}
       <div className="relative z-10">
@@ -132,18 +140,47 @@ const Index = () => {
       </div>
 
       {/* 지도 영역 */}
-      <div className="flex-1 relative">
-        <MapView startPoint={startPoint} endPoint={endPoint} selectedRouteType={selectedRouteType} onRoutesCalculated={setRouteOptions} onBarrierClick={(barrier: any) => {
-        setSelectedBarrier(barrier);
-        setBarrierDetailOpen(true);
-      }} onPlaceClick={(place: {
-        name: string;
-        lat: number;
-        lon: number;
-      }) => {
-        setSelectedPlace(place);
-        setPlaceReviewModalOpen(true);
-      }} />
+      <div className="flex-1 relative flex">
+        <div className={roadViewMode ? "w-[70%]" : "w-full"}>
+          <MapView 
+            startPoint={startPoint} 
+            endPoint={endPoint} 
+            selectedRouteType={selectedRouteType} 
+            onRoutesCalculated={setRouteOptions} 
+            onBarrierClick={(barrier: any) => {
+              setSelectedBarrier(barrier);
+              setBarrierDetailOpen(true);
+            }} 
+            onPlaceClick={(place: {
+              name: string;
+              lat: number;
+              lon: number;
+            }) => {
+              setSelectedPlace(place);
+              setPlaceReviewModalOpen(true);
+            }}
+            onRoadViewToggle={handleRoadViewToggle}
+          />
+        </div>
+        
+        {/* 로드뷰 패널 */}
+        {roadViewMode && roadViewPosition && (
+          <div className="w-[30%] relative border-l-2 border-border bg-background animate-slide-in-right">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-2 z-50 bg-background/80 hover:bg-background"
+              onClick={() => setRoadViewMode(false)}
+            >
+              <EyeOff className="h-5 w-5" />
+            </Button>
+            <RoadView
+              latitude={roadViewPosition.lat}
+              longitude={roadViewPosition.lon}
+              className="h-full"
+            />
+          </div>
+        )}
         
         {/* 후기 등록 버튼 */}
         <ReviewButton onClick={() => setReviewModalOpen(true)} />
