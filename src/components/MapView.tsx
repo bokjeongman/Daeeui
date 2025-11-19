@@ -181,15 +181,16 @@ const MapView = ({
     };
   }, []);
 
-  // 승인된 제보 데이터 가져오기 및 실시간 구독 (모든 제보 표시)
+  // 제보된 배리어 데이터 가져오기 (모든 제보 표시)
   useEffect(() => {
     const fetchApprovedReports = async () => {
       try {
-        const {
-          data,
-          error
-        } = await supabase.from("accessibility_reports").select("*");
+        const { data, error } = await supabase
+          .from("accessibility_reports")
+          .select("*");
         if (error) throw error;
+        
+        console.log("🔍 가져온 제보 데이터:", data?.length, "개", data);
 
         // 제보 데이터를 barrierData 형식으로 변환
         const barriers = (data || []).map(report => {
@@ -283,20 +284,6 @@ const MapView = ({
       });
       setMap(tmapInstance);
       setLoading(false);
-      
-      // 테스트: 복정역에 동그라미 마커 추가
-      const testMarker = new window.Tmapv2.Marker({
-        position: new window.Tmapv2.LatLng(37.4947, 127.1264),
-        icon: "data:image/svg+xml;base64," + btoa(`
-          <svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="30" cy="30" r="25" fill="#ef4444" stroke="white" stroke-width="3"/>
-            <text x="30" y="38" font-family="Arial" font-size="16" font-weight="bold" fill="white" text-anchor="middle">테스트</text>
-          </svg>
-        `),
-        map: tmapInstance,
-        title: "복정역 8호선 테스트 마커"
-      });
-      
       // 최초 진입 시 현재 위치 자동 요청
       getCurrentLocation();
 
@@ -519,9 +506,14 @@ const MapView = ({
     };
 
     // 배리어 마커 생성 (필터 적용)
-    barrierData.forEach(barrier => {
+    console.log("🎯 마커 생성 시작 - barrierData 개수:", barrierData.length, barrierData);
+    
+    barrierData.forEach((barrier, index) => {
+      console.log(`마커 ${index + 1}:`, barrier.name, "lat:", barrier.lat, "lon:", barrier.lon, "severity:", barrier.severity);
+      
       // 필터 상태에 따라 표시 여부 결정
       if (barrier.severity === "safe" && !filter.safe || barrier.severity === "warning" && !filter.warning || barrier.severity === "danger" && !filter.danger) {
+        console.log(`마커 ${index + 1} 필터로 제외됨`);
         return;
       }
       const position = new window.Tmapv2.LatLng(barrier.lat, barrier.lon);
@@ -541,6 +533,8 @@ const MapView = ({
         iconSize: new window.Tmapv2.Size(40, 40),
         title: barrier.name
       });
+      
+      console.log(`✅ 마커 ${index + 1} 생성 완료:`, barrier.name);
 
       // 마커 클릭 이벤트 - 배리어 상세 정보 열기
       marker.addListener("click", () => {
@@ -550,6 +544,8 @@ const MapView = ({
       });
       barrierMarkersRef.current.push(marker);
     });
+    
+    console.log("✨ 총", barrierMarkersRef.current.length, "개 마커 생성됨");
   }, [map, barrierData, filter]);
 
   // 즐겨찾기 마커 표시
