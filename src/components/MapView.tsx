@@ -283,6 +283,20 @@ const MapView = ({
       });
       setMap(tmapInstance);
       setLoading(false);
+      
+      // 테스트: 복정역에 동그라미 마커 추가
+      const testMarker = new window.Tmapv2.Marker({
+        position: new window.Tmapv2.LatLng(37.4947, 127.1264),
+        icon: "data:image/svg+xml;base64," + btoa(`
+          <svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="30" cy="30" r="25" fill="#ef4444" stroke="white" stroke-width="3"/>
+            <text x="30" y="38" font-family="Arial" font-size="16" font-weight="bold" fill="white" text-anchor="middle">테스트</text>
+          </svg>
+        `),
+        map: tmapInstance,
+        title: "복정역 8호선 테스트 마커"
+      });
+      
       // 최초 진입 시 현재 위치 자동 요청
       getCurrentLocation();
 
