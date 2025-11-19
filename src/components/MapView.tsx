@@ -181,14 +181,14 @@ const MapView = ({
     };
   }, []);
 
-  // 승인된 제보 데이터 가져오기 및 실시간 구독
+  // 승인된 제보 데이터 가져오기 및 실시간 구독 (모든 제보 표시)
   useEffect(() => {
     const fetchApprovedReports = async () => {
       try {
         const {
           data,
           error
-        } = await supabase.from("accessibility_reports").select("*").eq("status", "approved");
+        } = await supabase.from("accessibility_reports").select("*");
         if (error) throw error;
 
         // 제보 데이터를 barrierData 형식으로 변환
@@ -219,12 +219,11 @@ const MapView = ({
     };
     fetchApprovedReports();
 
-    // 실시간 변경 사항 구독
+    // 실시간 변경 사항 구독 (모든 제보 포함)
     const channel = supabase.channel('accessibility_reports_changes').on('postgres_changes', {
       event: '*',
       schema: 'public',
-      table: 'accessibility_reports',
-      filter: 'status=eq.approved'
+      table: 'accessibility_reports'
     }, payload => {
       console.log('배리어 데이터 변경 감지:', payload);
       fetchApprovedReports();
@@ -499,7 +498,7 @@ const MapView = ({
               </feMerge>
             </filter>
           </defs>
-          <circle cx="16" cy="16" r="14" fill="${fillColor}" stroke="white" stroke-width="2" filter="url(#barrier-shadow-${category})"/>
+          <rect x="4" y="4" width="24" height="24" rx="2" fill="${fillColor}" stroke="white" stroke-width="2" filter="url(#barrier-shadow-${category})"/>
           ${iconPath}
         </svg>
       `;
