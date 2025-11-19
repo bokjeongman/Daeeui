@@ -410,6 +410,87 @@ const MapView = ({
     barrierMarkersRef.current.forEach(marker => marker.setMap(null));
     barrierMarkersRef.current = [];
 
+    // 카테고리별 SVG 픽토그램 생성 함수
+    const getCategoryIcon = (category: string, severity: string) => {
+      // 접근성 레벨에 따른 색상
+      let fillColor = "#22c55e"; // 기본 초록색 (양호)
+      if (severity === "warning") {
+        fillColor = "#eab308"; // 노란색 (보통)
+      } else if (severity === "danger") {
+        fillColor = "#ef4444"; // 빨간색 (어려움)
+      }
+
+      let iconPath = "";
+      switch (category) {
+        case "ramp": // 경사로
+          iconPath = `
+            <path d="M8 20 L16 12 L24 20" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <rect x="6" y="20" width="20" height="2" fill="white"/>
+          `;
+          break;
+        case "elevator": // 엘리베이터
+          iconPath = `
+            <rect x="10" y="8" width="12" height="16" rx="1" fill="white" stroke="white" stroke-width="1"/>
+            <path d="M16 14 L16 18 M14 16 L18 16" stroke="${fillColor}" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="16" cy="11" r="1.5" fill="${fillColor}"/>
+          `;
+          break;
+        case "curb": // 턱
+          iconPath = `
+            <path d="M8 20 L12 20 L12 16 L16 16 L16 12 L20 12" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          `;
+          break;
+        case "stairs": // 계단
+          iconPath = `
+            <path d="M8 20 L12 20 L12 18 L14 18 L14 16 L16 16 L16 14 L18 14 L18 12 L20 12" stroke="white" stroke-width="2" fill="none" stroke-linecap="square" stroke-linejoin="miter"/>
+          `;
+          break;
+        case "parking": // 주차장
+          iconPath = `
+            <text x="16" y="21" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="white" text-anchor="middle">P</text>
+          `;
+          break;
+        case "restroom": // 화장실
+          iconPath = `
+            <circle cx="16" cy="11" r="2" fill="white"/>
+            <path d="M16 13 L16 18 M13 15 L19 15" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          `;
+          break;
+        case "entrance": // 출입구
+          iconPath = `
+            <rect x="10" y="10" width="12" height="12" rx="1" stroke="white" stroke-width="2" fill="none"/>
+            <path d="M16 14 L16 18 M16 14 L18 16 M16 14 L14 16" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          `;
+          break;
+        case "other": // 기타
+        default:
+          iconPath = `
+            <circle cx="16" cy="16" r="3" fill="white"/>
+          `;
+          break;
+      }
+
+      return `
+        <svg width="40" height="40" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <filter id="barrier-shadow-${category}" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+              <feOffset dx="0" dy="2" result="offsetblur"/>
+              <feComponentTransfer>
+                <feFuncA type="linear" slope="0.5"/>
+              </feComponentTransfer>
+              <feMerge>
+                <feMergeNode/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+          </defs>
+          <circle cx="16" cy="16" r="14" fill="${fillColor}" stroke="white" stroke-width="2" filter="url(#barrier-shadow-${category})"/>
+          ${iconPath}
+        </svg>
+      `;
+    };
+
     // 배리어 마커 생성 (필터 적용)
     barrierData.forEach(barrier => {
       // 필터 상태에 따라 표시 여부 결정
@@ -418,20 +499,19 @@ const MapView = ({
       }
       const position = new window.Tmapv2.LatLng(barrier.lat, barrier.lon);
 
-      // 배리어 심각도에 따라 마커 색상 결정
-      let iconUrl = "";
-      if (barrier.severity === "safe") {
-        iconUrl = "https://tmapapi.sktelecom.com/upload/tmap/marker/pin_g_m_p.png"; // 녹색
-      } else if (barrier.severity === "warning") {
-        iconUrl = "https://tmapapi.sktelecom.com/upload/tmap/marker/pin_y_m_p.png"; // 노란색
-      } else {
-        iconUrl = "https://tmapapi.sktelecom.com/upload/tmap/marker/pin_r_m_p.png"; // 빨간색
-      }
+      // 카테고리별 픽토그램 아이콘 생성
+      const iconSvg = getCategoryIcon(barrier.type, barrier.severity);
+      const markerDiv = document.createElement('div');
+      markerDiv.innerHTML = iconSvg;
+      markerDiv.style.width = '40px';
+      markerDiv.style.height = '40px';
+      markerDiv.style.cursor = 'pointer';
+
       const marker = new window.Tmapv2.Marker({
         position: position,
         map: map,
-        icon: iconUrl,
-        iconSize: new window.Tmapv2.Size(24, 38),
+        icon: markerDiv,
+        iconSize: new window.Tmapv2.Size(40, 40),
         title: barrier.name
       });
 
