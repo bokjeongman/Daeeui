@@ -57,6 +57,10 @@ interface MapViewProps {
     };
   }>) => void;
   className?: string;
+  center?: {
+    lat: number;
+    lon: number;
+  } | null;
 }
 const MapView = ({
   startPoint,
@@ -65,7 +69,8 @@ const MapView = ({
   onRoutesCalculated,
   onBarrierClick,
   onPlaceClick,
-  className
+  className,
+  center
 }: MapViewProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<any>(null);
@@ -318,6 +323,15 @@ const MapView = ({
       setLoading(false);
     }
   }, []);
+
+  // 제보 모달에서 장소 선택 시 지도 중심 이동
+  useEffect(() => {
+    if (!map || !center) return;
+    
+    const targetPosition = new window.Tmapv2.LatLng(center.lat, center.lon);
+    map.setCenter(targetPosition);
+    map.setZoom(17);
+  }, [map, center]);
 
   // 사용자 위치가 변경되면 현재 위치 마커 표시
   useEffect(() => {

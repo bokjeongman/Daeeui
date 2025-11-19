@@ -25,6 +25,7 @@ import { z } from "zod";
 interface ReviewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onPlaceSelect?: (lat: number, lon: number) => void;
 }
 
 const reportSchema = z.object({
@@ -36,7 +37,7 @@ const reportSchema = z.object({
   details: z.string().trim().min(1, "상세 내용을 입력해주세요.").max(2000, "상세 내용은 2000자 이하여야 합니다."),
 });
 
-const ReviewModal = ({ open, onOpenChange }: ReviewModalProps) => {
+const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) => {
   const [location, setLocation] = useState("");
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
@@ -139,6 +140,11 @@ const ReviewModal = ({ open, onOpenChange }: ReviewModalProps) => {
     setLongitude(place.lon.toString());
     setShowResults(false);
     setSearchQuery("");
+    
+    // 지도를 선택한 장소로 이동
+    if (onPlaceSelect) {
+      onPlaceSelect(place.lat, place.lon);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

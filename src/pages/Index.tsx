@@ -67,6 +67,7 @@ const Index = () => {
     };
   }>>([]);
   const [selectedRouteType, setSelectedRouteType] = useState<"transit" | "walk" | "car" | null>(null);
+  const [mapCenter, setMapCenter] = useState<{ lat: number; lon: number } | null>(null);
 
   // 로그인 체크
   useEffect(() => {
@@ -133,17 +134,25 @@ const Index = () => {
 
       {/* 지도 영역 */}
       <div className="flex-1 relative">
-        <MapView startPoint={startPoint} endPoint={endPoint} selectedRouteType={selectedRouteType} onRoutesCalculated={setRouteOptions} onBarrierClick={(barrier: any) => {
-        setSelectedBarrier(barrier);
-        setBarrierDetailOpen(true);
-      }} onPlaceClick={(place: {
-        name: string;
-        lat: number;
-        lon: number;
-      }) => {
-        setSelectedPlace(place);
-        setPlaceReviewModalOpen(true);
-      }} />
+        <MapView 
+          startPoint={startPoint} 
+          endPoint={endPoint} 
+          selectedRouteType={selectedRouteType} 
+          onRoutesCalculated={setRouteOptions} 
+          center={mapCenter}
+          onBarrierClick={(barrier: any) => {
+            setSelectedBarrier(barrier);
+            setBarrierDetailOpen(true);
+          }} 
+          onPlaceClick={(place: {
+            name: string;
+            lat: number;
+            lon: number;
+          }) => {
+            setSelectedPlace(place);
+            setPlaceReviewModalOpen(true);
+          }} 
+        />
         
         {/* 후기 등록 버튼 */}
         <ReviewButton onClick={() => setReviewModalOpen(true)} />
@@ -160,7 +169,11 @@ const Index = () => {
       <Sidebar open={sidebarOpen} onOpenChange={setSidebarOpen} />
 
       {/* 후기 등록 모달 */}
-      <ReviewModal open={reviewModalOpen} onOpenChange={setReviewModalOpen} />
+      <ReviewModal 
+        open={reviewModalOpen} 
+        onOpenChange={setReviewModalOpen}
+        onPlaceSelect={(lat, lon) => setMapCenter({ lat, lon })}
+      />
       
       {/* 장소 후기 모달 */}
       <PlaceReviewModal open={placeReviewModalOpen} onClose={() => {
