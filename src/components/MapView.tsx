@@ -492,42 +492,12 @@ const MapView = ({
 
       let iconPath = "";
       switch (category) {
-        // 주출입구 관련
-        case "entrance": // 출입구
-          iconPath = `
-            <rect x="10" y="10" width="12" height="12" rx="1" stroke="white" stroke-width="2" fill="none"/>
-            <path d="M16 14 L16 18 M16 14 L18 16 M16 14 L14 16" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          `;
-          break;
         case "ramp": // 경사로
           iconPath = `
             <path d="M8 20 L16 12 L24 20" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/>
             <rect x="6" y="20" width="20" height="2" fill="white"/>
           `;
           break;
-        case "curb": // 턱
-        case "step": // 턱/계단
-          iconPath = `
-            <path d="M8 20 L12 20 L12 16 L16 16 L16 12 L20 12" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-            <circle cx="20" cy="11" r="1.5" fill="white"/>
-          `;
-          break;
-        case "stairs": // 계단
-          iconPath = `
-            <path d="M8 20 L12 20 L12 18 L14 18 L14 16 L16 16 L16 14 L18 14 L18 12 L20 12" stroke="white" stroke-width="2" fill="none" stroke-linecap="square" stroke-linejoin="miter"/>
-          `;
-          break;
-        case "accessible_entrance": // 단독 접근 가능 (경사, 턱, 계단 없음)
-          iconPath = `
-            <circle cx="16" cy="12" r="2.5" fill="white"/>
-            <path d="M16 14.5 L16 20" stroke="white" stroke-width="2" stroke-linecap="round"/>
-            <path d="M13 17 L19 17" stroke="white" stroke-width="2" stroke-linecap="round"/>
-            <circle cx="13" cy="20" r="1.5" fill="white"/>
-            <circle cx="19" cy="20" r="1.5" fill="white"/>
-          `;
-          break;
-          
-        // 엘리베이터/에스컬레이터 관련
         case "elevator": // 엘리베이터
           iconPath = `
             <rect x="10" y="8" width="12" height="16" rx="1" fill="white" stroke="white" stroke-width="1"/>
@@ -535,127 +505,37 @@ const MapView = ({
             <circle cx="16" cy="11" r="1.5" fill="${fillColor}"/>
           `;
           break;
-        case "accessible_elevator": // 장애인 접근 가능 엘리베이터
+        case "curb": // 턱
           iconPath = `
-            <rect x="9" y="8" width="14" height="16" rx="1" fill="white" stroke="white" stroke-width="1"/>
-            <circle cx="16" cy="13" r="2" fill="${fillColor}"/>
-            <path d="M16 15 L16 19" stroke="${fillColor}" stroke-width="1.5" stroke-linecap="round"/>
-            <path d="M14 17 L18 17" stroke="${fillColor}" stroke-width="1.5" stroke-linecap="round"/>
-            <circle cx="14" cy="19" r="1" fill="${fillColor}"/>
-            <circle cx="18" cy="19" r="1" fill="${fillColor}"/>
+            <path d="M8 20 L12 20 L12 16 L16 16 L16 12 L20 12" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
           `;
           break;
-        case "escalator": // 에스컬레이터
+        case "stairs": // 계단
           iconPath = `
-            <path d="M9 20 L13 20 L19 12 L23 12" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/>
-            <path d="M11 18 L15 18 L21 10 L23 10" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-            <circle cx="20" cy="11" r="1.5" fill="white"/>
+            <path d="M8 20 L12 20 L12 18 L14 18 L14 16 L16 16 L16 14 L18 14 L18 12 L20 12" stroke="white" stroke-width="2" fill="none" stroke-linecap="square" stroke-linejoin="miter"/>
           `;
           break;
-        case "moving_walkway": // 무빙워크
+        case "parking": // 주차장
           iconPath = `
-            <rect x="8" y="14" width="16" height="4" fill="white" stroke="white" stroke-width="1"/>
-            <path d="M10 16 L14 16 M16 16 L20 16" stroke="${fillColor}" stroke-width="1.5" stroke-linecap="round"/>
-            <path d="M22 16 L24 16" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            <text x="16" y="21" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="white" text-anchor="middle">P</text>
           `;
           break;
-          
-        // 주차장 관련
-        case "parking": // 주차장 (일반)
-        case "parking_available": // 장애인 주차구역 (유)
-          iconPath = `
-            <text x="16" y="22" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="white" text-anchor="middle">P</text>
-            <circle cx="16" cy="11" r="2" fill="white"/>
-            <path d="M16 13 L16 17" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-            <path d="M14 15 L18 15" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-            <circle cx="14" cy="17" r="1" fill="white"/>
-            <circle cx="18" cy="17" r="1" fill="white"/>
-          `;
-          break;
-        case "parking_unavailable": // 장애인 주차구역 (무)
-          iconPath = `
-            <text x="16" y="20" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="white" text-anchor="middle">P</text>
-            <line x1="10" y1="10" x2="22" y2="22" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
-          `;
-          break;
-          
-        // 화장실 관련
-        case "restroom": // 화장실 (일반)
-        case "restroom_available": // 장애인 화장실 (유)
-          iconPath = `
-            <circle cx="16" cy="10" r="2" fill="white"/>
-            <path d="M16 12 L16 18 M13 15 L19 15" stroke="white" stroke-width="2" stroke-linecap="round"/>
-            <circle cx="13" cy="20" r="1.5" fill="white"/>
-            <circle cx="19" cy="20" r="1.5" fill="white"/>
-          `;
-          break;
-        case "restroom_unavailable": // 장애인 화장실 (무)
+        case "restroom": // 화장실
           iconPath = `
             <circle cx="16" cy="11" r="2" fill="white"/>
             <path d="M16 13 L16 18 M13 15 L19 15" stroke="white" stroke-width="2" stroke-linecap="round"/>
-            <line x1="10" y1="10" x2="22" y2="22" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
           `;
           break;
-          
-        // 기타 편의시설
-        case "braille_block": // 점자블록
+        case "entrance": // 출입구
           iconPath = `
-            <circle cx="12" cy="12" r="1.5" fill="white"/>
-            <circle cx="20" cy="12" r="1.5" fill="white"/>
-            <circle cx="12" cy="20" r="1.5" fill="white"/>
-            <circle cx="20" cy="20" r="1.5" fill="white"/>
-            <circle cx="16" cy="16" r="1.5" fill="white"/>
+            <rect x="10" y="10" width="12" height="12" rx="1" stroke="white" stroke-width="2" fill="none"/>
+            <path d="M16 14 L16 18 M16 14 L18 16 M16 14 L14 16" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           `;
           break;
-        case "guide_dog": // 안내견 동반 가능
-          iconPath = `
-            <circle cx="14" cy="12" r="2" fill="white"/>
-            <path d="M12 14 L10 18 M16 14 L18 18" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-            <path d="M14 14 L14 18" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-            <path d="M11 11 L12 9 M17 11 L18 9" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-          `;
-          break;
-        case "wheelchair_rental": // 휠체어 대여
-          iconPath = `
-            <circle cx="16" cy="11" r="2" fill="white"/>
-            <path d="M16 13 L16 17" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-            <path d="M14 15 L18 15" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-            <circle cx="14" cy="19" r="2.5" fill="none" stroke="white" stroke-width="1.5"/>
-            <circle cx="18" cy="19" r="2.5" fill="none" stroke="white" stroke-width="1.5"/>
-          `;
-          break;
-        case "wheelchair_charging": // 전동휠체어 충전소
-          fillColor = "#fbbf24"; // 노란색으로 강제 설정
-          iconPath = `
-            <circle cx="16" cy="11" r="2" fill="white"/>
-            <path d="M16 13 L16 17" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-            <path d="M14 15 L18 15" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-            <circle cx="14" cy="19" r="2.5" fill="none" stroke="white" stroke-width="1.5"/>
-            <circle cx="18" cy="19" r="2.5" fill="none" stroke="white" stroke-width="1.5"/>
-            <path d="M22 8 L20 13 L22 13 L20 18" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-          `;
-          break;
-        case "assistance_bell": // 안내 벨/호출기
-          iconPath = `
-            <path d="M11 16 Q11 12, 16 12 Q21 12, 21 16 L21 18 L11 18 Z" fill="white" stroke="white" stroke-width="1"/>
-            <circle cx="16" cy="19" r="1.5" fill="white"/>
-            <path d="M13 10 L16 7 L19 10" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-          `;
-          break;
-        case "automatic_door": // 자동문
-          iconPath = `
-            <rect x="9" y="10" width="6" height="12" rx="0.5" stroke="white" stroke-width="1.5" fill="none"/>
-            <rect x="17" y="10" width="6" height="12" rx="0.5" stroke="white" stroke-width="1.5" fill="none"/>
-            <path d="M7 16 L9 16 M23 16 L25 16" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-          `;
-          break;
-          
-        // 기타
         case "other": // 기타
         default:
           iconPath = `
             <circle cx="16" cy="16" r="3" fill="white"/>
-            <text x="16" y="18" font-family="Arial, sans-serif" font-size="6" font-weight="bold" fill="${fillColor}" text-anchor="middle">?</text>
           `;
           break;
       }
