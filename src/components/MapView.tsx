@@ -582,16 +582,12 @@ const MapView = ({
       // 고유한 ID로 픽토그램 아이콘 생성
       const uniqueId = `${barrier.type}-${index}`;
       const iconSvg = getCategoryIcon(barrier.type, barrier.severity, uniqueId);
-      const markerDiv = document.createElement('div');
-      markerDiv.innerHTML = iconSvg;
-      markerDiv.style.width = '40px';
-      markerDiv.style.height = '40px';
-      markerDiv.style.cursor = 'pointer';
+      const iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg)}`;
 
       const marker = new window.Tmapv2.Marker({
         position: position,
         map: map,
-        icon: markerDiv,
+        icon: iconUrl,
         iconSize: new window.Tmapv2.Size(40, 40),
         title: barrier.name,
         zIndex: 100 // 배리어 마커의 z-index 설정
