@@ -18,9 +18,10 @@ interface PlaceSearchResultProps {
   results: Place[];
   onSelect: (place: Place, type: "start" | "end") => void;
   onClose: () => void;
+  onMoveToPlace?: (place: { lat: number; lon: number; name: string }) => void;
 }
 
-const PlaceSearchResult = ({ results, onSelect, onClose }: PlaceSearchResultProps) => {
+const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace }: PlaceSearchResultProps) => {
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [user, setUser] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -152,7 +153,12 @@ const PlaceSearchResult = ({ results, onSelect, onClose }: PlaceSearchResultProp
         <Card
           key={place.id}
           className="m-2 p-3 hover:bg-muted/50 transition-colors cursor-pointer"
-          onClick={() => setSelectedPlace(place)}
+          onClick={() => {
+            if (onMoveToPlace) {
+              onMoveToPlace({ lat: place.lat, lon: place.lon, name: place.name });
+            }
+            setSelectedPlace(place);
+          }}
         >
           <div className="flex items-start gap-3">
             <MapPin className="h-5 w-5 text-primary mt-1 shrink-0" />
