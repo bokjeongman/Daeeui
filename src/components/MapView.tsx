@@ -923,25 +923,77 @@ const MapView = ({
             // 화살표 마커 추가 (일정 간격으로)
             addArrowMarkers(selectedRoute.lineStrings);
 
-            // 출발지 마커
+            // 출발지 마커 (초록색, 배리어 마커보다 낮은 z-index)
             if (startPoint) {
+              const startIconSvg = `
+                <svg width="36" height="48" viewBox="0 0 36 48" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <filter id="start-shadow" x="-50%" y="-50%" width="200%" height="200%">
+                      <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+                      <feOffset dx="0" dy="2" result="offsetblur"/>
+                      <feComponentTransfer>
+                        <feFuncA type="linear" slope="0.4"/>
+                      </feComponentTransfer>
+                      <feMerge>
+                        <feMergeNode/>
+                        <feMergeNode in="SourceGraphic"/>
+                      </feMerge>
+                    </filter>
+                  </defs>
+                  <path d="M18 0 C8 0 0 8 0 18 C0 28 18 48 18 48 C18 48 36 28 36 18 C36 8 28 0 18 0 Z" 
+                        fill="#22c55e" 
+                        stroke="white" 
+                        stroke-width="3" 
+                        filter="url(#start-shadow)"/>
+                  <circle cx="18" cy="18" r="10" fill="white"/>
+                  <text x="18" y="23" text-anchor="middle" font-size="16" font-weight="bold" fill="#22c55e">S</text>
+                </svg>
+              `;
+              const startIconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(startIconSvg)}`;
               const startMarker = new window.Tmapv2.Marker({
                 position: new window.Tmapv2.LatLng(startPoint.lat, startPoint.lon),
-                icon: "https://tmapapi.sktelecom.com/upload/tmap/marker/pin_b_m_s.png",
-                iconSize: new window.Tmapv2.Size(24, 38),
+                icon: startIconUrl,
+                iconSize: new window.Tmapv2.Size(36, 48),
                 map: map,
-                title: "출발"
+                title: "출발",
+                zIndex: 90 // 배리어 마커(100)보다 낮게
               });
               markersRef.current.push(startMarker);
             }
 
-            // 도착지 마커
+            // 도착지 마커 (빨간색, 배리어 마커보다 낮은 z-index)
+            const endIconSvg = `
+              <svg width="36" height="48" viewBox="0 0 36 48" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <filter id="end-shadow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+                    <feOffset dx="0" dy="2" result="offsetblur"/>
+                    <feComponentTransfer>
+                      <feFuncA type="linear" slope="0.4"/>
+                    </feComponentTransfer>
+                    <feMerge>
+                      <feMergeNode/>
+                      <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                  </filter>
+                </defs>
+                <path d="M18 0 C8 0 0 8 0 18 C0 28 18 48 18 48 C18 48 36 28 36 18 C36 8 28 0 18 0 Z" 
+                      fill="#ef4444" 
+                      stroke="white" 
+                      stroke-width="3" 
+                      filter="url(#end-shadow)"/>
+                <circle cx="18" cy="18" r="10" fill="white"/>
+                <text x="18" y="23" text-anchor="middle" font-size="16" font-weight="bold" fill="#ef4444">E</text>
+              </svg>
+            `;
+            const endIconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(endIconSvg)}`;
             const endMarker = new window.Tmapv2.Marker({
               position: new window.Tmapv2.LatLng(endPoint.lat, endPoint.lon),
-              icon: "https://tmapapi.sktelecom.com/upload/tmap/marker/pin_r_m_e.png",
-              iconSize: new window.Tmapv2.Size(24, 38),
+              icon: endIconUrl,
+              iconSize: new window.Tmapv2.Size(36, 48),
               map: map,
-              title: "도착"
+              title: "도착",
+              zIndex: 90 // 배리어 마커(100)보다 낮게
             });
             markersRef.current.push(endMarker);
 
@@ -988,14 +1040,14 @@ const MapView = ({
     };
   }, [selectedRouteType, map, endPoint]);
 
-  // 화살표 마커 추가 함수
+  // 화살표 마커 추가 함수 (이미지 참조 스타일)
   const addArrowMarkers = (path: any[]) => {
     // 기존 화살표 제거
     arrowMarkersRef.current.forEach(marker => marker.setMap(null));
     arrowMarkersRef.current = [];
 
     // 경로 길이에 따라 화살표 간격 조정 (약 100m마다)
-    const arrowInterval = Math.max(10, Math.floor(path.length / 10));
+    const arrowInterval = Math.max(8, Math.floor(path.length / 12));
     for (let i = arrowInterval; i < path.length; i += arrowInterval) {
       const prevPoint = path[i - 1];
       const currentPoint = path[i];
@@ -1003,15 +1055,15 @@ const MapView = ({
       // 화살표 방향 계산
       const angle = calculateBearing(prevPoint.lat(), prevPoint.lng(), currentPoint.lat(), currentPoint.lng());
 
-      // 화살표 SVG 생성 (더 크고 명확하게)
+      // 네이버 지도 스타일 화살표 SVG 생성 (흰색 화살표)
       const arrowSvg = `
-        <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+        <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" style="transform: rotate(${angle}deg);">
           <defs>
-            <filter id="shadow-${i}" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
-              <feOffset dx="0" dy="3" result="offsetblur"/>
+            <filter id="arrow-shadow-${i}" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="1.5"/>
+              <feOffset dx="0" dy="1" result="offsetblur"/>
               <feComponentTransfer>
-                <feFuncA type="linear" slope="0.5"/>
+                <feFuncA type="linear" slope="0.3"/>
               </feComponentTransfer>
               <feMerge>
                 <feMergeNode/>
@@ -1019,25 +1071,24 @@ const MapView = ({
               </feMerge>
             </filter>
           </defs>
-          <circle cx="25" cy="25" r="22" fill="hsl(var(--sidebar-ring))" stroke="white" stroke-width="3" filter="url(#shadow-${i})"/>
-          <path d="M25 12 L25 35 M25 35 L17 27 M25 35 L33 27" 
+          <path d="M16 8 L16 24 M16 8 L11 13 M16 8 L21 13" 
                 stroke="white" 
-                stroke-width="5" 
+                stroke-width="3.5" 
                 stroke-linecap="round" 
                 stroke-linejoin="round" 
-                fill="none"/>
+                fill="none"
+                filter="url(#arrow-shadow-${i})"/>
         </svg>
       `;
-      const arrowDiv = document.createElement('div');
-      arrowDiv.innerHTML = arrowSvg;
-      arrowDiv.style.transform = `rotate(${angle}deg)`;
-      arrowDiv.style.transformOrigin = 'center';
-      arrowDiv.style.filter = 'drop-shadow(0 3px 8px rgba(59, 130, 246, 0.4))';
+      
+      const iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(arrowSvg)}`;
+
       const arrowMarker = new window.Tmapv2.Marker({
         position: currentPoint,
-        icon: arrowDiv,
-        iconSize: new window.Tmapv2.Size(50, 50),
-        map: map
+        icon: iconUrl,
+        iconSize: new window.Tmapv2.Size(32, 32),
+        map: map,
+        zIndex: 50 // 경로 위에 표시되도록
       });
       arrowMarkersRef.current.push(arrowMarker);
     }

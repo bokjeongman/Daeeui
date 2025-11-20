@@ -12,10 +12,7 @@ import Sidebar from "@/components/Sidebar";
 import ReviewModal from "@/components/ReviewModal";
 import PlaceReviewModal from "@/components/PlaceReviewModal";
 import WheelchairBadge from "@/components/WheelchairBadge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { MapPin, AlertTriangle } from "lucide-react";
+import BarrierDetailSheet from "@/components/BarrierDetailSheet";
 import { toast } from "sonner";
 const Index = () => {
   const navigate = useNavigate();
@@ -28,7 +25,7 @@ const Index = () => {
     lon: number;
   } | null>(null);
   const [selectedBarrier, setSelectedBarrier] = useState<any>(null);
-  const [barrierDetailOpen, setBarrierDetailOpen] = useState(false);
+  const [barrierSheetOpen, setBarrierSheetOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"default" | "yellow">("default");
   const [hasRoute, setHasRoute] = useState(false);
   const [startPoint, setStartPoint] = useState<{
@@ -122,7 +119,9 @@ const Index = () => {
   }) => {
     setMapCenter({ lat: place.lat, lon: place.lon });
   };
-  return <div className="h-screen flex flex-col overflow-hidden">
+  
+  return (
+    <div className="h-screen flex flex-col overflow-hidden">
       {/* 헤더 */}
       <div className="relative z-10">
         <div className={`${viewMode === "yellow" ? "bg-accent" : "bg-background"}`}>
@@ -150,8 +149,8 @@ const Index = () => {
           center={mapCenter}
           onBarrierClick={(barrier: any) => {
             setSelectedBarrier(barrier);
-            setBarrierDetailOpen(true);
-          }} 
+            setBarrierSheetOpen(true);
+          }}
           onPlaceClick={(place: {
             name: string;
             lat: number;
@@ -184,62 +183,23 @@ const Index = () => {
       />
       
       {/* 장소 후기 모달 */}
-      <PlaceReviewModal open={placeReviewModalOpen} onClose={() => {
-      setPlaceReviewModalOpen(false);
-      setSelectedPlace(null);
-    }} place={selectedPlace} />
+      <PlaceReviewModal 
+        open={placeReviewModalOpen} 
+        onClose={() => {
+          setPlaceReviewModalOpen(false);
+          setSelectedPlace(null);
+        }} 
+        place={selectedPlace} 
+      />
 
-      {/* 배리어 상세 정보 Dialog */}
-      <Dialog open={barrierDetailOpen} onOpenChange={setBarrierDetailOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5" />
-              배리어 상세 정보
-            </DialogTitle>
-          </DialogHeader>
-          {selectedBarrier && <div className="space-y-4">
-              <div className="space-y-2">
-                <h3 className="font-semibold text-lg">{selectedBarrier.name}</h3>
-                <div className="flex items-center gap-2">
-                  {selectedBarrier.severity === "safe" && <Badge className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20">
-                      양호
-                    </Badge>}
-                  {selectedBarrier.severity === "warning" && <Badge className="bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20">
-                      보통
-                    </Badge>}
-                  {selectedBarrier.severity === "danger" && <Badge className="bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20">
-                      어려움
-                    </Badge>}
-                  <Badge variant="outline">{selectedBarrier.type}</Badge>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin className="h-4 w-4" />
-                <span>위도: {selectedBarrier.lat?.toFixed(6)}, 경도: {selectedBarrier.lon?.toFixed(6)}</span>
-              </div>
-
-              {selectedBarrier.details && <div className="space-y-1">
-                  <h4 className="font-medium text-sm">상세 정보</h4>
-                  <p className="text-sm text-muted-foreground">{selectedBarrier.details}</p>
-                </div>}
-
-              {selectedBarrier.photo_urls && selectedBarrier.photo_urls.length > 0 && <div className="space-y-1">
-                  <h4 className="font-medium text-sm">사진</h4>
-                  {selectedBarrier.photo_urls.length === 1 ? <img src={selectedBarrier.photo_urls[0]} alt={selectedBarrier.name} className="w-full rounded-lg border" /> : <Carousel className="w-full">
-                      <CarouselContent>
-                        {selectedBarrier.photo_urls.map((url: string, index: number) => <CarouselItem key={index}>
-                            <img src={url} alt={`${selectedBarrier.name} ${index + 1}`} className="w-full rounded-lg border" />
-                          </CarouselItem>)}
-                      </CarouselContent>
-                      <CarouselPrevious />
-                      <CarouselNext />
-                    </Carousel>}
-                </div>}
-            </div>}
-        </DialogContent>
-      </Dialog>
-    </div>;
+      {/* 배리어 상세 정보 시트 */}
+      <BarrierDetailSheet
+        open={barrierSheetOpen}
+        onOpenChange={setBarrierSheetOpen}
+        barrier={selectedBarrier}
+      />
+    </div>
+  );
 };
+
 export default Index;
