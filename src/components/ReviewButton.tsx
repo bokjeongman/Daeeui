@@ -6,10 +6,12 @@ interface ReviewButtonProps {
 }
 
 const ReviewButton = ({ onClick }: ReviewButtonProps) => {
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  
   return (
     <Button
       onClick={onClick}
-      className="fixed bottom-40 right-6 h-14 px-6 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg z-50 font-semibold flex items-center gap-2"
+      className={`fixed h-14 px-6 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg z-50 font-semibold flex items-center gap-2 ${isMobile ? 'bottom-4 left-4' : 'bottom-24 right-4'}`}
     >
       <MessageSquarePlus className="h-5 w-5" />
       <span>제보</span>

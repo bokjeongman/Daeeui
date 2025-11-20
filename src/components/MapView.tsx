@@ -1181,8 +1181,8 @@ const MapView = ({
         </Button>
       </div>
 
-      {/* 필터 버튼 (모바일: 하단 좌측, 데스크탑: 하단 우측 위) */}
-      <div className={`absolute z-40 space-y-2 pointer-events-auto ${isMobile ? 'bottom-4 left-4' : 'bottom-24 right-4'}`}>
+      {/* 필터 버튼 (하단 우측 위) */}
+      <div className="absolute bottom-40 right-6 z-40 space-y-2 pointer-events-auto">
         <Button
           onClick={() => setShowFilter(!showFilter)}
           size="lg"
@@ -1192,7 +1192,7 @@ const MapView = ({
           <Filter className="h-6 w-6" />
         </Button>
         
-        {showFilter && <div className={`absolute bottom-16 bg-background border-2 border-border rounded-lg shadow-xl p-3 space-y-2 min-w-[160px] ${isMobile ? 'left-0' : 'right-0'}`}>
+        {showFilter && <div className="absolute bottom-16 right-0 bg-background border-2 border-border rounded-lg shadow-xl p-3 space-y-2 min-w-[160px]">
             <div className="text-sm font-semibold mb-2 text-foreground">접근성 필터</div>
             
             <button onClick={() => setFilter({
