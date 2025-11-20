@@ -624,6 +624,17 @@ const MapView = ({
             <circle cx="18" cy="19" r="2.5" fill="none" stroke="white" stroke-width="1.5"/>
           `;
           break;
+        case "wheelchair_charging": // 전동휠체어 충전소
+          fillColor = "#fbbf24"; // 노란색으로 강제 설정
+          iconPath = `
+            <circle cx="16" cy="11" r="2" fill="white"/>
+            <path d="M16 13 L16 17" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M14 15 L18 15" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+            <circle cx="14" cy="19" r="2.5" fill="none" stroke="white" stroke-width="1.5"/>
+            <circle cx="18" cy="19" r="2.5" fill="none" stroke="white" stroke-width="1.5"/>
+            <path d="M22 8 L20 13 L22 13 L20 18" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          `;
+          break;
         case "assistance_bell": // 안내 벨/호출기
           iconPath = `
             <path d="M11 16 Q11 12, 16 12 Q21 12, 21 16 L21 18 L11 18 Z" fill="white" stroke="white" stroke-width="1"/>
