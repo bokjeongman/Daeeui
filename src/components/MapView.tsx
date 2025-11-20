@@ -442,7 +442,7 @@ const MapView = ({
       icon: markerDiv,
       iconSize: new window.Tmapv2.Size(60, 60),
       title: "현재 위치",
-      zIndex: 9999
+      zIndex: 1000 // 현재 위치 마커가 배리어 마커를 가리지 않도록 조정
     });
     currentMarkerRef.current = marker;
 
@@ -469,20 +469,25 @@ const MapView = ({
 
   // 배리어 마커 표시
   useEffect(() => {
-    if (!map || !window.Tmapv2 || barrierData.length === 0) return;
+    if (!map || !window.Tmapv2) return;
 
     // 기존 배리어 마커 제거
     barrierMarkersRef.current.forEach(marker => marker.setMap(null));
     barrierMarkersRef.current = [];
 
+    if (barrierData.length === 0) {
+      console.log("⚠️ 표시할 배리어 데이터가 없습니다");
+      return;
+    }
+
     // 카테고리별 SVG 픽토그램 생성 함수
-    const getCategoryIcon = (category: string, severity: string) => {
+    const getCategoryIcon = (category: string, severity: string, uniqueId: string) => {
       // 접근성 레벨에 따른 색상
-      let fillColor = "#22c55e"; // 기본 초록색 (양호)
+      let fillColor = "#22c55e"; // 양호 (초록)
       if (severity === "warning") {
-        fillColor = "#eab308"; // 노란색 (보통)
+        fillColor = "#eab308"; // 보통 (노랑)
       } else if (severity === "danger") {
-        fillColor = "#ef4444"; // 빨간색 (어려움)
+        fillColor = "#ef4444"; // 어려움 (빨강)
       }
 
       let iconPath = "";
@@ -538,7 +543,7 @@ const MapView = ({
       return `
         <svg width="40" height="40" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
           <defs>
-            <filter id="barrier-shadow-${category}" x="-50%" y="-50%" width="200%" height="200%">
+            <filter id="barrier-shadow-${uniqueId}" x="-50%" y="-50%" width="200%" height="200%">
               <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
               <feOffset dx="0" dy="2" result="offsetblur"/>
               <feComponentTransfer>
@@ -550,7 +555,7 @@ const MapView = ({
               </feMerge>
             </filter>
           </defs>
-          <rect x="4" y="4" width="24" height="24" rx="2" fill="${fillColor}" stroke="white" stroke-width="2" filter="url(#barrier-shadow-${category})"/>
+          <rect x="4" y="4" width="24" height="24" rx="2" fill="${fillColor}" stroke="white" stroke-width="2" filter="url(#barrier-shadow-${uniqueId})"/>
           ${iconPath}
         </svg>
       `;
@@ -563,14 +568,20 @@ const MapView = ({
       console.log(`마커 ${index + 1}:`, barrier.name, "lat:", barrier.lat, "lon:", barrier.lon, "severity:", barrier.severity);
       
       // 필터 상태에 따라 표시 여부 결정
-      if (barrier.severity === "safe" && !filter.safe || barrier.severity === "warning" && !filter.warning || barrier.severity === "danger" && !filter.danger) {
+      if (
+        (barrier.severity === "safe" && !filter.safe) ||
+        (barrier.severity === "warning" && !filter.warning) ||
+        (barrier.severity === "danger" && !filter.danger)
+      ) {
         console.log(`마커 ${index + 1} 필터로 제외됨`);
         return;
       }
+
       const position = new window.Tmapv2.LatLng(barrier.lat, barrier.lon);
 
-      // 카테고리별 픽토그램 아이콘 생성
-      const iconSvg = getCategoryIcon(barrier.type, barrier.severity);
+      // 고유한 ID로 픽토그램 아이콘 생성
+      const uniqueId = `${barrier.type}-${index}`;
+      const iconSvg = getCategoryIcon(barrier.type, barrier.severity, uniqueId);
       const markerDiv = document.createElement('div');
       markerDiv.innerHTML = iconSvg;
       markerDiv.style.width = '40px';
@@ -582,7 +593,8 @@ const MapView = ({
         map: map,
         icon: markerDiv,
         iconSize: new window.Tmapv2.Size(40, 40),
-        title: barrier.name
+        title: barrier.name,
+        zIndex: 100 // 배리어 마커의 z-index 설정
       });
       
       console.log(`✅ 마커 ${index + 1} 생성 완료:`, barrier.name);
@@ -597,7 +609,7 @@ const MapView = ({
     });
     
     console.log("✨ 총", barrierMarkersRef.current.length, "개 마커 생성됨");
-  }, [map, barrierData, filter]);
+  }, [map, barrierData, filter, onBarrierClick]);
 
   // 즐겨찾기 마커 표시
   useEffect(() => {
