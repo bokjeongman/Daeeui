@@ -8,13 +8,15 @@ interface SearchBarProps {
   variant?: "default" | "yellow";
   onSelectStart?: (place: { lat: number; lon: number; name: string }) => void;
   onSelectEnd?: (place: { lat: number; lon: number; name: string }) => void;
+  onMoveToPlace?: (place: { lat: number; lon: number; name: string }) => void;
 }
 
 const SearchBar = ({ 
   placeholder = "장소 검색", 
   variant = "default",
   onSelectStart,
-  onSelectEnd
+  onSelectEnd,
+  onMoveToPlace
 }: SearchBarProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -117,6 +119,7 @@ const SearchBar = ({
           results={searchResults}
           onSelect={handleSelectPlace}
           onClose={() => setShowResults(false)}
+          onMoveToPlace={onMoveToPlace}
         />
       )}
     </div>

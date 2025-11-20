@@ -114,6 +114,14 @@ const Index = () => {
       setSelectedRouteType("walk");
     }
   };
+
+  const handleMoveToPlace = (place: {
+    lat: number;
+    lon: number;
+    name: string;
+  }) => {
+    setMapCenter({ lat: place.lat, lon: place.lon });
+  };
   return <div className="h-screen flex flex-col overflow-hidden">
       {/* 헤더 */}
       <div className="relative z-10">
@@ -123,7 +131,7 @@ const Index = () => {
               <Menu className="h-6 w-6" />
             </Button>
             <div className="flex-1 min-w-0">
-              <SearchBar placeholder={searchMode === "end" ? "도착지 검색" : "장소 검색"} variant={viewMode} onSelectStart={place => handleSelectPlace(place, "start")} onSelectEnd={place => handleSelectPlace(place, "end")} />
+              <SearchBar placeholder={searchMode === "end" ? "도착지 검색" : "장소 검색"} variant={viewMode} onSelectStart={place => handleSelectPlace(place, "start")} onSelectEnd={place => handleSelectPlace(place, "end")} onMoveToPlace={handleMoveToPlace} />
             </div>
           </div>
           {viewMode === "yellow" && <div className="px-4 pb-4">
