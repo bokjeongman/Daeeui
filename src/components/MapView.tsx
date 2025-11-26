@@ -684,8 +684,8 @@ const MapView = ({
   useEffect(() => {
     if (!map || !window.Tmapv2) return;
     
-    // endPoint가 없으면 기존 경로만 제거하고 종료
-    if (!endPoint) {
+    // endPoint가 없거나 selectedRouteType이 없으면 기존 경로 제거하고 종료
+    if (!endPoint || !selectedRouteType) {
       if (routeLayerRef.current && routeLayerRef.current.length) {
         routeLayerRef.current.forEach((layer: any) => layer.setMap(null));
         routeLayerRef.current = [];
