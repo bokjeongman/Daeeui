@@ -66,6 +66,7 @@ const Index = () => {
   }>>([]);
   const [selectedRouteType, setSelectedRouteType] = useState<"transit" | "walk" | "car" | null>(null);
   const [mapCenter, setMapCenter] = useState<{ lat: number; lon: number } | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lon: number } | null>(null);
 
   // 로그인 체크
   useEffect(() => {
@@ -135,15 +136,24 @@ const Index = () => {
     setRouteOptions(routes);
     
     // route_history에 자동 저장
-    if (routes.length > 0 && startPoint && endPoint) {
+    if (routes.length > 0 && endPoint) {
+      // 출발지 정보: 사용자가 선택한 출발지가 있으면 그걸 사용, 없으면 현재 위치 사용
+      const baseStartPoint = startPoint || (currentLocation ? {
+        lat: currentLocation.lat,
+        lon: currentLocation.lon,
+        name: "",
+      } : null);
+
+      if (!baseStartPoint) return;
+
       try {
         const { data: { user } } = await supabase.auth.getUser();
         
         if (user) {
           // 출발지와 도착지의 실제 주소를 가져오기
-          const startName = startPoint.name === "현위치" || !startPoint.name
-            ? await reverseGeocode(startPoint.lat, startPoint.lon)
-            : startPoint.name;
+          const startName = baseStartPoint.name === "현위치" || !baseStartPoint.name
+            ? await reverseGeocode(baseStartPoint.lat, baseStartPoint.lon)
+            : baseStartPoint.name;
           
           const endName = endPoint.name === "현위치" || !endPoint.name
             ? await reverseGeocode(endPoint.lat, endPoint.lon)
@@ -155,8 +165,8 @@ const Index = () => {
             .insert({
               user_id: user.id,
               start_name: startName,
-              start_lat: startPoint.lat,
-              start_lon: startPoint.lon,
+              start_lat: baseStartPoint.lat,
+              start_lon: baseStartPoint.lon,
               end_name: endName,
               end_lat: endPoint.lat,
               end_lon: endPoint.lon,
@@ -172,7 +182,7 @@ const Index = () => {
         if (import.meta.env.DEV) console.error("경로 저장 오류:", error);
       }
     }
-  }, [startPoint, endPoint]);
+  }, [startPoint, endPoint, currentLocation]);
   
   return (
     <div className="h-screen flex flex-col overflow-hidden">
@@ -212,7 +222,10 @@ const Index = () => {
           }) => {
             setSelectedPlace(place);
             setPlaceReviewModalOpen(true);
-          }} 
+          }}
+          onUserLocationChange={(location) => {
+            setCurrentLocation(location);
+          }}
         />
         
         {/* 후기 등록 버튼 */}
