@@ -20,6 +20,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { z } from "zod";
+import { reverseGeocode } from "@/lib/utils";
 
 interface Review {
   id: string;
@@ -98,23 +99,6 @@ const MyReviews = () => {
     }
   };
 
-  const reverseGeocode = async (lat: number, lon: number): Promise<string> => {
-    try {
-      const response = await fetch(
-        `https://apis.openapi.sk.com/tmap/geo/reversegeocoding?version=1&format=json&callback=result&coordType=WGS84GEO&addressType=A10&lon=${lon}&lat=${lat}&appKey=KZDXJtx63R735Qktn8zkkaJv4tbaUqDc1lXzyjLT`
-      );
-      const data = await response.json();
-      
-      if (data.addressInfo) {
-        const addr = data.addressInfo;
-        return `${addr.city_do || ''} ${addr.gu_gun || ''} ${addr.eup_myun || ''} ${addr.adminDong || ''} ${addr.ri || ''}`.trim();
-      }
-      return `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
-    } catch (error) {
-      if (import.meta.env.DEV) console.error("역지오코딩 실패:", error);
-      return `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
-    }
-  };
 
   const handleEdit = (review: Review) => {
     setEditingReview(review);
