@@ -122,6 +122,7 @@ const SearchBar = ({
           onSelect={handleSelectPlace}
           onClose={() => {
             setShowResults(false);
+            setSearchQuery("");
             if (onClearPlace) onClearPlace();
           }}
           onMoveToPlace={onMoveToPlace}

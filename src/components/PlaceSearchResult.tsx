@@ -42,7 +42,7 @@ const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace, onClearP
     return () => subscription.unsubscribe();
   }, []);
 
-  const handleAddToFavorites = async (place: Place) => {
+  const handleToggleFavorite = async (place: Place) => {
     if (!user) {
       toast.error("로그인이 필요합니다.");
       navigate("/auth");
@@ -51,28 +51,43 @@ const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace, onClearP
 
     setIsSaving(true);
     try {
-      const { error } = await supabase
+      // 이미 즐겨찾기에 있는지 확인
+      const { data: existingFavorite } = await supabase
         .from("favorites")
-        .insert({
-          user_id: user.id,
-          place_name: place.name,
-          latitude: place.lat,
-          longitude: place.lon,
-          address: place.address,
-        });
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("place_name", place.name)
+        .eq("latitude", place.lat)
+        .eq("longitude", place.lon)
+        .single();
 
-      if (error) {
-        if (error.code === "23505") {
-          toast.error("이미 즐겨찾기에 추가된 장소입니다.");
-        } else {
-          throw error;
-        }
+      if (existingFavorite) {
+        // 즐겨찾기 삭제
+        const { error } = await supabase
+          .from("favorites")
+          .delete()
+          .eq("id", existingFavorite.id);
+
+        if (error) throw error;
+        toast.success("즐겨찾기에서 제거되었습니다.");
       } else {
+        // 즐겨찾기 추가
+        const { error } = await supabase
+          .from("favorites")
+          .insert({
+            user_id: user.id,
+            place_name: place.name,
+            latitude: place.lat,
+            longitude: place.lon,
+            address: place.address,
+          });
+
+        if (error) throw error;
         toast.success("즐겨찾기에 추가되었습니다.");
       }
     } catch (error: any) {
-      if (import.meta.env.DEV) console.error("즐겨찾기 추가 실패:", error);
-      toast.error("즐겨찾기 추가에 실패했습니다.");
+      if (import.meta.env.DEV) console.error("즐겨찾기 처리 실패:", error);
+      toast.error("즐겨찾기 처리에 실패했습니다.");
     } finally {
       setIsSaving(false);
     }
@@ -88,7 +103,7 @@ const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace, onClearP
               variant="outline"
               size="icon"
               className="h-10 w-10 rounded-full bg-background shadow-md"
-              onClick={() => handleAddToFavorites(selectedPlace)}
+              onClick={() => handleToggleFavorite(selectedPlace)}
               disabled={isSaving}
             >
               <Star className="h-5 w-5" />
@@ -99,7 +114,7 @@ const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace, onClearP
               className="h-10 w-10 rounded-full bg-background shadow-md"
               onClick={() => {
                 setSelectedPlace(null);
-                if (onClearPlace) onClearPlace();
+                onClose();
               }}
             >
               <X className="h-5 w-5" />
@@ -122,7 +137,7 @@ const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace, onClearP
               onClick={() => {
                 onSelect(selectedPlace, "start");
                 setSelectedPlace(null);
-                if (onClearPlace) onClearPlace();
+                onClose();
               }}
             >
               출발
@@ -134,7 +149,7 @@ const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace, onClearP
               onClick={() => {
                 onSelect(selectedPlace, "end");
                 setSelectedPlace(null);
-                if (onClearPlace) onClearPlace();
+                onClose();
               }}
             >
               도착

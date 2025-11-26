@@ -418,48 +418,52 @@ const MapView = ({
     // selectedSearchPlace가 없으면 종료
     if (!selectedSearchPlace) return;
 
-    const position = new window.Tmapv2.LatLng(selectedSearchPlace.lat, selectedSearchPlace.lon);
+    try {
+      const position = new window.Tmapv2.LatLng(selectedSearchPlace.lat, selectedSearchPlace.lon);
 
-    // 파란색 핀 SVG 생성
-    const bluePinIcon = `
-      <svg width="40" height="50" viewBox="0 0 40 50" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <filter id="pin-shadow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
-            <feOffset dx="0" dy="2" result="offsetblur"/>
-            <feComponentTransfer>
-              <feFuncA type="linear" slope="0.5"/>
-            </feComponentTransfer>
-            <feMerge>
-              <feMergeNode/>
-              <feMergeNode in="SourceGraphic"/>
-            </feMerge>
-          </filter>
-        </defs>
-        <!-- 핀 본체 -->
-        <path d="M20 2 C11 2 4 9 4 18 C4 28 20 46 20 46 C20 46 36 28 36 18 C36 9 29 2 20 2 Z" 
-              fill="#3b82f6" stroke="white" stroke-width="2" filter="url(#pin-shadow)"/>
-        <!-- 내부 원 -->
-        <circle cx="20" cy="18" r="6" fill="white"/>
-      </svg>
-    `;
+      // 파란색 핀 SVG 생성
+      const bluePinIcon = `
+        <svg width="40" height="50" viewBox="0 0 40 50" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <filter id="pin-shadow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+              <feOffset dx="0" dy="2" result="offsetblur"/>
+              <feComponentTransfer>
+                <feFuncA type="linear" slope="0.5"/>
+              </feComponentTransfer>
+              <feMerge>
+                <feMergeNode/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+          </defs>
+          <!-- 핀 본체 -->
+          <path d="M20 2 C11 2 4 9 4 18 C4 28 20 46 20 46 C20 46 36 28 36 18 C36 9 29 2 20 2 Z" 
+                fill="#3b82f6" stroke="white" stroke-width="2" filter="url(#pin-shadow)"/>
+          <!-- 내부 원 -->
+          <circle cx="20" cy="18" r="6" fill="white"/>
+        </svg>
+      `;
 
-    const markerDiv = document.createElement('div');
-    markerDiv.innerHTML = bluePinIcon;
-    markerDiv.style.width = '40px';
-    markerDiv.style.height = '50px';
-    markerDiv.style.cursor = 'pointer';
+      const iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(bluePinIcon)}`;
 
-    const marker = new window.Tmapv2.Marker({
-      position: position,
-      map: map,
-      icon: markerDiv,
-      iconSize: new window.Tmapv2.Size(40, 50),
-      title: selectedSearchPlace.name,
-      zIndex: 999
-    });
+      const marker = new window.Tmapv2.Marker({
+        position: position,
+        map: map,
+        icon: iconUrl,
+        iconSize: new window.Tmapv2.Size(40, 50),
+        title: selectedSearchPlace.name,
+        zIndex: 999
+      });
 
-    searchPlaceMarkerRef.current = marker;
+      searchPlaceMarkerRef.current = marker;
+      
+      // 지도 중심을 검색 장소로 이동
+      map.setCenter(position);
+      map.setZoom(17);
+    } catch (error) {
+      if (import.meta.env.DEV) console.error("검색 장소 마커 생성 실패:", error);
+    }
   }, [map, selectedSearchPlace]);
 
   // 사용자 위치가 변경되면 현재 위치 마커 표시
