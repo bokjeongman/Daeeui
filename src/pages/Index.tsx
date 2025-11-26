@@ -122,6 +122,15 @@ const Index = () => {
     setMapCenter({ lat: place.lat, lon: place.lon });
   };
 
+  const handleCancelRoute = () => {
+    setHasRoute(false);
+    setRouteOptions([]);
+    setSelectedRouteType(null);
+    setStartPoint(null);
+    setEndPoint(null);
+    setSearchMode(null);
+  };
+
   // 경로 계산 후 자동으로 route_history에 저장
   const handleRoutesCalculated = useCallback(async (routes: Array<{
     type: "transit" | "walk" | "car";
@@ -230,22 +239,58 @@ const Index = () => {
         
         {/* 경로 정보 오버레이 */}
         {hasRoute && routeOptions.length > 0 && selectedRouteType && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[5] animate-fade-in">
-            <div className="bg-background/95 backdrop-blur-sm rounded-full px-6 py-3 shadow-lg border border-border flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                <span className="text-sm font-medium text-foreground">
-                  {`${(routeOptions.find(r => r.type === selectedRouteType)?.distance / 1000).toFixed(1)}km`}
-                </span>
+          <div className="absolute top-4 left-4 right-4 z-[5] animate-fade-in">
+            <div className="bg-background/95 backdrop-blur-sm rounded-2xl px-4 py-3 shadow-lg border border-border">
+              {/* 출발지 → 도착지 */}
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <div className="w-2.5 h-2.5 rounded-full bg-primary flex-shrink-0" />
+                    <span className="text-sm font-medium text-foreground truncate">
+                      {startPoint?.name || "현위치"}
+                    </span>
+                  </div>
+                  <svg className="w-4 h-4 text-muted-foreground flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <div className="w-2.5 h-2.5 rounded-full bg-destructive flex-shrink-0" />
+                    <span className="text-sm font-medium text-foreground truncate">
+                      {endPoint?.name || "도착지"}
+                    </span>
+                  </div>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 flex-shrink-0 hover:bg-destructive/10"
+                  onClick={handleCancelRoute}
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </Button>
               </div>
-              <div className="w-px h-4 bg-border" />
-              <div className="flex items-center gap-2">
-                <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="text-sm font-medium text-foreground">
-                  {`${Math.ceil(routeOptions.find(r => r.type === selectedRouteType)?.duration / 60)}분`}
-                </span>
+              
+              {/* 거리 및 시간 정보 */}
+              <div className="flex items-center gap-4 pl-1">
+                <div className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                  <span className="text-sm font-medium text-foreground">
+                    {`${(routeOptions.find(r => r.type === selectedRouteType)?.distance / 1000).toFixed(1)}km`}
+                  </span>
+                </div>
+                <div className="w-px h-4 bg-border" />
+                <div className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-sm font-medium text-foreground">
+                    {`${Math.ceil(routeOptions.find(r => r.type === selectedRouteType)?.duration / 60)}분`}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
