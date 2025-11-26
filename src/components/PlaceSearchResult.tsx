@@ -26,7 +26,6 @@ const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace, onClearP
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [user, setUser] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [favorites, setFavorites] = useState<any[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -42,56 +41,6 @@ const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace, onClearP
 
     return () => subscription.unsubscribe();
   }, []);
-
-  // 즐겨찾기 목록 가져오기
-  useEffect(() => {
-    const fetchFavorites = async () => {
-      if (!user) {
-        setFavorites([]);
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from("favorites")
-          .select("*")
-          .eq("user_id", user.id);
-
-        if (error) throw error;
-        setFavorites(data || []);
-      } catch (error) {
-        if (import.meta.env.DEV) console.error("즐겨찾기 로딩 실패:", error);
-      }
-    };
-
-    fetchFavorites();
-
-    // 실시간 업데이트
-    const channel = supabase
-      .channel("favorites_changes")
-      .on("postgres_changes", {
-        event: "*",
-        schema: "public",
-        table: "favorites"
-      }, () => {
-        fetchFavorites();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user]);
-
-  // 장소가 즐겨찾기인지 확인
-  const isFavorite = (place: Place) => {
-    return favorites.some(
-      fav => 
-        fav.place_name === place.name &&
-        Math.abs(fav.latitude - place.lat) < 0.0001 &&
-        Math.abs(fav.longitude - place.lon) < 0.0001
-    );
-  };
 
   const handleToggleFavorite = async (place: Place) => {
     if (!user) {
@@ -157,11 +106,7 @@ const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace, onClearP
               onClick={() => handleToggleFavorite(selectedPlace)}
               disabled={isSaving}
             >
-              {isFavorite(selectedPlace) ? (
-                <Star className="h-5 w-5 fill-green-500 text-green-500" />
-              ) : (
-                <Star className="h-5 w-5" />
-              )}
+              <Star className="h-5 w-5" />
             </Button>
             <Button
               variant="outline"
@@ -240,9 +185,6 @@ const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace, onClearP
               <h3 className="font-medium text-base truncate">{place.name}</h3>
               <p className="text-sm text-muted-foreground truncate">{place.address}</p>
             </div>
-            {isFavorite(place) && (
-              <Star className="h-5 w-5 fill-green-500 text-green-500 mt-1 shrink-0" />
-            )}
           </div>
         </Card>
       ))}

@@ -1410,7 +1410,7 @@ const MapView = ({
       <Button 
         onClick={getCurrentLocation} 
         size="lg" 
-        className={`absolute ${selectedSearchPlace ? 'bottom-[180px]' : 'bottom-4'} right-4 h-14 w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground z-50 border-4 border-background transition-all duration-300 pointer-events-auto`}
+        className={`absolute ${selectedSearchPlace ? 'bottom-[180px]' : 'bottom-4'} right-4 h-14 w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground z-10 border-4 border-background transition-all duration-300`}
         title="현재 위치" 
         disabled={loading}
       >
