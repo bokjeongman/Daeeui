@@ -46,6 +46,24 @@ const Favorites = () => {
     }
   };
 
+  const reverseGeocode = async (lat: number, lon: number): Promise<string> => {
+    try {
+      const response = await fetch(
+        `https://apis.openapi.sk.com/tmap/geo/reversegeocoding?version=1&format=json&callback=result&coordType=WGS84GEO&addressType=A10&lon=${lon}&lat=${lat}&appKey=KZDXJtx63R735Qktn8zkkaJv4tbaUqDc1lXzyjLT`
+      );
+      const data = await response.json();
+      
+      if (data.addressInfo) {
+        const addr = data.addressInfo;
+        return `${addr.city_do || ''} ${addr.gu_gun || ''} ${addr.eup_myun || ''} ${addr.adminDong || ''} ${addr.ri || ''}`.trim();
+      }
+      return `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+    } catch (error) {
+      if (import.meta.env.DEV) console.error("역지오코딩 실패:", error);
+      return `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+    }
+  };
+
   const fetchFavorites = async () => {
     try {
       const { data, error } = await supabase
@@ -54,7 +72,19 @@ const Favorites = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setFavorites(data || []);
+      
+      // 각 즐겨찾기에 대해 역지오코딩으로 주소 가져오기
+      const favoritesWithAddress = await Promise.all(
+        (data || []).map(async (favorite) => {
+          if (!favorite.address) {
+            const address = await reverseGeocode(Number(favorite.latitude), Number(favorite.longitude));
+            return { ...favorite, address };
+          }
+          return favorite;
+        })
+      );
+      
+      setFavorites(favoritesWithAddress);
     } catch (error) {
       if (import.meta.env.DEV) console.error("즐겨찾기 조회 실패:", error);
       toast.error("즐겨찾기를 불러오는데 실패했습니다.");
@@ -144,12 +174,9 @@ const Favorites = () => {
                         <MapPin className="h-5 w-5 text-primary" />
                         <CardTitle className="text-lg">{favorite.place_name}</CardTitle>
                       </div>
-                      {favorite.address && (
-                        <CardDescription>{favorite.address}</CardDescription>
-                      )}
-                      <p className="text-xs text-muted-foreground mt-2">
-                        위도: {Number(favorite.latitude).toFixed(6)}, 경도: {Number(favorite.longitude).toFixed(6)}
-                      </p>
+                      <CardDescription>
+                        {favorite.address || `위도: ${Number(favorite.latitude).toFixed(6)}, 경도: ${Number(favorite.longitude).toFixed(6)}`}
+                      </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
