@@ -30,6 +30,7 @@ const Index = () => {
   const [barrierSheetOpen, setBarrierSheetOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"default" | "yellow">("default");
   const [hasRoute, setHasRoute] = useState(false);
+  const [routeClearKey, setRouteClearKey] = useState(0);
   const [startPoint, setStartPoint] = useState<{
     lat: number;
     lon: number;
@@ -138,6 +139,7 @@ const Index = () => {
   };
 
   const handleCancelRoute = () => {
+    setRouteClearKey((prev) => prev + 1);
     setHasRoute(false);
     setRouteOptions([]);
     setSelectedRouteType(null);
@@ -313,6 +315,7 @@ const Index = () => {
           onUserLocationChange={(location) => {
             setCurrentLocation(location);
           }}
+          clearKey={routeClearKey}
         />
         
         {/* 후기 등록 버튼 */}
