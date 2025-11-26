@@ -62,6 +62,7 @@ interface MapViewProps {
     lon: number;
   } | null;
   onUserLocationChange?: (location: { lat: number; lon: number }) => void;
+  clearKey?: number;
 }
 const MapView = ({
   startPoint,
@@ -73,6 +74,7 @@ const MapView = ({
   className,
   center,
   onUserLocationChange,
+  clearKey,
 }: MapViewProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<any>(null);
@@ -683,6 +685,21 @@ const MapView = ({
   // 여러 교통수단으로 경로 탐색
   useEffect(() => {
     if (!map || !window.Tmapv2) return;
+    
+    // clearKey가 변경되면 무조건 경로/마커 제거 (취소 버튼 전용)
+    if (clearKey !== undefined && clearKey > 0) {
+      if (!endPoint || !selectedRouteType) {
+        if (routeLayerRef.current && routeLayerRef.current.length) {
+          routeLayerRef.current.forEach((layer: any) => layer.setMap(null));
+          routeLayerRef.current = [];
+        }
+        markersRef.current.forEach(marker => marker.setMap(null));
+        markersRef.current = [];
+        arrowMarkersRef.current.forEach(marker => marker.setMap(null));
+        arrowMarkersRef.current = [];
+        return;
+      }
+    }
     
     // endPoint가 없거나 selectedRouteType이 없으면 기존 경로 제거하고 종료
     if (!endPoint || !selectedRouteType) {
