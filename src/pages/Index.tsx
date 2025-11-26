@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Menu } from "lucide-react";
@@ -119,6 +119,50 @@ const Index = () => {
   }) => {
     setMapCenter({ lat: place.lat, lon: place.lon });
   };
+
+  // 경로 계산 후 자동으로 route_history에 저장
+  const handleRoutesCalculated = useCallback(async (routes: Array<{
+    type: "transit" | "walk" | "car";
+    distance: number;
+    duration: number;
+    safePercentage: number;
+    warningPercentage: number;
+    dangerPercentage: number;
+    barriers: any[];
+    transitInfo?: any;
+  }>) => {
+    setRouteOptions(routes);
+    
+    // route_history에 자동 저장
+    if (routes.length > 0 && startPoint && endPoint) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          const firstRoute = routes[0];
+          const { error } = await supabase
+            .from("route_history")
+            .insert({
+              user_id: user.id,
+              start_name: startPoint.name,
+              start_lat: startPoint.lat,
+              start_lon: startPoint.lon,
+              end_name: endPoint.name,
+              end_lat: endPoint.lat,
+              end_lon: endPoint.lon,
+              distance: firstRoute.distance,
+              duration: firstRoute.duration,
+            });
+
+          if (error) {
+            if (import.meta.env.DEV) console.error("경로 저장 실패:", error);
+          }
+        }
+      } catch (error) {
+        if (import.meta.env.DEV) console.error("경로 저장 오류:", error);
+      }
+    }
+  }, [startPoint, endPoint]);
   
   return (
     <div className="h-screen flex flex-col overflow-hidden">
@@ -145,7 +189,7 @@ const Index = () => {
           startPoint={startPoint} 
           endPoint={endPoint} 
           selectedRouteType={selectedRouteType} 
-          onRoutesCalculated={setRouteOptions} 
+          onRoutesCalculated={handleRoutesCalculated} 
           center={mapCenter}
           onBarrierClick={(barrier: any) => {
             setSelectedBarrier(barrier);
