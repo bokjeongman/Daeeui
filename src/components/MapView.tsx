@@ -61,6 +61,7 @@ interface MapViewProps {
     lat: number;
     lon: number;
   } | null;
+  onUserLocationChange?: (location: { lat: number; lon: number }) => void;
 }
 const MapView = ({
   startPoint,
@@ -70,7 +71,8 @@ const MapView = ({
   onBarrierClick,
   onPlaceClick,
   className,
-  center
+  center,
+  onUserLocationChange,
 }: MapViewProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<any>(null);
@@ -124,10 +126,14 @@ const MapView = ({
       // 모바일: 한 번만 위치 가져오기
       navigator.geolocation.getCurrentPosition(position => {
         const { latitude, longitude } = position.coords;
-        setUserLocation({
+        const location = {
           lat: latitude,
-          lon: longitude
-        });
+          lon: longitude,
+        };
+        setUserLocation(location);
+        if (onUserLocationChange) {
+          onUserLocationChange(location);
+        }
         setLoading(false);
         
         // 경로 탐색 중이 아닐 때만 지도 중심 이동
@@ -142,7 +148,7 @@ const MapView = ({
           toast.success("현재 위치를 찾았습니다!");
         }
       }, error => {
-        let errorMessage = "위치를 가져올 수 없습니다.";
+        let errorMessage = "위를 가져올 수 없습니다.";
         switch (error.code) {
           case error.PERMISSION_DENIED:
             errorMessage = "위치 접근 권한이 거부되었습니다. 브라우저 설정에서 위치 권한을 허용해주세요.";
@@ -166,16 +172,20 @@ const MapView = ({
       // 데스크탑: 지속적으로 위치 추적
       const watchId = navigator.geolocation.watchPosition(position => {
         const { latitude, longitude } = position.coords;
-        setUserLocation({
+        const location = {
           lat: latitude,
-          lon: longitude
-        });
+          lon: longitude,
+        };
+        setUserLocation(location);
+        if (onUserLocationChange) {
+          onUserLocationChange(location);
+        }
         setLoading(false);
         if (watchIdRef.current === null) {
           toast.success("현재 위치를 찾았습니다!");
         }
       }, error => {
-        let errorMessage = "위치를 가져올 수 없습니다.";
+        let errorMessage = "위를 가져올 수 없습니다.";
         switch (error.code) {
           case error.PERMISSION_DENIED:
             errorMessage = "위치 접근 권한이 거부되었습니다. 브라우저 설정에서 위치 권한을 허용해주세요.";
