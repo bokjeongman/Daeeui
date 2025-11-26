@@ -1,22 +1,11 @@
 import { useState, useEffect } from "react";
 import { MapPin, Upload, X, Search } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -31,8 +20,13 @@ interface ReviewModalProps {
 const reportSchema = z.object({
   location_name: z.string().trim().min(1, "장소명을 입력해주세요.").max(200, "장소명은 200자 이하여야 합니다."),
   latitude: z.number().min(-90, "위도는 -90에서 90 사이여야 합니다.").max(90, "위도는 -90에서 90 사이여야 합니다."),
-  longitude: z.number().min(-180, "경도는 -180에서 180 사이여야 합니다.").max(180, "경도는 -180에서 180 사이여야 합니다."),
-  accessibility_level: z.enum(["good", "moderate", "difficult"], { errorMap: () => ({ message: "접근성 수준을 선택해주세요." }) }),
+  longitude: z
+    .number()
+    .min(-180, "경도는 -180에서 180 사이여야 합니다.")
+    .max(180, "경도는 -180에서 180 사이여야 합니다."),
+  accessibility_level: z.enum(["good", "moderate", "difficult"], {
+    errorMap: () => ({ message: "접근성 수준을 선택해주세요." }),
+  }),
   category: z.string().trim().min(1, "카테고리를 선택해주세요.").max(50, "카테고리는 50자 이하여야 합니다."),
   details: z.string().trim().min(1, "상세 내용을 입력해주세요.").max(2000, "상세 내용은 2000자 이하여야 합니다."),
 });
@@ -55,12 +49,16 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
 
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       setUser(session?.user ?? null);
     };
     checkUser();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_, session) => {
       setUser(session?.user ?? null);
     });
 
@@ -69,13 +67,13 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    
+
     // 최대 5장까지만 허용
     if (photos.length + files.length > 5) {
       toast.error("사진은 최대 5장까지 업로드할 수 있습니다.");
       return;
     }
-    
+
     // 각 파일 크기 체크
     for (const file of files) {
       if (file.size > 5 * 1024 * 1024) {
@@ -83,22 +81,22 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
         return;
       }
     }
-    
-    setPhotos(prev => [...prev, ...files]);
-    setPhotoPreviews(prev => [...prev, ...files.map(file => URL.createObjectURL(file))]);
+
+    setPhotos((prev) => [...prev, ...files]);
+    setPhotoPreviews((prev) => [...prev, ...files.map((file) => URL.createObjectURL(file))]);
   };
 
   const handleRemovePhoto = (index: number) => {
-    setPhotos(prev => prev.filter((_, i) => i !== index));
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
     if (photoPreviews[index]) {
       URL.revokeObjectURL(photoPreviews[index]);
     }
-    setPhotoPreviews(prev => prev.filter((_, i) => i !== index));
+    setPhotoPreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSearch = async (query: string) => {
     setSearchQuery(query);
-    
+
     if (!query.trim()) {
       setSearchResults([]);
       setShowResults(false);
@@ -112,11 +110,11 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
           headers: {
             appKey: "KZDXJtx63R735Qktn8zkkaJv4tbaUqDc1lXzyjLT",
           },
-        }
+        },
       );
 
       const data = await response.json();
-      
+
       if (data.searchPoiInfo?.pois?.poi) {
         const results = data.searchPoiInfo.pois.poi.map((poi: any, index: number) => ({
           id: index,
@@ -140,7 +138,7 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
     setLongitude(place.lon.toString());
     setShowResults(false);
     setSearchQuery("");
-    
+
     // 지도를 선택한 장소로 이동
     if (onPlaceSelect) {
       onPlaceSelect(place.lat, place.lon);
@@ -149,7 +147,7 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!user) {
       toast.error("로그인이 필요합니다.");
       navigate("/auth");
@@ -188,42 +186,38 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
       const photoUrls: string[] = [];
       if (photos.length > 0) {
         for (const photo of photos) {
-          const fileExt = photo.name.split('.').pop();
+          const fileExt = photo.name.split(".").pop();
           const fileName = `${user.id}/${Date.now()}_${Math.random()}.${fileExt}`;
-          
-          const { error: uploadError } = await supabase.storage
-            .from('accessibility-photos')
-            .upload(fileName, photo);
+
+          const { error: uploadError } = await supabase.storage.from("accessibility-photos").upload(fileName, photo);
 
           if (uploadError) throw uploadError;
 
-          const { data: { publicUrl } } = supabase.storage
-            .from('accessibility-photos')
-            .getPublicUrl(fileName);
+          const {
+            data: { publicUrl },
+          } = supabase.storage.from("accessibility-photos").getPublicUrl(fileName);
 
           photoUrls.push(publicUrl);
         }
       }
 
-      const { error } = await supabase
-        .from("accessibility_reports")
-        .insert({
-          user_id: user.id,
-          location_name: location.trim(),
-          latitude: lat,
-          longitude: lon,
-          accessibility_level: accessibility,
-          category: category.trim(),
-          details: details.trim() || null,
-          photo_urls: photoUrls,
-          status: 'approved',
-        });
+      const { error } = await supabase.from("accessibility_reports").insert({
+        user_id: user.id,
+        location_name: location.trim(),
+        latitude: lat,
+        longitude: lon,
+        accessibility_level: accessibility,
+        category: category.trim(),
+        details: details.trim() || null,
+        photo_urls: photoUrls,
+        status: "approved",
+      });
 
       if (error) throw error;
 
       toast.success("제보가 성공적으로 등록되어 지도에 바로 반영되었습니다!");
       onOpenChange(false);
-      
+
       // 폼 초기화
       setLocation("");
       setLatitude("");
@@ -235,7 +229,7 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
       setSearchResults([]);
       setShowResults(false);
       setPhotos([]);
-      photoPreviews.forEach(url => URL.revokeObjectURL(url));
+      photoPreviews.forEach((url) => URL.revokeObjectURL(url));
       setPhotoPreviews([]);
     } catch (error: any) {
       if (import.meta.env.DEV) console.error("제보 등록 실패:", error);
@@ -249,17 +243,13 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold">
-            휠체어 접근성 정보 제보
-          </DialogTitle>
+          <DialogTitle className="text-xl font-bold">휠체어 접근성 정보 제보</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* 장소 검색 */}
           <div className="space-y-2">
-            <Label htmlFor="search">
-              장소 검색 *
-            </Label>
+            <Label htmlFor="search">장소 검색 *</Label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -282,7 +272,7 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
                 </button>
               )}
             </div>
-            
+
             {/* 검색 결과 */}
             {showResults && searchResults.length > 0 && (
               <div className="border rounded-lg max-h-60 overflow-y-auto">
@@ -311,9 +301,7 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
 
           {/* 접근성 선택 */}
           <div className="space-y-2">
-            <Label htmlFor="accessibility">
-              접근성 선택 *
-            </Label>
+            <Label htmlFor="accessibility">접근성 선택 *</Label>
             <Select value={accessibility} onValueChange={setAccessibility}>
               <SelectTrigger id="accessibility">
                 <SelectValue placeholder="선택하세요" />
@@ -328,9 +316,7 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
 
           {/* 분류 종류 */}
           <div className="space-y-2">
-            <Label htmlFor="category">
-              분류 종류 *
-            </Label>
+            <Label htmlFor="category">분류 종류 *</Label>
             <Select value={category} onValueChange={setCategory}>
               <SelectTrigger id="category">
                 <SelectValue placeholder="선택하세요" />
@@ -364,11 +350,9 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="photo" className="text-base font-semibold">
-                사진 첨부 (최대 5장)
+                📸 사진 첨부 (최대 5장)
               </Label>
-              <span className="text-sm text-green-600 font-medium">
-                정확한 정보 제공을 위해 추천
-              </span>
+              <span className="text-sm text-green-600 font-medium">정확한 정보 제공을 위해 추천</span>
             </div>
             <div className="border-2 border-dashed border-green-200 rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer bg-green-50/30">
               <input
@@ -389,7 +373,7 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
                 </span>
               </label>
             </div>
-            
+
             {photoPreviews.length > 0 && (
               <div className="grid grid-cols-2 gap-2 mt-2">
                 {photoPreviews.map((preview, index) => (
