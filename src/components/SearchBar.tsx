@@ -9,6 +9,7 @@ interface SearchBarProps {
   onSelectStart?: (place: { lat: number; lon: number; name: string }) => void;
   onSelectEnd?: (place: { lat: number; lon: number; name: string }) => void;
   onMoveToPlace?: (place: { lat: number; lon: number; name: string }) => void;
+  onClearPlace?: () => void;
 }
 
 const SearchBar = ({ 
@@ -16,7 +17,8 @@ const SearchBar = ({
   variant = "default",
   onSelectStart,
   onSelectEnd,
-  onMoveToPlace
+  onMoveToPlace,
+  onClearPlace
 }: SearchBarProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -118,8 +120,12 @@ const SearchBar = ({
         <PlaceSearchResult
           results={searchResults}
           onSelect={handleSelectPlace}
-          onClose={() => setShowResults(false)}
+          onClose={() => {
+            setShowResults(false);
+            if (onClearPlace) onClearPlace();
+          }}
           onMoveToPlace={onMoveToPlace}
+          onClearPlace={onClearPlace}
         />
       )}
     </div>

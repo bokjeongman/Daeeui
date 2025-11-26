@@ -63,6 +63,12 @@ interface MapViewProps {
   } | null;
   onUserLocationChange?: (location: { lat: number; lon: number }) => void;
   clearKey?: number;
+  selectedSearchPlace?: {
+    lat: number;
+    lon: number;
+    name: string;
+  } | null;
+  hideFilterButton?: boolean;
 }
 const MapView = ({
   startPoint,
@@ -75,6 +81,8 @@ const MapView = ({
   center,
   onUserLocationChange,
   clearKey,
+  selectedSearchPlace,
+  hideFilterButton = false,
 }: MapViewProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<any>(null);
@@ -104,6 +112,7 @@ const MapView = ({
   const barrierMarkersRef = useRef<any[]>([]);
   const favoriteMarkersRef = useRef<any[]>([]);
   const arrowMarkersRef = useRef<any[]>([]);
+  const searchPlaceMarkerRef = useRef<any>(null);
   const [transitDetails, setTransitDetails] = useState<any>(null);
   const hasInitializedPositionRef = useRef(false);
   const [isMobile] = useState(() => /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
@@ -395,6 +404,63 @@ const MapView = ({
     map.setCenter(targetPosition);
     map.setZoom(17);
   }, [map, center]);
+
+  // 검색된 장소에 파란색 핀 표시
+  useEffect(() => {
+    if (!map || !window.Tmapv2) return;
+
+    // 기존 검색 장소 마커 제거
+    if (searchPlaceMarkerRef.current) {
+      searchPlaceMarkerRef.current.setMap(null);
+      searchPlaceMarkerRef.current = null;
+    }
+
+    // selectedSearchPlace가 없으면 종료
+    if (!selectedSearchPlace) return;
+
+    const position = new window.Tmapv2.LatLng(selectedSearchPlace.lat, selectedSearchPlace.lon);
+
+    // 파란색 핀 SVG 생성
+    const bluePinIcon = `
+      <svg width="40" height="50" viewBox="0 0 40 50" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="pin-shadow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+            <feOffset dx="0" dy="2" result="offsetblur"/>
+            <feComponentTransfer>
+              <feFuncA type="linear" slope="0.5"/>
+            </feComponentTransfer>
+            <feMerge>
+              <feMergeNode/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+        <!-- 핀 본체 -->
+        <path d="M20 2 C11 2 4 9 4 18 C4 28 20 46 20 46 C20 46 36 28 36 18 C36 9 29 2 20 2 Z" 
+              fill="#3b82f6" stroke="white" stroke-width="2" filter="url(#pin-shadow)"/>
+        <!-- 내부 원 -->
+        <circle cx="20" cy="18" r="6" fill="white"/>
+      </svg>
+    `;
+
+    const markerDiv = document.createElement('div');
+    markerDiv.innerHTML = bluePinIcon;
+    markerDiv.style.width = '40px';
+    markerDiv.style.height = '50px';
+    markerDiv.style.cursor = 'pointer';
+
+    const marker = new window.Tmapv2.Marker({
+      position: position,
+      map: map,
+      icon: markerDiv,
+      iconSize: new window.Tmapv2.Size(40, 50),
+      title: selectedSearchPlace.name,
+      zIndex: 999
+    });
+
+    searchPlaceMarkerRef.current = marker;
+  }, [map, selectedSearchPlace]);
 
   // 사용자 위치가 변경되면 현재 위치 마커 표시
   useEffect(() => {
@@ -1282,60 +1348,68 @@ const MapView = ({
         </Button>
       </div>
 
-      {/* 필터 버튼 (하단 우측 위) */}
-      <div className="absolute bottom-40 right-6 z-40 space-y-2 pointer-events-auto">
-        <Button
-          onClick={() => setShowFilter(!showFilter)}
-          size="lg"
-          title="필터"
-          className="h-14 w-14 rounded-full shadow-xl bg-background hover:bg-muted text-foreground border-2 border-border"
-        >
-          <Filter className="h-6 w-6" />
-        </Button>
-        
-        {showFilter && <div className="absolute bottom-16 right-0 bg-background border-2 border-border rounded-lg shadow-xl p-3 space-y-2 min-w-[160px]">
-            <div className="text-sm font-semibold mb-2 text-foreground">접근성 필터</div>
-            
-            <button onClick={() => setFilter({
-          ...filter,
-          safe: !filter.safe
-        })} className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors">
-              <div className={`w-4 h-4 rounded border-2 ${filter.safe ? 'bg-green-500 border-green-500' : 'border-muted-foreground'}`}>
-                {filter.safe && <div className="text-white text-xs text-center leading-none">✓</div>}
-              </div>
-              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                안심
-              </Badge>
-            </button>
-            
-            <button onClick={() => setFilter({
-          ...filter,
-          warning: !filter.warning
-        })} className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors">
-              <div className={`w-4 h-4 rounded border-2 ${filter.warning ? 'bg-yellow-500 border-yellow-500' : 'border-muted-foreground'}`}>
-                {filter.warning && <div className="text-white text-xs text-center leading-none">✓</div>}
-              </div>
-              <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-                경고
-              </Badge>
-            </button>
-            
-            <button onClick={() => setFilter({
-          ...filter,
-          danger: !filter.danger
-        })} className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors">
-              <div className={`w-4 h-4 rounded border-2 ${filter.danger ? 'bg-red-500 border-red-500' : 'border-muted-foreground'}`}>
-                {filter.danger && <div className="text-white text-xs text-center leading-none">✓</div>}
-              </div>
-              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                위험
-              </Badge>
-            </button>
-          </div>}
-      </div>
+      {/* 필터 버튼 (하단 우측 위) - 장소 검색 중이 아닐 때만 표시 */}
+      {!hideFilterButton && (
+        <div className="absolute bottom-40 right-6 z-40 space-y-2 pointer-events-auto">
+          <Button
+            onClick={() => setShowFilter(!showFilter)}
+            size="lg"
+            title="필터"
+            className="h-14 w-14 rounded-full shadow-xl bg-background hover:bg-muted text-foreground border-2 border-border"
+          >
+            <Filter className="h-6 w-6" />
+          </Button>
+          
+          {showFilter && <div className="absolute bottom-16 right-0 bg-background border-2 border-border rounded-lg shadow-xl p-3 space-y-2 min-w-[160px]">
+              <div className="text-sm font-semibold mb-2 text-foreground">접근성 필터</div>
+              
+              <button onClick={() => setFilter({
+            ...filter,
+            safe: !filter.safe
+          })} className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors">
+                <div className={`w-4 h-4 rounded border-2 ${filter.safe ? 'bg-green-500 border-green-500' : 'border-muted-foreground'}`}>
+                  {filter.safe && <div className="text-white text-xs text-center leading-none">✓</div>}
+                </div>
+                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                  안심
+                </Badge>
+              </button>
+              
+              <button onClick={() => setFilter({
+            ...filter,
+            warning: !filter.warning
+          })} className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors">
+                <div className={`w-4 h-4 rounded border-2 ${filter.warning ? 'bg-yellow-500 border-yellow-500' : 'border-muted-foreground'}`}>
+                  {filter.warning && <div className="text-white text-xs text-center leading-none">✓</div>}
+                </div>
+                <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                  경고
+                </Badge>
+              </button>
+              
+              <button onClick={() => setFilter({
+            ...filter,
+            danger: !filter.danger
+          })} className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors">
+                <div className={`w-4 h-4 rounded border-2 ${filter.danger ? 'bg-red-500 border-red-500' : 'border-muted-foreground'}`}>
+                  {filter.danger && <div className="text-white text-xs text-center leading-none">✓</div>}
+                </div>
+                <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                  위험
+                </Badge>
+              </button>
+            </div>}
+        </div>
+      )}
 
       {/* 현재 위치 버튼 */}
-      <Button onClick={getCurrentLocation} size="lg" className="absolute bottom-4 right-4 h-14 w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground z-10 border-4 border-background" title="현재 위치" disabled={loading}>
+      <Button 
+        onClick={getCurrentLocation} 
+        size="lg" 
+        className={`absolute ${selectedSearchPlace ? 'bottom-[180px]' : 'bottom-4'} right-4 h-14 w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground z-10 border-4 border-background transition-all duration-300`}
+        title="현재 위치" 
+        disabled={loading}
+      >
         {loading && userLocation === null ? <Loader2 className="h-6 w-6 animate-spin" /> : <Navigation className="h-6 w-6" />}
       </Button>
     </div>;
