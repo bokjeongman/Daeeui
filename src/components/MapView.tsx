@@ -682,7 +682,21 @@ const MapView = ({
 
   // 여러 교통수단으로 경로 탐색
   useEffect(() => {
-    if (!map || !window.Tmapv2 || !endPoint) return;
+    if (!map || !window.Tmapv2) return;
+    
+    // endPoint가 없으면 기존 경로만 제거하고 종료
+    if (!endPoint) {
+      if (routeLayerRef.current && routeLayerRef.current.length) {
+        routeLayerRef.current.forEach((layer: any) => layer.setMap(null));
+        routeLayerRef.current = [];
+      }
+      markersRef.current.forEach(marker => marker.setMap(null));
+      markersRef.current = [];
+      arrowMarkersRef.current.forEach(marker => marker.setMap(null));
+      arrowMarkersRef.current = [];
+      return;
+    }
+    
     const calculateAllRoutes = async () => {
       try {
         // 기존 경로 및 마커 제거
