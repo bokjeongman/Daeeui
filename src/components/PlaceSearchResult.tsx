@@ -26,6 +26,7 @@ const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace, onClearP
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [user, setUser] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isFavorited, setIsFavorited] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -41,6 +42,33 @@ const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace, onClearP
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // 즐겨찾기 상태 확인
+  useEffect(() => {
+    const checkFavoriteStatus = async () => {
+      if (!user || !selectedPlace) {
+        setIsFavorited(false);
+        return;
+      }
+
+      try {
+        const { data } = await supabase
+          .from("favorites")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("place_name", selectedPlace.name)
+          .eq("latitude", selectedPlace.lat)
+          .eq("longitude", selectedPlace.lon)
+          .single();
+
+        setIsFavorited(!!data);
+      } catch (error) {
+        setIsFavorited(false);
+      }
+    };
+
+    checkFavoriteStatus();
+  }, [user, selectedPlace]);
 
   const handleToggleFavorite = async (place: Place) => {
     if (!user) {
@@ -69,6 +97,7 @@ const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace, onClearP
           .eq("id", existingFavorite.id);
 
         if (error) throw error;
+        setIsFavorited(false);
         toast.success("즐겨찾기에서 제거되었습니다.");
       } else {
         // 즐겨찾기 추가
@@ -83,6 +112,7 @@ const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace, onClearP
           });
 
         if (error) throw error;
+        setIsFavorited(true);
         toast.success("즐겨찾기에 추가되었습니다.");
       }
     } catch (error: any) {
@@ -102,11 +132,15 @@ const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace, onClearP
             <Button
               variant="outline"
               size="icon"
-              className="h-10 w-10 rounded-full bg-background shadow-md"
+              className={`h-10 w-10 rounded-full shadow-md ${
+                isFavorited 
+                  ? 'bg-green-500 hover:bg-green-600 border-green-500' 
+                  : 'bg-background'
+              }`}
               onClick={() => handleToggleFavorite(selectedPlace)}
               disabled={isSaving}
             >
-              <Star className="h-5 w-5" />
+              <Star className={`h-5 w-5 ${isFavorited ? 'fill-white text-white' : ''}`} />
             </Button>
             <Button
               variant="outline"
