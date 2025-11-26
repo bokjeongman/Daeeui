@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { reverseGeocode } from "@/lib/utils";
 const Index = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [placeReviewModalOpen, setPlaceReviewModalOpen] = useState(false);
@@ -68,7 +69,7 @@ const Index = () => {
   const [mapCenter, setMapCenter] = useState<{ lat: number; lon: number } | null>(null);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lon: number } | null>(null);
 
-  // 로그인 체크
+  // 로그인 체크 및 경로 복원
   useEffect(() => {
     const checkAuth = async () => {
       const {
@@ -95,6 +96,20 @@ const Index = () => {
     });
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  // 내 경로에서 전달된 경로 정보 복원
+  useEffect(() => {
+    if (location.state?.startPoint && location.state?.destination) {
+      const { startPoint, destination } = location.state;
+      setStartPoint(startPoint);
+      setEndPoint(destination);
+      setHasRoute(true);
+      setSelectedRouteType("walk");
+      setSearchMode(null);
+      // state 초기화 (뒤로가기 시 중복 실행 방지)
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
   const handleSelectPlace = (place: {
     lat: number;
     lon: number;
@@ -195,54 +210,32 @@ const Index = () => {
   
   return (
     <div className="h-screen flex flex-col overflow-hidden">
-      {/* 헤더 */}
-      <div className="relative z-10">
-        <div className={`${viewMode === "yellow" ? "bg-accent" : "bg-background"}`}>
+      {/* 헤더 - 경로 탐색 중일 때는 경로 정보로 대체 */}
+      {!hasRoute ? (
+        <div className="relative z-10">
+          <div className={`${viewMode === "yellow" ? "bg-accent" : "bg-background"}`}>
+            <div className="flex items-center gap-3 px-4 py-3">
+              <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)} className="shrink-0">
+                <Menu className="h-6 w-6" />
+              </Button>
+              <div className="flex-1 min-w-0">
+                <SearchBar placeholder={searchMode === "end" ? "도착지 검색" : "장소 검색"} variant={viewMode} onSelectStart={place => handleSelectPlace(place, "start")} onSelectEnd={place => handleSelectPlace(place, "end")} onMoveToPlace={handleMoveToPlace} />
+              </div>
+            </div>
+            {viewMode === "yellow" && <div className="px-4 pb-4">
+                <WheelchairBadge />
+              </div>}
+          </div>
+        </div>
+      ) : routeOptions.length > 0 && selectedRouteType && (
+        <div className="relative z-10 bg-background/95 backdrop-blur-sm border-b shadow-md">
           <div className="flex items-center gap-3 px-4 py-3">
             <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)} className="shrink-0">
               <Menu className="h-6 w-6" />
             </Button>
             <div className="flex-1 min-w-0">
-              <SearchBar placeholder={searchMode === "end" ? "도착지 검색" : "장소 검색"} variant={viewMode} onSelectStart={place => handleSelectPlace(place, "start")} onSelectEnd={place => handleSelectPlace(place, "end")} onMoveToPlace={handleMoveToPlace} />
-            </div>
-          </div>
-          {viewMode === "yellow" && <div className="px-4 pb-4">
-              <WheelchairBadge />
-            </div>}
-        </div>
-      </div>
-
-      {/* 지도 영역 */}
-      <div className="flex-1 relative">
-        <MapView 
-          startPoint={startPoint} 
-          endPoint={endPoint} 
-          selectedRouteType={selectedRouteType} 
-          onRoutesCalculated={handleRoutesCalculated} 
-          center={mapCenter}
-          onBarrierClick={(barrier: any) => {
-            setSelectedBarrier(barrier);
-            setBarrierSheetOpen(true);
-          }}
-          onPlaceClick={(place: {
-            name: string;
-            lat: number;
-            lon: number;
-          }) => {
-            setSelectedPlace(place);
-            setPlaceReviewModalOpen(true);
-          }}
-          onUserLocationChange={(location) => {
-            setCurrentLocation(location);
-          }}
-        />
-        
-        {/* 경로 정보 오버레이 */}
-        {hasRoute && routeOptions.length > 0 && selectedRouteType && (
-          <div className="absolute top-4 left-4 right-4 z-[5] animate-fade-in">
-            <div className="bg-background/95 backdrop-blur-sm rounded-2xl px-4 py-3 shadow-lg border border-border">
               {/* 출발지 → 도착지 */}
-              <div className="flex items-center justify-between gap-3 mb-3">
+              <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <div className="w-2.5 h-2.5 rounded-full bg-primary flex-shrink-0" />
@@ -273,7 +266,7 @@ const Index = () => {
               </div>
               
               {/* 거리 및 시간 정보 */}
-              <div className="flex items-center gap-4 pl-1">
+              <div className="flex items-center gap-4 mt-2">
                 <div className="flex items-center gap-2">
                   <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -294,7 +287,33 @@ const Index = () => {
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
+
+      {/* 지도 영역 */}
+      <div className="flex-1 relative">
+        <MapView 
+          startPoint={startPoint} 
+          endPoint={endPoint} 
+          selectedRouteType={selectedRouteType} 
+          onRoutesCalculated={handleRoutesCalculated} 
+          center={mapCenter}
+          onBarrierClick={(barrier: any) => {
+            setSelectedBarrier(barrier);
+            setBarrierSheetOpen(true);
+          }}
+          onPlaceClick={(place: {
+            name: string;
+            lat: number;
+            lon: number;
+          }) => {
+            setSelectedPlace(place);
+            setPlaceReviewModalOpen(true);
+          }}
+          onUserLocationChange={(location) => {
+            setCurrentLocation(location);
+          }}
+        />
         
         {/* 후기 등록 버튼 */}
         <ReviewButton onClick={() => setReviewModalOpen(true)} />
