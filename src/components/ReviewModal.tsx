@@ -362,7 +362,9 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
 
           {/* 사진 첨부 */}
           <div className="space-y-2">
-            <Label htmlFor="photo">사진 첨부 (선택, 최대 5장)</Label>
+            <Label htmlFor="photo" className="text-base font-semibold">
+              "턱이 있어요" 라는 텍스트보다 사진 한 장이 훨씬 정확
+            </Label>
             <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer">
               <input
                 id="photo"
@@ -373,11 +375,16 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
                 className="hidden"
                 disabled={photos.length >= 5}
               />
-              <label htmlFor="photo" className="cursor-pointer flex flex-col items-center gap-2">
-                <Upload className="h-8 w-8 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">
-                  클릭하여 사진 선택 (최대 5MB, {photos.length}/5장)
-                </span>
+              <label htmlFor="photo" className="cursor-pointer flex flex-col items-center gap-3">
+                <Upload className="h-10 w-10 text-primary" />
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-medium">
+                    클릭하여 사진 선택 (최대 5MB, {photos.length}/5장)
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    사진을 첨부하시면 지도 사용에 더욱 도움이 됩니다!
+                  </span>
+                </div>
               </label>
             </div>
             
