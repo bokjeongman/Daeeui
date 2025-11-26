@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { MapPin, Trash2, Navigation, Loader2, ArrowLeft } from "lucide-react";
+import { reverseGeocode } from "@/lib/utils";
 
 interface Favorite {
   id: string;
@@ -54,7 +55,19 @@ const Favorites = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setFavorites(data || []);
+      
+      // address가 없는 경우 역지오코딩으로 가져오기
+      const favoritesWithAddress = await Promise.all(
+        (data || []).map(async (favorite) => {
+          if (!favorite.address) {
+            const address = await reverseGeocode(favorite.latitude, favorite.longitude);
+            return { ...favorite, address };
+          }
+          return favorite;
+        })
+      );
+      
+      setFavorites(favoritesWithAddress);
     } catch (error) {
       if (import.meta.env.DEV) console.error("즐겨찾기 조회 실패:", error);
       toast.error("즐겨찾기를 불러오는데 실패했습니다.");
@@ -144,12 +157,9 @@ const Favorites = () => {
                         <MapPin className="h-5 w-5 text-primary" />
                         <CardTitle className="text-lg">{favorite.place_name}</CardTitle>
                       </div>
-                      {favorite.address && (
-                        <CardDescription>{favorite.address}</CardDescription>
-                      )}
-                      <p className="text-xs text-muted-foreground mt-2">
-                        위도: {Number(favorite.latitude).toFixed(6)}, 경도: {Number(favorite.longitude).toFixed(6)}
-                      </p>
+                      <CardDescription className="mt-1">
+                        {favorite.address || "주소를 가져오는 중..."}
+                      </CardDescription>
                     </div>
                   </div>
                 </CardHeader>

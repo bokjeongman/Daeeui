@@ -2,6 +2,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Badge } from "@/components/ui/badge";
 import { MapPin, AlertTriangle, Calendar } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { useEffect, useState } from "react";
+import { reverseGeocode } from "@/lib/utils";
 
 interface BarrierDetailSheetProps {
   open: boolean;
@@ -19,6 +21,14 @@ interface BarrierDetailSheetProps {
 }
 
 const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetProps) => {
+  const [address, setAddress] = useState<string>("");
+
+  useEffect(() => {
+    if (barrier && open) {
+      reverseGeocode(barrier.latitude, barrier.longitude).then(setAddress);
+    }
+  }, [barrier, open]);
+
   if (!barrier) return null;
 
   const getSeverityBadge = () => {
@@ -83,8 +93,8 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
           <div className="bg-muted p-4 rounded-lg">
             <p className="text-sm text-muted-foreground mb-1">위치</p>
             <p className="text-sm font-medium">{barrier.name}</p>
-            <p className="text-xs text-muted-foreground mt-2">
-              {barrier.latitude.toFixed(6)}, {barrier.longitude.toFixed(6)}
+            <p className="text-sm text-muted-foreground mt-2">
+              {address || "주소를 가져오는 중..."}
             </p>
           </div>
 
