@@ -155,7 +155,13 @@ const PlaceReviewModal = ({ open, onClose, place }: PlaceReviewModalProps) => {
                         <Badge className={getLevelColor(review.accessibility_level)}>{getLevelLabel(review.accessibility_level)}</Badge>
                         <Badge variant="outline">{review.category}</Badge>
                       </div>
-                      <span className="text-xs text-muted-foreground">{new Date(review.created_at).toLocaleDateString('ko-KR')}</span>
+                      <span className="text-xs text-muted-foreground">{new Date(review.created_at).toLocaleString('ko-KR', { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric', 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      })}</span>
                     </div>
                     <h4 className="font-medium mb-2">{review.location_name}</h4>
                     {review.details && <p className="text-sm text-muted-foreground whitespace-pre-wrap">{review.details}</p>}

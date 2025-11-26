@@ -171,11 +171,16 @@ const MyReviews = () => {
 
       if (error) throw error;
 
-      toast.success("후기가 삭제되었습니다.");
+      toast.success("후기가 삭제되었습니다. 지도에서도 마커가 제거됩니다.");
       setDeletingReviewId(null);
       
       const { data: { user } } = await supabase.auth.getUser();
       if (user) await fetchReviews(user.id);
+      
+      // 페이지 새로고침하여 지도 마커도 업데이트
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1500);
     } catch (error) {
       if (import.meta.env.DEV) console.error("후기 삭제 실패:", error);
       toast.error("후기 삭제에 실패했습니다.");
@@ -294,10 +299,16 @@ const MyReviews = () => {
                     </p>
                   )}
 
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground mb-2">
+                  <div className="flex flex-col gap-2 text-xs text-muted-foreground mb-2">
                     <div className="flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
-                      {new Date(review.created_at).toLocaleDateString('ko-KR')}
+                      {new Date(review.created_at).toLocaleString('ko-KR', { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric', 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      })}
                     </div>
                     <div className="flex items-center gap-1">
                       <MapPin className="h-3 w-3" />
