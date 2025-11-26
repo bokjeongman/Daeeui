@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { MapPin, Star } from "lucide-react";
+import { MapPin, Star, X, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -19,9 +19,10 @@ interface PlaceSearchResultProps {
   onSelect: (place: Place, type: "start" | "end") => void;
   onClose: () => void;
   onMoveToPlace?: (place: { lat: number; lon: number; name: string }) => void;
+  onClearPlace?: () => void;
 }
 
-const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace }: PlaceSearchResultProps) => {
+const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace, onClearPlace }: PlaceSearchResultProps) => {
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [user, setUser] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -79,29 +80,49 @@ const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace }: PlaceS
 
   if (selectedPlace) {
     return (
-      <div className="absolute top-full left-0 right-0 z-20 bg-background border-t shadow-lg">
-        <Card className="m-2 p-4 relative">
-          <button
-            onClick={() => setSelectedPlace(null)}
-            className="absolute top-2 right-2 text-muted-foreground hover:text-foreground"
-          >
-            ✕
-          </button>
-          <div className="flex items-start gap-3 mb-4">
+      <div className="fixed bottom-0 left-0 right-0 z-20 bg-background border-t shadow-lg">
+        <Card className="m-0 p-4 rounded-none border-0 border-t relative">
+          {/* 우상단 버튼들 */}
+          <div className="absolute top-3 right-3 flex gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-10 w-10 rounded-full bg-background shadow-md"
+              onClick={() => handleAddToFavorites(selectedPlace)}
+              disabled={isSaving}
+            >
+              <Star className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-10 w-10 rounded-full bg-background shadow-md"
+              onClick={() => {
+                setSelectedPlace(null);
+                if (onClearPlace) onClearPlace();
+              }}
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+          
+          <div className="flex items-start gap-3 mb-4 pr-24">
             <MapPin className="h-6 w-6 text-primary mt-1 shrink-0" />
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-lg mb-1">{selectedPlace.name}</h3>
               <p className="text-sm text-muted-foreground">{selectedPlace.address}</p>
             </div>
           </div>
-          <div className="flex gap-2 mb-2">
+          
+          <div className="flex gap-2">
             <Button
               variant="outline"
               size="default"
-              className="flex-1"
+              className="flex-1 h-12"
               onClick={() => {
                 onSelect(selectedPlace, "start");
                 setSelectedPlace(null);
+                if (onClearPlace) onClearPlace();
               }}
             >
               출발
@@ -109,33 +130,16 @@ const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace }: PlaceS
             <Button
               variant="default"
               size="default"
-              className="flex-1"
+              className="flex-1 h-12 bg-primary"
               onClick={() => {
                 onSelect(selectedPlace, "end");
                 setSelectedPlace(null);
+                if (onClearPlace) onClearPlace();
               }}
             >
               도착
             </Button>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full mb-2"
-            onClick={() => handleAddToFavorites(selectedPlace)}
-            disabled={isSaving}
-          >
-            <Star className="h-4 w-4 mr-2" />
-            {isSaving ? "추가 중..." : "즐겨찾기 추가"}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full"
-            onClick={() => setSelectedPlace(null)}
-          >
-            다른 장소 선택
-          </Button>
         </Card>
       </div>
     );

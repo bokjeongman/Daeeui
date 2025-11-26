@@ -69,6 +69,7 @@ const Index = () => {
   const [selectedRouteType, setSelectedRouteType] = useState<"transit" | "walk" | "car" | null>(null);
   const [mapCenter, setMapCenter] = useState<{ lat: number; lon: number } | null>(null);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [selectedSearchPlace, setSelectedSearchPlace] = useState<{ lat: number; lon: number; name: string } | null>(null);
 
   // 로그인 체크 및 경로 복원
   useEffect(() => {
@@ -136,6 +137,11 @@ const Index = () => {
     name: string;
   }) => {
     setMapCenter({ lat: place.lat, lon: place.lon });
+    setSelectedSearchPlace(place);
+  };
+
+  const handleClearSearchPlace = () => {
+    setSelectedSearchPlace(null);
   };
 
   const handleCancelRoute = () => {
@@ -221,7 +227,14 @@ const Index = () => {
                 <Menu className="h-6 w-6" />
               </Button>
               <div className="flex-1 min-w-0">
-                <SearchBar placeholder={searchMode === "end" ? "도착지 검색" : "장소 검색"} variant={viewMode} onSelectStart={place => handleSelectPlace(place, "start")} onSelectEnd={place => handleSelectPlace(place, "end")} onMoveToPlace={handleMoveToPlace} />
+                <SearchBar 
+                  placeholder={searchMode === "end" ? "도착지 검색" : "장소 검색"} 
+                  variant={viewMode} 
+                  onSelectStart={place => handleSelectPlace(place, "start")} 
+                  onSelectEnd={place => handleSelectPlace(place, "end")} 
+                  onMoveToPlace={handleMoveToPlace}
+                  onClearPlace={handleClearSearchPlace}
+                />
               </div>
             </div>
             {viewMode === "yellow" && <div className="px-4 pb-4">
@@ -317,10 +330,12 @@ const Index = () => {
             setCurrentLocation(location);
           }}
           clearKey={routeClearKey}
+          selectedSearchPlace={selectedSearchPlace}
+          hideFilterButton={!!selectedSearchPlace}
         />
         
-        {/* 후기 등록 버튼 */}
-        <ReviewButton onClick={() => setReviewModalOpen(true)} />
+        {/* 후기 등록 버튼 - 장소 검색 중일 때 숨김 */}
+        {!selectedSearchPlace && <ReviewButton onClick={() => setReviewModalOpen(true)} />}
       </div>
 
       {/* 하단 경로 정보 - 경로 탐색 후에만 표시 */}
