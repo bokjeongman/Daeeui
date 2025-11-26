@@ -14,6 +14,7 @@ import PlaceReviewModal from "@/components/PlaceReviewModal";
 import WheelchairBadge from "@/components/WheelchairBadge";
 import BarrierDetailSheet from "@/components/BarrierDetailSheet";
 import { toast } from "sonner";
+import { reverseGeocode } from "@/lib/utils";
 const Index = () => {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -139,15 +140,24 @@ const Index = () => {
         const { data: { user } } = await supabase.auth.getUser();
         
         if (user) {
+          // 출발지와 도착지의 실제 주소를 가져오기
+          const startName = startPoint.name === "현위치" || !startPoint.name
+            ? await reverseGeocode(startPoint.lat, startPoint.lon)
+            : startPoint.name;
+          
+          const endName = endPoint.name === "현위치" || !endPoint.name
+            ? await reverseGeocode(endPoint.lat, endPoint.lon)
+            : endPoint.name;
+
           const firstRoute = routes[0];
           const { error } = await supabase
             .from("route_history")
             .insert({
               user_id: user.id,
-              start_name: startPoint.name,
+              start_name: startName,
               start_lat: startPoint.lat,
               start_lon: startPoint.lon,
-              end_name: endPoint.name,
+              end_name: endName,
               end_lat: endPoint.lat,
               end_lon: endPoint.lon,
               distance: firstRoute.distance,
