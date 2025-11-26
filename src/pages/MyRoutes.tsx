@@ -41,7 +41,7 @@ const MyRoutes = () => {
       }
 
       setUser(session.user);
-      await fetchRoutes();
+      await fetchRoutes(session.user.id);
     } catch (error) {
       if (import.meta.env.DEV) console.error("초기화 오류:", error);
       toast.error("페이지 로딩 중 오류가 발생했습니다.");
@@ -50,13 +50,14 @@ const MyRoutes = () => {
     }
   };
 
-  const fetchRoutes = async () => {
+  const fetchRoutes = async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from("route_history")
         .select("*")
+        .eq("user_id", userId)
         .order("created_at", { ascending: false })
-        .limit(20);
+        .limit(10);
 
       if (error) throw error;
       setRoutes(data || []);
