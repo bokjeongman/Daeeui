@@ -254,7 +254,8 @@ const MapView = ({
             severity: severity,
             name: report.location_name,
             details: report.details,
-            photo_urls: report.photo_urls || []
+            photo_urls: report.photo_urls || [],
+            created_at: report.created_at
           };
         });
         setBarrierData(barriers);

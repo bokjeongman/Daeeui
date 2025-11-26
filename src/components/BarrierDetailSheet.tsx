@@ -1,6 +1,6 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, AlertTriangle } from "lucide-react";
+import { MapPin, AlertTriangle, Calendar } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 
 interface BarrierDetailSheetProps {
@@ -14,6 +14,7 @@ interface BarrierDetailSheetProps {
     photo_urls?: string[];
     latitude: number;
     longitude: number;
+    created_at?: string;
   } | null;
 }
 
@@ -86,6 +87,25 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
               {barrier.latitude.toFixed(6)}, {barrier.longitude.toFixed(6)}
             </p>
           </div>
+
+          {/* 등록 시각 */}
+          {barrier.created_at && (
+            <div className="bg-muted p-4 rounded-lg flex items-center gap-3">
+              <Calendar className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">등록 시각</p>
+                <p className="text-sm font-medium">
+                  {new Date(barrier.created_at).toLocaleString('ko-KR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* 상세 설명 */}
           {barrier.details && (
