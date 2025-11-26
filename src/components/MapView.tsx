@@ -117,49 +117,48 @@ const MapView = ({
   const hasInitializedPositionRef = useRef(false);
   const [isMobile] = useState(() => /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
 
-  // 현재 위치 가져오기
+  // 현재 위치 가져오기 (모바일/데스크탑 공통 구현)
   const getCurrentLocation = () => {
     setLoading(true);
     setError(null);
+
     if (!navigator.geolocation) {
-      setError("이 브라우저는 위치 서비스를 지원하지 않습니다.");
+      const msg = "이 브라우저는 위치 서비스를 지원하지 않습니다.";
+      setError(msg);
       setLoading(false);
+      toast.error(msg);
       return;
     }
 
-    // 기존 watch 정리
+    // 이전 위치 추적 중지
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
     }
 
-    // 모바일에서는 한 번만 위치 가져오기, 데스크탑에서는 지속적 추적
-    if (isMobile) {
-      // 모바일: 한 번만 위치 가져오기
-      navigator.geolocation.getCurrentPosition(position => {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
         const { latitude, longitude } = position.coords;
-        const location = {
-          lat: latitude,
-          lon: longitude,
-        };
+        const location = { lat: latitude, lon: longitude };
+
         setUserLocation(location);
         if (onUserLocationChange) {
           onUserLocationChange(location);
         }
         setLoading(false);
-        
+
         // 버튼을 누르면 항상 지도 중심을 현재 위치로 이동
-        if (map) {
-          hasInitializedPositionRef.current = false; // 버튼 클릭 시에는 다시 중심 이동 허용
-          const position = new window.Tmapv2.LatLng(latitude, longitude);
-          map.setCenter(position);
+        if (map && window.Tmapv2) {
+          hasInitializedPositionRef.current = false;
+          const centerPos = new window.Tmapv2.LatLng(latitude, longitude);
+          map.setCenter(centerPos);
           map.setZoom(16);
         }
-        
-        if (!userLocation) {
-          toast.success("현재 위치를 찾았습니다!");
-        }
-      }, error => {
-        let errorMessage = "위를 가져올 수 없습니다.";
+
+        toast.success("현재 위치를 찾았습니다!");
+      },
+      (error) => {
+        let errorMessage = "위치를 가져올 수 없습니다.";
         switch (error.code) {
           case error.PERMISSION_DENIED:
             errorMessage = "위치 접근 권한이 거부되었습니다. 브라우저 설정에서 위치 권한을 허용해주세요.";
@@ -174,55 +173,18 @@ const MapView = ({
         setError(errorMessage);
         setLoading(false);
         toast.error(errorMessage);
-      }, {
+      },
+      {
         enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
-      });
-    } else {
-      // 데스크탑: 지속적으로 위치 추적
-      const watchId = navigator.geolocation.watchPosition(position => {
-        const { latitude, longitude } = position.coords;
-        const location = {
-          lat: latitude,
-          lon: longitude,
-        };
-        setUserLocation(location);
-        if (onUserLocationChange) {
-          onUserLocationChange(location);
-        }
-        setLoading(false);
-        if (watchIdRef.current === null) {
-          toast.success("현재 위치를 찾았습니다!");
-        }
-      }, error => {
-        let errorMessage = "위를 가져올 수 없습니다.";
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage = "위치 접근 권한이 거부되었습니다. 브라우저 설정에서 위치 권한을 허용해주세요.";
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMessage = "위치 정보를 사용할 수 없습니다.";
-            break;
-          case error.TIMEOUT:
-            errorMessage = "위치 정보 요청 시간이 초과되었습니다.";
-            break;
-        }
-        setError(errorMessage);
-        setLoading(false);
-        toast.error(errorMessage);
-      }, {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
-      });
-      watchIdRef.current = watchId;
-    }
+        timeout: 15000,
+        maximumAge: 0,
+      }
+    );
 
     // 나침반 방향 추적 (지원하는 경우)
-    if (window.DeviceOrientationEvent && 'ontouchstart' in window) {
-      window.addEventListener('deviceorientationabsolute', handleOrientation, true);
-      window.addEventListener('deviceorientation', handleOrientation, true);
+    if (window.DeviceOrientationEvent && "ontouchstart" in window) {
+      window.addEventListener("deviceorientationabsolute", handleOrientation, true);
+      window.addEventListener("deviceorientation", handleOrientation, true);
     }
   };
   const handleOrientation = (event: DeviceOrientationEvent) => {
