@@ -295,6 +295,7 @@ const Index = () => {
       {/* 지도 영역 */}
       <div className="flex-1 relative">
         <MapView 
+          key={routeClearKey}
           startPoint={startPoint} 
           endPoint={endPoint} 
           selectedRouteType={selectedRouteType} 
