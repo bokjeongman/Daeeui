@@ -362,10 +362,15 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
 
           {/* 사진 첨부 */}
           <div className="space-y-2">
-            <Label htmlFor="photo" className="text-base font-semibold">
-              "턱이 있어요" 라는 텍스트보다 사진 한 장이 훨씬 정확
-            </Label>
-            <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="photo" className="text-base font-semibold">
+                사진 첨부 (최대 5장)
+              </Label>
+              <span className="text-sm text-green-600 font-medium">
+                정확한 정보 제공을 위해 추천
+              </span>
+            </div>
+            <div className="border-2 border-dashed border-green-200 rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer bg-green-50/30">
               <input
                 id="photo"
                 type="file"
@@ -375,16 +380,13 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
                 className="hidden"
                 disabled={photos.length >= 5}
               />
-              <label htmlFor="photo" className="cursor-pointer flex flex-col items-center gap-3">
-                <Upload className="h-10 w-10 text-primary" />
-                <div className="flex flex-col gap-1">
-                  <span className="text-sm font-medium">
-                    클릭하여 사진 선택 (최대 5MB, {photos.length}/5장)
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    사진을 첨부하시면 지도 사용에 더욱 도움이 됩니다!
-                  </span>
+              <label htmlFor="photo" className="cursor-pointer flex flex-col items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
+                  <Upload className="h-8 w-8 text-green-600" />
                 </div>
+                <span className="text-sm text-muted-foreground">
+                  클릭하여 사진 선택 (최대 5MB, {photos.length}/5장)
+                </span>
               </label>
             </div>
             
