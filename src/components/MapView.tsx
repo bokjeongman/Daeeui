@@ -400,39 +400,33 @@ const MapView = ({
       accuracyCircleRef.current.setMap(null);
     }
 
-    // 나침반 방향을 고려한 개선된 SVG 마커 생성
+    // 나침반 방향을 고려한 SVG 마커 생성
     const rotation = heading !== null ? heading : 0;
     const svgIcon = `
       <svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" style="transform: rotate(${rotation}deg); transition: transform 0.3s ease;">
         <defs>
           <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="4"/>
-            <feOffset dx="0" dy="2" result="offsetblur"/>
+            <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+            <feOffset dx="0" dy="3" result="offsetblur"/>
             <feComponentTransfer>
-              <feFuncA type="linear" slope="0.5"/>
+              <feFuncA type="linear" slope="0.4"/>
             </feComponentTransfer>
             <feMerge>
               <feMergeNode/>
               <feMergeNode in="SourceGraphic"/>
             </feMerge>
           </filter>
-          <radialGradient id="glowGrad" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:0.8" />
-            <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0" />
-          </radialGradient>
         </defs>
-        <!-- 외부 발광 효과 -->
-        <circle cx="30" cy="30" r="24" fill="url(#glowGrad)" opacity="0.4">
-          <animate attributeName="r" values="22;26;22" dur="2s" repeatCount="indefinite"/>
-        </circle>
         <!-- 외부 원 (흰색 테두리) -->
-        <circle cx="30" cy="30" r="18" fill="white" filter="url(#shadow)" stroke="#3b82f6" stroke-width="3"/>
-        <!-- 내부 원 (파란색 그라디언트) -->
-        <circle cx="30" cy="30" r="15" fill="#3b82f6"/>
-        <!-- 나침반 화살표 (북쪽 - 흰색) -->
-        <path d="M 30 12 L 35 28 L 30 25 L 25 28 Z" fill="white" stroke="white" stroke-width="1"/>
+        <circle cx="30" cy="30" r="22" fill="white" filter="url(#shadow)" stroke="hsl(var(--sidebar-ring))" stroke-width="2"/>
+        <!-- 내부 원 (파란색) -->
+        <circle cx="30" cy="30" r="19" fill="hsl(var(--sidebar-ring))"/>
+        <!-- 나침반 화살표 (북쪽 - 파란색) -->
+        <path d="M 30 10 L 36 30 L 30 26 L 24 30 Z" fill="hsl(var(--sidebar-ring))" stroke="white" stroke-width="1.8"/>
+        <!-- 나침반 화살표 (남쪽 - 연한 파란색) -->
+        <path d="M 30 50 L 24 30 L 30 34 L 36 30 Z" fill="hsl(var(--sidebar-ring))" opacity="0.6" stroke="white" stroke-width="1.2"/>
         <!-- 중심점 -->
-        <circle cx="30" cy="30" r="4" fill="white" opacity="0.9"/>
+        <circle cx="30" cy="30" r="4" fill="white" stroke="hsl(var(--sidebar-ring))" stroke-width="2"/>
       </svg>
     `;
 

@@ -56,7 +56,7 @@ const MyRoutes = () => {
         .from("route_history")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(10);
+        .limit(20);
 
       if (error) throw error;
       setRoutes(data || []);
