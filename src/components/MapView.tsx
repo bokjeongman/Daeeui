@@ -147,8 +147,8 @@ const MapView = ({
         }
         setLoading(false);
         
-        // 경로 탐색 중이 아닐 때만 지도 중심 이동
-        if (!startPoint && !endPoint && map) {
+        // 지도 중심 이동 (selectedSearchPlace는 제외)
+        if (map && !selectedSearchPlace) {
           hasInitializedPositionRef.current = false; // 버튼 클릭 시에는 다시 중심 이동 허용
           const position = new window.Tmapv2.LatLng(latitude, longitude);
           map.setCenter(position);
