@@ -228,6 +228,29 @@ const Index = () => {
           }}
         />
         
+        {/* 경로 정보 오버레이 */}
+        {hasRoute && routeOptions.length > 0 && selectedRouteType && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[5] animate-fade-in">
+            <div className="bg-background/95 backdrop-blur-sm rounded-full px-6 py-3 shadow-lg border border-border flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                <span className="text-sm font-medium text-foreground">
+                  {`${(routeOptions.find(r => r.type === selectedRouteType)?.distance / 1000).toFixed(1)}km`}
+                </span>
+              </div>
+              <div className="w-px h-4 bg-border" />
+              <div className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-sm font-medium text-foreground">
+                  {`${Math.ceil(routeOptions.find(r => r.type === selectedRouteType)?.duration / 60)}분`}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {/* 후기 등록 버튼 */}
         <ReviewButton onClick={() => setReviewModalOpen(true)} />
       </div>
