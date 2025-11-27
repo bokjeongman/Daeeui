@@ -123,7 +123,21 @@ const Index = () => {
       setSearchMode(null); // RouteSelector를 표시하기 위해 null로 설정
       setEndPoint(null);
       setHasRoute(false);
+      setRouteOptions([]);
+      setSelectedRouteType(null);
     } else {
+      // 출발지와 도착지가 같은 경우: 경로 탐색 모드 해제 및 초기 상태 복원
+      if (startPoint && startPoint.lat === place.lat && startPoint.lon === place.lon) {
+        toast.error("출발지와 도착지가 같습니다. 다른 도착지를 선택해주세요.");
+        setHasRoute(false);
+        setRouteOptions([]);
+        setSelectedRouteType(null);
+        setEndPoint(null);
+        setSearchMode(null);
+        setRouteClearKey((prev) => prev + 1);
+        return;
+      }
+
       setEndPoint(place);
       setSearchMode(null);
       setHasRoute(true);
@@ -160,9 +174,13 @@ const Index = () => {
       const temp = startPoint;
       setStartPoint(endPoint);
       setEndPoint(temp);
+      // 경로를 다시 계산하도록 상태 초기화
+      setHasRoute(true);
+      setRouteOptions([]);
+      setSelectedRouteType("walk");
+      setRouteClearKey((prev) => prev + 1);
     }
   };
-
   const handleEditStart = () => {
     setSearchMode("start");
     setEndPoint(null);
@@ -238,7 +256,7 @@ const Index = () => {
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       {/* 헤더 - 경로 탐색 중일 때는 경로 정보로 대체 */}
-      {!hasRoute ? (
+      {(!hasRoute || routeOptions.length === 0 || !selectedRouteType) ? (
         <div className="relative z-10">
           <div className={`${viewMode === "yellow" ? "bg-accent" : "bg-background"}`}>
             {/* 초기 상태: 출발지도 도착지도 선택 안 됨 */}

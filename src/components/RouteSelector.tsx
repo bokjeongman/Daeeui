@@ -1,4 +1,4 @@
-import { ArrowUpDown, X, Plus } from "lucide-react";
+import { ArrowUpDown, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface RouteSelectorProps {
@@ -67,15 +67,6 @@ const RouteSelector = ({
 
           {/* 우측: 버튼 영역 */}
           <div className="flex flex-col gap-2">
-            {/* + 버튼 */}
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-10 w-10"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-            
             {/* X 버튼 */}
             <Button
               variant="ghost"
