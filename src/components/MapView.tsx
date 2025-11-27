@@ -83,7 +83,8 @@ const MapView = ({
   clearKey,
   selectedSearchPlace,
   hideFilterButton = false,
-}: MapViewProps) => {
+  isRouteSelecting = false,
+}: MapViewProps & { isRouteSelecting?: boolean }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -1316,7 +1317,11 @@ const MapView = ({
 
       {/* 필터 버튼 (하단 우측 위) - 장소 검색 중이 아닐 때만 표시 */}
       {!hideFilterButton && (
-        <div className="absolute bottom-40 right-6 z-40 space-y-2 pointer-events-auto">
+        <div
+          className={`absolute right-6 z-40 space-y-2 pointer-events-auto ${
+            isRouteSelecting ? "bottom-52" : "bottom-40"
+          }`}
+        >
           <Button
             onClick={() => setShowFilter(!showFilter)}
             size="lg"
@@ -1325,58 +1330,97 @@ const MapView = ({
           >
             <Filter className="h-6 w-6" />
           </Button>
-          
-          {showFilter && <div className="absolute bottom-16 right-0 bg-background border-2 border-border rounded-lg shadow-xl p-3 space-y-2 min-w-[160px]">
+          {showFilter && (
+            <div className="absolute bottom-16 right-0 bg-background border-2 border-border rounded-lg shadow-xl p-3 space-y-2 min-w-[160px]">
               <div className="text-sm font-semibold mb-2 text-foreground">접근성 필터</div>
-              
-              <button onClick={() => setFilter({
-            ...filter,
-            safe: !filter.safe
-          })} className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors">
-                <div className={`w-4 h-4 rounded border-2 ${filter.safe ? 'bg-green-500 border-green-500' : 'border-muted-foreground'}`}>
-                  {filter.safe && <div className="text-white text-xs text-center leading-none">✓</div>}
+              <button
+                onClick={() =>
+                  setFilter({
+                    ...filter,
+                    safe: !filter.safe,
+                  })
+                }
+                className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors"
+              >
+                <div
+                  className={`w-4 h-4 rounded border-2 ${
+                    filter.safe ? "bg-green-500 border-green-500" : "border-muted-foreground"
+                  }`}
+                >
+                  {filter.safe && (
+                    <div className="text-white text-xs text-center leading-none">✓</div>
+                  )}
                 </div>
                 <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                   안심
                 </Badge>
               </button>
-              
-              <button onClick={() => setFilter({
-            ...filter,
-            warning: !filter.warning
-          })} className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors">
-                <div className={`w-4 h-4 rounded border-2 ${filter.warning ? 'bg-yellow-500 border-yellow-500' : 'border-muted-foreground'}`}>
-                  {filter.warning && <div className="text-white text-xs text-center leading-none">✓</div>}
+              <button
+                onClick={() =>
+                  setFilter({
+                    ...filter,
+                    warning: !filter.warning,
+                  })
+                }
+                className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors"
+              >
+                <div
+                  className={`w-4 h-4 rounded border-2 ${
+                    filter.warning
+                      ? "bg-yellow-500 border-yellow-500"
+                      : "border-muted-foreground"
+                  }`}
+                >
+                  {filter.warning && (
+                    <div className="text-white text-xs text-center leading-none">✓</div>
+                  )}
                 </div>
                 <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
                   경고
                 </Badge>
               </button>
-              
-              <button onClick={() => setFilter({
-            ...filter,
-            danger: !filter.danger
-          })} className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors">
-                <div className={`w-4 h-4 rounded border-2 ${filter.danger ? 'bg-red-500 border-red-500' : 'border-muted-foreground'}`}>
-                  {filter.danger && <div className="text-white text-xs text-center leading-none">✓</div>}
+              <button
+                onClick={() =>
+                  setFilter({
+                    ...filter,
+                    danger: !filter.danger,
+                  })
+                }
+                className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors"
+              >
+                <div
+                  className={`w-4 h-4 rounded border-2 ${
+                    filter.danger ? "bg-red-500 border-red-500" : "border-muted-foreground"
+                  }`}
+                >
+                  {filter.danger && (
+                    <div className="text-white text-xs text-center leading-none">✓</div>
+                  )}
                 </div>
                 <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
                   위험
                 </Badge>
               </button>
-            </div>}
+            </div>
+          )}
         </div>
       )}
 
       {/* 현재 위치 버튼 */}
-      <Button 
-        onClick={getCurrentLocation} 
-        size="lg" 
-        className={`absolute ${selectedSearchPlace ? 'bottom-[180px]' : 'bottom-4'} right-4 h-14 w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground z-10 border-4 border-background transition-all duration-300`}
-        title="현재 위치" 
+      <Button
+        onClick={getCurrentLocation}
+        size="lg"
+        className={`absolute right-4 h-14 w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground z-20 border-4 border-background transition-all duration-300 ${
+          selectedSearchPlace ? "bottom-[180px]" : isRouteSelecting ? "bottom-24" : "bottom-4"
+        }`}
+        title="현재 위치"
         disabled={loading}
       >
-        {loading && userLocation === null ? <Loader2 className="h-6 w-6 animate-spin" /> : <Navigation className="h-6 w-6" />}
+        {loading && userLocation === null ? (
+          <Loader2 className="h-6 w-6 animate-spin" />
+        ) : (
+          <Navigation className="h-6 w-6" />
+        )}
       </Button>
     </div>;
 };

@@ -389,20 +389,16 @@ const Index = () => {
       <div className="flex-1 relative">
         <MapView
           key={routeClearKey}
-          startPoint={startPoint} 
-          endPoint={endPoint} 
-          selectedRouteType={selectedRouteType} 
-          onRoutesCalculated={handleRoutesCalculated} 
+          startPoint={startPoint}
+          endPoint={endPoint}
+          selectedRouteType={selectedRouteType}
+          onRoutesCalculated={handleRoutesCalculated}
           center={mapCenter}
           onBarrierClick={(barrier: any) => {
             setSelectedBarrier(barrier);
             setBarrierSheetOpen(true);
           }}
-          onPlaceClick={(place: {
-            name: string;
-            lat: number;
-            lon: number;
-          }) => {
+          onPlaceClick={(place: { name: string; lat: number; lon: number }) => {
             setSelectedPlace(place);
             setPlaceReviewModalOpen(true);
           }}
@@ -412,8 +408,9 @@ const Index = () => {
           clearKey={routeClearKey}
           selectedSearchPlace={selectedSearchPlace}
           hideFilterButton={!!selectedSearchPlace}
+          isRouteSelecting={!!(startPoint || endPoint)}
         />
-        
+
         {/* 후기 등록 버튼 - 장소 검색 중일 때 숨김 */}
         {!selectedSearchPlace && <ReviewButton onClick={() => setReviewModalOpen(true)} />}
       </div>
