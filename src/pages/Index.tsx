@@ -287,24 +287,19 @@ const Index = () => {
             {/* 출발지 또는 도착지가 선택되었을 때 */}
             {(startPoint || endPoint) && (
               <>
-                {/* 검색 모드가 아닐 때: RouteSelector 표시 */}
-                {!searchMode && (
-                  <RouteSelector
-                    startPoint={startPoint}
-                    endPoint={endPoint}
-                    onStartClick={handleEditStart}
-                    onEndClick={handleEditEnd}
-                    onSwap={handleSwapPoints}
-                    onCancel={handleCancelRoute}
-                  />
-                )}
+                {/* RouteSelector는 항상 표시 */}
+                <RouteSelector
+                  startPoint={startPoint}
+                  endPoint={endPoint}
+                  onStartClick={handleEditStart}
+                  onEndClick={handleEditEnd}
+                  onSwap={handleSwapPoints}
+                  onCancel={handleCancelRoute}
+                />
                 
-                {/* 검색 모드일 때: SearchBar 표시 */}
+                {/* 검색 모드일 때: RouteSelector 아래에 SearchBar 표시 */}
                 {searchMode && (
-                  <div className="flex items-center gap-3 px-4 py-3">
-                    <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)} className="shrink-0">
-                      <Menu className="h-6 w-6" />
-                    </Button>
+                  <div className="flex items-center gap-3 px-4 py-3 border-t">
                     <div className="flex-1 min-w-0">
                       <SearchBar 
                         placeholder={searchMode === "end" ? "도착지 검색" : "출발지 검색"} 
