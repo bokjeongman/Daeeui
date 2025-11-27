@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Menu } from "lucide-react";
+import { Menu, ArrowUpDown, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SearchBar from "@/components/SearchBar";
 import MapView from "@/components/MapView";
@@ -132,6 +132,7 @@ const Index = () => {
         setHasRoute(false);
         setRouteOptions([]);
         setSelectedRouteType(null);
+        setStartPoint(null);
         setEndPoint(null);
         setSearchMode(null);
         setRouteClearKey((prev) => prev + 1);
@@ -174,6 +175,7 @@ const Index = () => {
       const temp = startPoint;
       setStartPoint(endPoint);
       setEndPoint(temp);
+      setSearchMode(null);
       // 경로를 다시 계산하도록 상태 초기화
       setHasRoute(true);
       setRouteOptions([]);
@@ -189,6 +191,9 @@ const Index = () => {
 
   const handleEditEnd = () => {
     setSearchMode("end");
+    setHasRoute(false);
+    setRouteOptions([]);
+    setSelectedRouteType(null);
   };
 
   // 경로 계산 후 자동으로 route_history에 저장
@@ -287,27 +292,15 @@ const Index = () => {
             {/* 출발지 또는 도착지가 선택되었을 때 */}
             {(startPoint || endPoint) && (
               <>
-                {/* 검색 모드가 아닐 때: RouteSelector 표시 */}
-                {!searchMode && (
-                  <RouteSelector
-                    startPoint={startPoint}
-                    endPoint={endPoint}
-                    onStartClick={handleEditStart}
-                    onEndClick={handleEditEnd}
-                    onSwap={handleSwapPoints}
-                    onCancel={handleCancelRoute}
-                  />
-                )}
-                
-                {/* 검색 모드일 때: SearchBar 표시 */}
-                {searchMode && (
+                {/* 검색 모드가 "start"일 때만 별도 SearchBar 표시 */}
+                {searchMode === "start" ? (
                   <div className="flex items-center gap-3 px-4 py-3">
                     <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)} className="shrink-0">
                       <Menu className="h-6 w-6" />
                     </Button>
                     <div className="flex-1 min-w-0">
                       <SearchBar 
-                        placeholder={searchMode === "end" ? "도착지 검색" : "출발지 검색"} 
+                        placeholder="출발지 검색" 
                         variant={viewMode}
                         searchMode={searchMode}
                         onSelectStart={place => handleSelectPlace(place, "start")} 
@@ -317,69 +310,99 @@ const Index = () => {
                       />
                     </div>
                   </div>
+                ) : (
+                  /* RouteSelector 표시 (도착지 검색 통합) */
+                  <RouteSelector
+                    startPoint={startPoint}
+                    endPoint={endPoint}
+                    onStartClick={handleEditStart}
+                    onEndClick={handleEditEnd}
+                    onSwap={handleSwapPoints}
+                    onCancel={handleCancelRoute}
+                    isSearchingEnd={searchMode === "end"}
+                    onSelectEnd={place => handleSelectPlace(place, "end")}
+                  />
                 )}
               </>
             )}
           </div>
         </div>
       ) : routeOptions.length > 0 && selectedRouteType && (
-        <div className="relative z-10 bg-background/95 backdrop-blur-sm border-b shadow-md">
-          <div className="flex items-center gap-3 px-4 py-3">
-            <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)} className="shrink-0">
-              <Menu className="h-6 w-6" />
-            </Button>
-            <div className="flex-1 min-w-0">
-              {/* 출발지 → 도착지 */}
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <div className="w-2.5 h-2.5 rounded-full bg-primary flex-shrink-0" />
-                    <span className="text-sm font-medium text-foreground truncate">
-                      {startPoint?.name || "현위치"}
+        <div className="relative z-10 bg-background border-b">
+          <div className="p-3">
+            <div className="flex items-start gap-2">
+              {/* 좌측: 출발지/도착지 영역 */}
+              <div className="flex-1 bg-card rounded-lg border p-3">
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 space-y-2">
+                    {/* 출발지 */}
+                    <div className="flex items-center gap-2 p-2">
+                      <div className="w-2.5 h-2.5 rounded-full bg-green-500 flex-shrink-0" />
+                      <span className="text-sm font-medium text-foreground truncate">
+                        {startPoint?.name || "현위치"}
+                      </span>
+                    </div>
+
+                    {/* 구분선 */}
+                    <div className="h-px bg-border" />
+
+                    {/* 도착지 */}
+                    <div className="flex items-center gap-2 p-2">
+                      <div className="w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0" />
+                      <span className="text-sm font-medium text-foreground truncate">
+                        {endPoint?.name || "도착지"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 위치 바꾸기 버튼 */}
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleSwapPoints}
+                    disabled={!startPoint || !endPoint}
+                    className="h-9 w-9 flex-shrink-0"
+                  >
+                    <ArrowUpDown className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                {/* 거리 및 시간 정보 */}
+                <div className="flex items-center gap-3 mt-2 pt-2 border-t">
+                  <div className="flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                    <span className="text-xs font-medium text-foreground">
+                      {`${(routeOptions.find(r => r.type === selectedRouteType)?.distance / 1000).toFixed(1)}km`}
                     </span>
                   </div>
-                  <svg className="w-4 h-4 text-muted-foreground flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <div className="w-2.5 h-2.5 rounded-full bg-destructive flex-shrink-0" />
-                    <span className="text-sm font-medium text-foreground truncate">
-                      {endPoint?.name || "도착지"}
+                  <div className="w-px h-3 bg-border" />
+                  <div className="flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="text-xs font-medium text-foreground">
+                      {(() => {
+                        const totalMinutes = Math.ceil(routeOptions.find(r => r.type === selectedRouteType)?.duration / 60);
+                        const hours = Math.floor(totalMinutes / 60);
+                        const minutes = totalMinutes % 60;
+                        return hours > 0 ? `${hours}시간 ${minutes}분` : `${minutes}분`;
+                      })()}
                     </span>
                   </div>
                 </div>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8 flex-shrink-0 hover:bg-destructive/10"
-                  onClick={handleCancelRoute}
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </Button>
               </div>
-              
-              {/* 거리 및 시간 정보 */}
-              <div className="flex items-center gap-4 mt-2">
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                  </svg>
-                  <span className="text-sm font-medium text-foreground">
-                    {`${(routeOptions.find(r => r.type === selectedRouteType)?.distance / 1000).toFixed(1)}km`}
-                  </span>
-                </div>
-                <div className="w-px h-4 bg-border" />
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span className="text-sm font-medium text-foreground">
-                    {`${Math.ceil(routeOptions.find(r => r.type === selectedRouteType)?.duration / 60)}분`}
-                  </span>
-                </div>
-              </div>
+
+              {/* 우측: X 버튼 */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleCancelRoute}
+                className="h-9 w-9 hover:bg-destructive/10 flex-shrink-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         </div>
@@ -415,12 +438,6 @@ const Index = () => {
         {!selectedSearchPlace && <ReviewButton onClick={() => setReviewModalOpen(true)} />}
       </div>
 
-      {/* 하단 경로 정보 - 경로 탐색 후에만 표시 */}
-      {hasRoute && routeOptions.length > 0 && selectedRouteType && <div className="relative z-10 bg-background rounded-t-3xl border-t shadow-lg max-h-[50vh] overflow-y-auto">
-          <div className="p-4">
-            <RouteInfo variant={viewMode} distance={`${(routeOptions.find(r => r.type === selectedRouteType)?.distance / 1000).toFixed(1)} km`} duration={`${Math.ceil(routeOptions.find(r => r.type === selectedRouteType)?.duration / 60)}분`} safePercentage={routeOptions.find(r => r.type === selectedRouteType)?.safePercentage || 0} warningPercentage={routeOptions.find(r => r.type === selectedRouteType)?.warningPercentage || 0} dangerPercentage={routeOptions.find(r => r.type === selectedRouteType)?.dangerPercentage || 0} transitInfo={routeOptions.find(r => r.type === selectedRouteType)?.transitInfo} startPoint={startPoint} endPoint={endPoint} rawDistance={routeOptions.find(r => r.type === selectedRouteType)?.distance} rawDuration={routeOptions.find(r => r.type === selectedRouteType)?.duration} showButton={false} />
-          </div>
-        </div>}
 
       {/* 사이드바 */}
       <Sidebar open={sidebarOpen} onOpenChange={setSidebarOpen} />
