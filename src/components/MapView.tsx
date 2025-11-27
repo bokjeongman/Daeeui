@@ -1409,7 +1409,7 @@ const MapView = ({
         onClick={getCurrentLocation}
         size="lg"
         className={`absolute right-4 h-14 w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground z-20 border-4 border-background transition-all duration-300 ${
-          selectedSearchPlace ? "bottom-[180px]" : "bottom-4"
+          selectedSearchPlace ? "bottom-[180px]" : "bottom-32"
         }`}
         title="현재 위치"
         disabled={loading}
