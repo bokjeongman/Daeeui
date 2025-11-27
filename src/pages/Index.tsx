@@ -70,17 +70,6 @@ const Index = () => {
   const [selectedRouteType, setSelectedRouteType] = useState<"transit" | "walk" | "car" | null>(null);
   const [mapCenter, setMapCenter] = useState<{ lat: number; lon: number } | null>(null);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lon: number } | null>(null);
-
-  // 현재 위치가 설정되고 출발지/도착지가 모두 비어있다면, 출발지를 '현위치'로 자동 설정
-  useEffect(() => {
-    if (currentLocation && !startPoint && !endPoint) {
-      setStartPoint({
-        lat: currentLocation.lat,
-        lon: currentLocation.lon,
-        name: "현위치",
-      });
-    }
-  }, [currentLocation, startPoint, endPoint]);
   const [selectedSearchPlace, setSelectedSearchPlace] = useState<{ lat: number; lon: number; name: string } | null>(null);
 
   // 로그인 체크 및 경로 복원
@@ -143,7 +132,6 @@ const Index = () => {
         setHasRoute(false);
         setRouteOptions([]);
         setSelectedRouteType(null);
-        setStartPoint(null);
         setEndPoint(null);
         setSearchMode(null);
         setRouteClearKey((prev) => prev + 1);
