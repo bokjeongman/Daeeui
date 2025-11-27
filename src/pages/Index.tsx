@@ -120,7 +120,7 @@ const Index = () => {
   }, type: "start" | "end") => {
     if (type === "start") {
       setStartPoint(place);
-      setSearchMode("end");
+      setSearchMode(null); // RouteSelector를 표시하기 위해 null로 설정
       setEndPoint(null);
       setHasRoute(false);
     } else {
@@ -251,7 +251,8 @@ const Index = () => {
                   <div className="flex-1 min-w-0">
                     <SearchBar 
                       placeholder="장소 검색" 
-                      variant={viewMode} 
+                      variant={viewMode}
+                      searchMode={null}
                       onSelectStart={place => handleSelectPlace(place, "start")} 
                       onSelectEnd={place => handleSelectPlace(place, "end")} 
                       onMoveToPlace={handleMoveToPlace}
@@ -289,7 +290,8 @@ const Index = () => {
                     <div className="flex-1 min-w-0">
                       <SearchBar 
                         placeholder={searchMode === "end" ? "도착지 검색" : "출발지 검색"} 
-                        variant={viewMode} 
+                        variant={viewMode}
+                        searchMode={searchMode}
                         onSelectStart={place => handleSelectPlace(place, "start")} 
                         onSelectEnd={place => handleSelectPlace(place, "end")} 
                         onMoveToPlace={handleMoveToPlace}

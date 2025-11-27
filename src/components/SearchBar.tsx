@@ -6,6 +6,7 @@ import PlaceSearchResult from "./PlaceSearchResult";
 interface SearchBarProps {
   placeholder?: string;
   variant?: "default" | "yellow";
+  searchMode?: "start" | "end" | null;
   onSelectStart?: (place: { lat: number; lon: number; name: string }) => void;
   onSelectEnd?: (place: { lat: number; lon: number; name: string }) => void;
   onMoveToPlace?: (place: { lat: number; lon: number; name: string }) => void;
@@ -15,6 +16,7 @@ interface SearchBarProps {
 const SearchBar = ({ 
   placeholder = "장소 검색", 
   variant = "default",
+  searchMode = null,
   onSelectStart,
   onSelectEnd,
   onMoveToPlace,
@@ -127,6 +129,7 @@ const SearchBar = ({
           }}
           onMoveToPlace={onMoveToPlace}
           onClearPlace={onClearPlace}
+          searchMode={searchMode}
         />
       )}
     </div>

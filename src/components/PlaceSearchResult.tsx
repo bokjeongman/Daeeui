@@ -20,9 +20,10 @@ interface PlaceSearchResultProps {
   onClose: () => void;
   onMoveToPlace?: (place: { lat: number; lon: number; name: string }) => void;
   onClearPlace?: () => void;
+  searchMode?: "start" | "end" | null;
 }
 
-const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace, onClearPlace }: PlaceSearchResultProps) => {
+const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace, onClearPlace, searchMode }: PlaceSearchResultProps) => {
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [user, setUser] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -164,30 +165,48 @@ const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace, onClearP
           </div>
           
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="default"
-              className="flex-1 h-12"
-              onClick={() => {
-                onSelect(selectedPlace, "start");
-                setSelectedPlace(null);
-                onClose();
-              }}
-            >
-              출발
-            </Button>
-            <Button
-              variant="default"
-              size="default"
-              className="flex-1 h-12 bg-primary"
-              onClick={() => {
-                onSelect(selectedPlace, "end");
-                setSelectedPlace(null);
-                onClose();
-              }}
-            >
-              도착
-            </Button>
+            {/* searchMode가 지정되어 있으면 해당 버튼만 표시하고 자동 선택 */}
+            {searchMode ? (
+              <Button
+                variant="default"
+                size="default"
+                className="flex-1 h-12 bg-primary"
+                onClick={() => {
+                  onSelect(selectedPlace, searchMode);
+                  setSelectedPlace(null);
+                  onClose();
+                }}
+              >
+                {searchMode === "start" ? "출발지로 설정" : "도착지로 설정"}
+              </Button>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  size="default"
+                  className="flex-1 h-12"
+                  onClick={() => {
+                    onSelect(selectedPlace, "start");
+                    setSelectedPlace(null);
+                    onClose();
+                  }}
+                >
+                  출발
+                </Button>
+                <Button
+                  variant="default"
+                  size="default"
+                  className="flex-1 h-12 bg-primary"
+                  onClick={() => {
+                    onSelect(selectedPlace, "end");
+                    setSelectedPlace(null);
+                    onClose();
+                  }}
+                >
+                  도착
+                </Button>
+              </>
+            )}
           </div>
         </Card>
       </div>
