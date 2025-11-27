@@ -155,8 +155,6 @@ const MapView = ({
           map.setCenter(centerPos);
           map.setZoom(16);
         }
-
-        toast.success("현재 위치를 찾았습니다!");
       },
       (error) => {
         let errorMessage = "위치를 가져올 수 없습니다.";
@@ -1411,7 +1409,7 @@ const MapView = ({
         onClick={getCurrentLocation}
         size="lg"
         className={`absolute right-4 h-14 w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground z-20 border-4 border-background transition-all duration-300 ${
-          selectedSearchPlace ? "bottom-[180px]" : isRouteSelecting ? "bottom-24" : "bottom-4"
+          selectedSearchPlace ? "bottom-[180px]" : "bottom-4"
         }`}
         title="현재 위치"
         disabled={loading}
