@@ -13,6 +13,7 @@ import ReviewModal from "@/components/ReviewModal";
 import PlaceReviewModal from "@/components/PlaceReviewModal";
 import WheelchairBadge from "@/components/WheelchairBadge";
 import BarrierDetailSheet from "@/components/BarrierDetailSheet";
+import RouteSelector from "@/components/RouteSelector";
 import { toast } from "sonner";
 import { reverseGeocode } from "@/lib/utils";
 const Index = () => {
@@ -154,6 +155,24 @@ const Index = () => {
     setSearchMode(null);
   };
 
+  const handleSwapPoints = () => {
+    if (startPoint && endPoint) {
+      const temp = startPoint;
+      setStartPoint(endPoint);
+      setEndPoint(temp);
+    }
+  };
+
+  const handleEditStart = () => {
+    setSearchMode("start");
+    setEndPoint(null);
+    setHasRoute(false);
+  };
+
+  const handleEditEnd = () => {
+    setSearchMode("end");
+  };
+
   // 경로 계산 후 자동으로 route_history에 저장
   const handleRoutesCalculated = useCallback(async (routes: Array<{
     type: "transit" | "walk" | "car";
@@ -222,24 +241,65 @@ const Index = () => {
       {!hasRoute ? (
         <div className="relative z-10">
           <div className={`${viewMode === "yellow" ? "bg-accent" : "bg-background"}`}>
-            <div className="flex items-center gap-3 px-4 py-3">
-              <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)} className="shrink-0">
-                <Menu className="h-6 w-6" />
-              </Button>
-              <div className="flex-1 min-w-0">
-                <SearchBar 
-                  placeholder={searchMode === "end" ? "도착지 검색" : "장소 검색"} 
-                  variant={viewMode} 
-                  onSelectStart={place => handleSelectPlace(place, "start")} 
-                  onSelectEnd={place => handleSelectPlace(place, "end")} 
-                  onMoveToPlace={handleMoveToPlace}
-                  onClearPlace={handleClearSearchPlace}
-                />
-              </div>
-            </div>
-            {viewMode === "yellow" && <div className="px-4 pb-4">
-                <WheelchairBadge />
-              </div>}
+            {/* 초기 상태: 출발지도 도착지도 선택 안 됨 */}
+            {!startPoint && !endPoint && (
+              <>
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)} className="shrink-0">
+                    <Menu className="h-6 w-6" />
+                  </Button>
+                  <div className="flex-1 min-w-0">
+                    <SearchBar 
+                      placeholder="장소 검색" 
+                      variant={viewMode} 
+                      onSelectStart={place => handleSelectPlace(place, "start")} 
+                      onSelectEnd={place => handleSelectPlace(place, "end")} 
+                      onMoveToPlace={handleMoveToPlace}
+                      onClearPlace={handleClearSearchPlace}
+                    />
+                  </div>
+                </div>
+                {viewMode === "yellow" && <div className="px-4 pb-4">
+                    <WheelchairBadge />
+                  </div>}
+              </>
+            )}
+            
+            {/* 출발지 또는 도착지가 선택되었을 때 */}
+            {(startPoint || endPoint) && (
+              <>
+                {/* 검색 모드가 아닐 때: RouteSelector 표시 */}
+                {!searchMode && (
+                  <RouteSelector
+                    startPoint={startPoint}
+                    endPoint={endPoint}
+                    onStartClick={handleEditStart}
+                    onEndClick={handleEditEnd}
+                    onSwap={handleSwapPoints}
+                    onCancel={handleCancelRoute}
+                  />
+                )}
+                
+                {/* 검색 모드일 때: SearchBar 표시 */}
+                {searchMode && (
+                  <div className="flex items-center gap-3 px-4 py-3">
+                    <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)} className="shrink-0">
+                      <Menu className="h-6 w-6" />
+                    </Button>
+                    <div className="flex-1 min-w-0">
+                      <SearchBar 
+                        placeholder={searchMode === "end" ? "도착지 검색" : "출발지 검색"} 
+                        variant={viewMode} 
+                        onSelectStart={place => handleSelectPlace(place, "start")} 
+                        onSelectEnd={place => handleSelectPlace(place, "end")} 
+                        onMoveToPlace={handleMoveToPlace}
+                        onClearPlace={handleClearSearchPlace}
+                      />
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       ) : routeOptions.length > 0 && selectedRouteType && (
@@ -307,7 +367,7 @@ const Index = () => {
 
       {/* 지도 영역 */}
       <div className="flex-1 relative">
-        <MapView 
+        <MapView
           key={routeClearKey}
           startPoint={startPoint} 
           endPoint={endPoint} 
