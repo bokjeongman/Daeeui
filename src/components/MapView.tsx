@@ -692,8 +692,8 @@ const MapView = ({
       console.log(`✅ 마커 ${index + 1} 생성 완료:`, barrier.name);
 
       // 마커 클릭 이벤트 - 배리어 상세 정보 열기
-      marker.addListener("click", (e: any) => {
-        e.stopPropagation();
+      marker.addListener("click", () => {
+        console.log("🎯 배리어 마커 클릭:", barrier.name);
         if (onBarrierClick) {
           onBarrierClick(barrier);
         }
@@ -701,8 +701,8 @@ const MapView = ({
 
       // 모바일에서 터치 이벤트 추가
       if (isMobile) {
-        marker.addListener("touchend", (e: any) => {
-          e.stopPropagation();
+        marker.addListener("touchend", () => {
+          console.log("👆 배리어 마커 터치:", barrier.name);
           if (onBarrierClick) {
             onBarrierClick(barrier);
           }
