@@ -451,61 +451,81 @@ const MapView = ({
       accuracyCircleRef.current.setMap(null);
     }
 
-    // 단순한 파란색 원 마커 (모바일/데스크톱 공통)
-    const svgIcon = `
-      <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
-            <feOffset dx="0" dy="2" result="offsetblur"/>
-            <feComponentTransfer>
-              <feFuncA type="linear" slope="0.4"/>
-            </feComponentTransfer>
-            <feMerge>
-              <feMergeNode/>
-              <feMergeNode in="SourceGraphic"/>
-            </feMerge>
-          </filter>
-        </defs>
-        <!-- 외부 원 (흰색 테두리) -->
-        <circle cx="20" cy="20" r="16" fill="white" filter="url(#shadow)" stroke="#3b82f6" stroke-width="2"/>
-        <!-- 내부 원 (파란색) -->
-        <circle cx="20" cy="20" r="12" fill="#3b82f6"/>
-      </svg>
-    `;
+    // 모바일에서는 나침반 기능이 있는 마커, 데스크톱에서는 단순 원형 마커
+    let svgIcon;
+    if (isMobile && heading !== null) {
+      // 네이버맵 스타일 나침반 마커 (모바일)
+      const rotation = heading;
+      svgIcon = `
+        <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <filter id="shadow-mobile" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+              <feOffset dx="0" dy="2" result="offsetblur"/>
+              <feComponentTransfer>
+                <feFuncA type="linear" slope="0.4"/>
+              </feComponentTransfer>
+              <feMerge>
+                <feMergeNode/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+          </defs>
+          <!-- 외부 원 (흰색 테두리) -->
+          <circle cx="24" cy="24" r="18" fill="white" filter="url(#shadow-mobile)" stroke="#3b82f6" stroke-width="2.5"/>
+          <!-- 내부 원 (파란색) -->
+          <circle cx="24" cy="24" r="14" fill="#3b82f6"/>
+          <!-- 나침반 화살표 (회전 적용) -->
+          <g transform="rotate(${rotation} 24 24)">
+            <path d="M24 12 L26.5 24 L24 22 L21.5 24 Z" fill="white" stroke="white" stroke-width="1"/>
+          </g>
+        </svg>
+      `;
+    } else {
+      // 단순한 파란색 원 마커 (데스크톱 또는 heading 없는 경우)
+      svgIcon = `
+        <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+              <feOffset dx="0" dy="2" result="offsetblur"/>
+              <feComponentTransfer>
+                <feFuncA type="linear" slope="0.4"/>
+              </feComponentTransfer>
+              <feMerge>
+                <feMergeNode/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+          </defs>
+          <!-- 외부 원 (흰색 테두리) -->
+          <circle cx="20" cy="20" r="16" fill="white" filter="url(#shadow)" stroke="#3b82f6" stroke-width="2"/>
+          <!-- 내부 원 (파란색) -->
+          <circle cx="20" cy="20" r="12" fill="#3b82f6"/>
+        </svg>
+      `;
+    }
 
     const iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgIcon)}`;
+    const markerSize = isMobile ? 48 : 40;
 
     const marker = new window.Tmapv2.Marker({
       position: position,
       map: map,
       icon: iconUrl,
-      iconSize: new window.Tmapv2.Size(40, 40),
+      iconSize: new window.Tmapv2.Size(markerSize, markerSize),
       title: "현재 위치",
       zIndex: 1000,
     });
     currentMarkerRef.current = marker;
 
-    // 정확도 원(약 30m)
-    const circle = new window.Tmapv2.Circle({
-      center: position,
-      radius: 30,
-      strokeWeight: 2,
-      strokeColor: "#3b87f0",
-      strokeOpacity: 0.5,
-      fillColor: "#3b87f0",
-      fillOpacity: 0.15,
-      map: map,
-    });
-    accuracyCircleRef.current = circle;
-
-    // 데스크탑에서만 최초 1회 자동 중심 이동, 모바일에서는 버튼 클릭 시에만 이동
+    // 데스크톱에서만 최초 1회 자동 중심 이동, 모바일에서는 버튼 클릭 시에만 이동
     if (!isMobile && !startPoint && !endPoint && !hasInitializedPositionRef.current) {
       map.setCenter(position);
       map.setZoom(16);
       hasInitializedPositionRef.current = true;
     }
-  }, [map, userLocation, startPoint, endPoint, isMobile]);
+  }, [map, userLocation, heading, startPoint, endPoint, isMobile]);
 
   // 배리어 마커 표시
   useEffect(() => {
@@ -1430,12 +1450,14 @@ const MapView = ({
         </div>
       )}
 
-      {/* 현재 위치 버튼 */}
+      {/* 현재 위치 버튼 - 모바일에서는 필터 버튼 아래에 배치 */}
       <Button
         onClick={getCurrentLocation}
         size="lg"
-        className={`absolute right-4 h-14 w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground z-20 border-4 border-background transition-all duration-300 ${
-          selectedSearchPlace ? "bottom-[180px]" : "bottom-4"
+        className={`absolute right-6 h-14 w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground z-20 border-4 border-background transition-all duration-300 ${
+          isMobile 
+            ? (isRouteSelecting ? "bottom-36" : "bottom-24") 
+            : (selectedSearchPlace ? "bottom-[180px]" : "bottom-4")
         }`}
         title="현재 위치"
         disabled={loading}
