@@ -678,7 +678,7 @@ const MapView = ({
       const iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg)}`;
 
       // 모바일에서 터치 영역 확대를 위해 마커 크기 조정
-      const markerSize = isMobile ? 56 : 40;
+      const markerSize = isMobile ? 64 : 40;
 
       const marker = new window.Tmapv2.Marker({
         position: position,
@@ -691,22 +691,38 @@ const MapView = ({
 
       console.log(`✅ 마커 ${index + 1} 생성 완료:`, barrier.name);
 
-      // 마커 클릭 이벤트 - 배리어 상세 정보 열기
-      marker.addListener("click", () => {
+      // 마커 클릭 핸들러 함수
+      const handleMarkerClick = () => {
         console.log("🎯 배리어 마커 클릭:", barrier.name);
         if (onBarrierClick) {
           onBarrierClick(barrier);
         }
-      });
+      };
 
-      // 모바일에서 터치 이벤트 추가
+      // 데스크톱과 모바일 모두 click 이벤트 추가
+      marker.addListener("click", handleMarkerClick);
+
+      // 모바일을 위한 추가 이벤트 리스너
       if (isMobile) {
-        marker.addListener("touchend", () => {
-          console.log("👆 배리어 마커 터치:", barrier.name);
-          if (onBarrierClick) {
-            onBarrierClick(barrier);
+        marker.addListener("touchstart", handleMarkerClick);
+        marker.addListener("touchend", handleMarkerClick);
+        
+        // DOM 요소에 직접 터치 이벤트 추가 (T Map API 우회)
+        setTimeout(() => {
+          const markerElement = marker.getElement?.();
+          if (markerElement) {
+            markerElement.style.cursor = 'pointer';
+            markerElement.style.touchAction = 'manipulation';
+            markerElement.addEventListener('touchstart', (e: Event) => {
+              e.stopPropagation();
+              handleMarkerClick();
+            }, { passive: false });
+            markerElement.addEventListener('click', (e: Event) => {
+              e.stopPropagation();
+              handleMarkerClick();
+            });
           }
-        });
+        }, 100);
       }
 
       barrierMarkersRef.current.push(marker);
@@ -1483,8 +1499,8 @@ const MapView = ({
             ? isRouteSelecting
               ? "bottom-[272px]"
               : "bottom-[200px]"
-            : selectedSearchPlace
-              ? "bottom-[180px]"
+            : isRouteSelecting
+              ? "bottom-[184px]"
               : "bottom-24"
         }`}
         title="현재 위치"
