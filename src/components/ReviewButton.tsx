@@ -1,12 +1,13 @@
 import { MessageSquarePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ReviewButtonProps {
   onClick?: () => void;
 }
 
 const ReviewButton = ({ onClick }: ReviewButtonProps) => {
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const isMobile = useIsMobile();
   
   return (
     <Button
