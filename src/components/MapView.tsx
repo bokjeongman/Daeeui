@@ -451,14 +451,13 @@ const MapView = ({
       accuracyCircleRef.current.setMap(null);
     }
 
-    // 나침반 방향을 고려한 SVG 마커 생성
-    const rotation = heading !== null ? heading : 0;
+    // 단순한 파란색 원 마커 (모바일/데스크톱 공통)
     const svgIcon = `
-      <svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" style="transform: rotate(${rotation}deg); transition: transform 0.3s ease;">
+      <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
-            <feOffset dx="0" dy="3" result="offsetblur"/>
+            <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+            <feOffset dx="0" dy="2" result="offsetblur"/>
             <feComponentTransfer>
               <feFuncA type="linear" slope="0.4"/>
             </feComponentTransfer>
@@ -469,31 +468,21 @@ const MapView = ({
           </filter>
         </defs>
         <!-- 외부 원 (흰색 테두리) -->
-        <circle cx="30" cy="30" r="22" fill="white" filter="url(#shadow)" stroke="hsl(var(--sidebar-ring))" stroke-width="2"/>
+        <circle cx="20" cy="20" r="16" fill="white" filter="url(#shadow)" stroke="#3b82f6" stroke-width="2"/>
         <!-- 내부 원 (파란색) -->
-        <circle cx="30" cy="30" r="19" fill="hsl(var(--sidebar-ring))"/>
-        <!-- 나침반 화살표 (북쪽 - 파란색) -->
-        <path d="M 30 10 L 36 30 L 30 26 L 24 30 Z" fill="hsl(var(--sidebar-ring))" stroke="white" stroke-width="1.8"/>
-        <!-- 나침반 화살표 (남쪽 - 연한 파란색) -->
-        <path d="M 30 50 L 24 30 L 30 34 L 36 30 Z" fill="hsl(var(--sidebar-ring))" opacity="0.6" stroke="white" stroke-width="1.2"/>
-        <!-- 중심점 -->
-        <circle cx="30" cy="30" r="4" fill="white" stroke="hsl(var(--sidebar-ring))" stroke-width="2"/>
+        <circle cx="20" cy="20" r="12" fill="#3b82f6"/>
       </svg>
     `;
 
-    // HTML 마커로 생성
-    const markerDiv = document.createElement("div");
-    markerDiv.innerHTML = svgIcon;
-    markerDiv.style.width = "60px";
-    markerDiv.style.height = "60px";
-    markerDiv.style.cursor = "pointer";
+    const iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgIcon)}`;
+
     const marker = new window.Tmapv2.Marker({
       position: position,
       map: map,
-      icon: markerDiv,
-      iconSize: new window.Tmapv2.Size(60, 60),
+      icon: iconUrl,
+      iconSize: new window.Tmapv2.Size(40, 40),
       title: "현재 위치",
-      zIndex: 1000, // 현재 위치 마커가 배리어 마커를 가리지 않도록 조정
+      zIndex: 1000,
     });
     currentMarkerRef.current = marker;
 
@@ -516,7 +505,7 @@ const MapView = ({
       map.setZoom(16);
       hasInitializedPositionRef.current = true;
     }
-  }, [map, userLocation, heading, startPoint, endPoint, isMobile]);
+  }, [map, userLocation, startPoint, endPoint, isMobile]);
 
   // 배리어 마커 표시
   useEffect(() => {
@@ -644,23 +633,38 @@ const MapView = ({
       const iconSvg = getCategoryIcon(barrier.type, barrier.severity, uniqueId);
       const iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg)}`;
 
+      // 모바일에서 터치 영역 확대를 위해 마커 크기 조정
+      const markerSize = isMobile ? 56 : 40;
+      
       const marker = new window.Tmapv2.Marker({
         position: position,
         map: map,
         icon: iconUrl,
-        iconSize: new window.Tmapv2.Size(40, 40),
+        iconSize: new window.Tmapv2.Size(markerSize, markerSize),
         title: barrier.name,
-        zIndex: 100, // 배리어 마커의 z-index 설정
+        zIndex: 100,
       });
 
       console.log(`✅ 마커 ${index + 1} 생성 완료:`, barrier.name);
 
       // 마커 클릭 이벤트 - 배리어 상세 정보 열기
-      marker.addListener("click", () => {
+      marker.addListener("click", (e: any) => {
+        e.stopPropagation();
         if (onBarrierClick) {
           onBarrierClick(barrier);
         }
       });
+      
+      // 모바일에서 터치 이벤트 추가
+      if (isMobile) {
+        marker.addListener("touchend", (e: any) => {
+          e.stopPropagation();
+          if (onBarrierClick) {
+            onBarrierClick(barrier);
+          }
+        });
+      }
+      
       barrierMarkersRef.current.push(marker);
     });
 
