@@ -180,7 +180,7 @@ const MapView = ({
       },
     );
 
-  // 나침반 방향 추적 시작 (모바일만)
+    // 나침반 방향 추적 시작 (모바일만)
     if (isMobile) {
       startCompassTracking();
     }
@@ -191,15 +191,15 @@ const MapView = ({
     if (!isMobile) return;
 
     // iOS 13+ DeviceOrientationEvent 권한 요청
-    if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+    if (typeof (DeviceOrientationEvent as any).requestPermission === "function") {
       try {
         const permission = await (DeviceOrientationEvent as any).requestPermission();
-        if (permission === 'granted') {
+        if (permission === "granted") {
           window.addEventListener("deviceorientationabsolute", handleOrientation, true);
           window.addEventListener("deviceorientation", handleOrientation, true);
         }
       } catch (error) {
-        console.log('나침반 권한 요청 실패:', error);
+        console.log("나침반 권한 요청 실패:", error);
       }
     } else {
       // 권한 요청이 필요 없는 경우 (Android 등)
@@ -679,7 +679,7 @@ const MapView = ({
 
       // 모바일에서 터치 영역 확대를 위해 마커 크기 조정
       const markerSize = isMobile ? 56 : 40;
-      
+
       const marker = new window.Tmapv2.Marker({
         position: position,
         map: map,
@@ -698,7 +698,7 @@ const MapView = ({
           onBarrierClick(barrier);
         }
       });
-      
+
       // 모바일에서 터치 이벤트 추가
       if (isMobile) {
         marker.addListener("touchend", (e: any) => {
@@ -708,7 +708,7 @@ const MapView = ({
           }
         });
       }
-      
+
       barrierMarkersRef.current.push(marker);
     });
 
@@ -1479,9 +1479,13 @@ const MapView = ({
         onClick={getCurrentLocation}
         size="lg"
         className={`absolute right-6 h-14 w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground z-20 border-4 border-background transition-all duration-300 ${
-          isMobile 
-            ? (isRouteSelecting ? "bottom-[272px]" : "bottom-[200px]") 
-            : (selectedSearchPlace ? "bottom-[180px]" : "bottom-20")
+          isMobile
+            ? isRouteSelecting
+              ? "bottom-[272px]"
+              : "bottom-[200px]"
+            : selectedSearchPlace
+              ? "bottom-[180px]"
+              : "bottom-24"
         }`}
         title="현재 위치"
         disabled={loading}
