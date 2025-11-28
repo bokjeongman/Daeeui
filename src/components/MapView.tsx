@@ -708,7 +708,7 @@ const MapView = ({
 
       // 클릭 이벤트
       marker.addListener("click", handleMarkerClick);
-      
+
       // 모바일 터치 이벤트 (touchstart로 변경하여 더 빠른 반응)
       if (isMobile) {
         marker.addListener("touchstart", handleMarkerClick);
@@ -1491,7 +1491,7 @@ const MapView = ({
               : "bottom-[220px]"
             : selectedSearchPlace
               ? "bottom-[200px]"
-              : "bottom-28"
+              : "bottom-24"
         }`}
         title="현재 위치"
         disabled={loading}
