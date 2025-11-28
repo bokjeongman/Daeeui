@@ -180,12 +180,34 @@ const MapView = ({
       },
     );
 
-    // 나침반 방향 추적 (지원하는 경우)
-    if (window.DeviceOrientationEvent && "ontouchstart" in window) {
+  // 나침반 방향 추적 시작 (모바일만)
+    if (isMobile) {
+      startCompassTracking();
+    }
+  };
+
+  // 나침반 추적 시작 (iOS 권한 요청 포함)
+  const startCompassTracking = async () => {
+    if (!isMobile) return;
+
+    // iOS 13+ DeviceOrientationEvent 권한 요청
+    if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+      try {
+        const permission = await (DeviceOrientationEvent as any).requestPermission();
+        if (permission === 'granted') {
+          window.addEventListener("deviceorientationabsolute", handleOrientation, true);
+          window.addEventListener("deviceorientation", handleOrientation, true);
+        }
+      } catch (error) {
+        console.log('나침반 권한 요청 실패:', error);
+      }
+    } else {
+      // 권한 요청이 필요 없는 경우 (Android 등)
       window.addEventListener("deviceorientationabsolute", handleOrientation, true);
       window.addEventListener("deviceorientation", handleOrientation, true);
     }
   };
+
   const handleOrientation = (event: DeviceOrientationEvent) => {
     if (event.alpha !== null) {
       // alpha는 0-360도 값, 북쪽이 0도
@@ -453,17 +475,17 @@ const MapView = ({
 
     // 모바일에서는 나침반 기능이 있는 마커, 데스크톱에서는 단순 원형 마커
     let svgIcon;
-    if (isMobile && heading !== null) {
-      // 네이버맵 스타일 나침반 마커 (모바일)
-      const rotation = heading;
+    if (isMobile) {
+      // 네이버맵 스타일 나침반 마커 (모바일) - heading이 null이어도 표시
+      const rotation = heading !== null ? heading : 0;
       svgIcon = `
-        <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+        <svg width="56" height="56" viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <filter id="shadow-mobile" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+              <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
               <feOffset dx="0" dy="2" result="offsetblur"/>
               <feComponentTransfer>
-                <feFuncA type="linear" slope="0.4"/>
+                <feFuncA type="linear" slope="0.5"/>
               </feComponentTransfer>
               <feMerge>
                 <feMergeNode/>
@@ -471,18 +493,20 @@ const MapView = ({
               </feMerge>
             </filter>
           </defs>
+          <!-- 반투명 외곽 원 (연한 파란색) -->
+          <circle cx="28" cy="28" r="24" fill="#3b82f6" fill-opacity="0.2" filter="url(#shadow-mobile)"/>
           <!-- 외부 원 (흰색 테두리) -->
-          <circle cx="24" cy="24" r="18" fill="white" filter="url(#shadow-mobile)" stroke="#3b82f6" stroke-width="2.5"/>
+          <circle cx="28" cy="28" r="18" fill="white" stroke="#3b82f6" stroke-width="3"/>
           <!-- 내부 원 (파란색) -->
-          <circle cx="24" cy="24" r="14" fill="#3b82f6"/>
+          <circle cx="28" cy="28" r="14" fill="#3b82f6"/>
           <!-- 나침반 화살표 (회전 적용) -->
-          <g transform="rotate(${rotation} 24 24)">
-            <path d="M24 12 L26.5 24 L24 22 L21.5 24 Z" fill="white" stroke="white" stroke-width="1"/>
+          <g transform="rotate(${rotation} 28 28)">
+            <path d="M28 14 L32 28 L28 26 L24 28 Z" fill="white" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>
           </g>
         </svg>
       `;
     } else {
-      // 단순한 파란색 원 마커 (데스크톱 또는 heading 없는 경우)
+      // 단순한 파란색 원 마커 (데스크톱)
       svgIcon = `
         <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
           <defs>
@@ -507,7 +531,7 @@ const MapView = ({
     }
 
     const iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgIcon)}`;
-    const markerSize = isMobile ? 48 : 40;
+    const markerSize = isMobile ? 56 : 40;
 
     const marker = new window.Tmapv2.Marker({
       position: position,
@@ -1450,14 +1474,14 @@ const MapView = ({
         </div>
       )}
 
-      {/* 현재 위치 버튼 - 모바일에서는 필터 버튼 아래에 배치 */}
+      {/* 현재 위치 버튼 - 필터 버튼 바로 아래 배치 */}
       <Button
         onClick={getCurrentLocation}
         size="lg"
         className={`absolute right-6 h-14 w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground z-20 border-4 border-background transition-all duration-300 ${
           isMobile 
-            ? (isRouteSelecting ? "bottom-36" : "bottom-24") 
-            : (selectedSearchPlace ? "bottom-[180px]" : "bottom-4")
+            ? (isRouteSelecting ? "bottom-[272px]" : "bottom-[200px]") 
+            : (selectedSearchPlace ? "bottom-[180px]" : "bottom-20")
         }`}
         title="현재 위치"
         disabled={loading}
