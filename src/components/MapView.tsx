@@ -479,13 +479,13 @@ const MapView = ({
       // 네이버맵 스타일 나침반 마커 (모바일) - heading이 null이어도 표시
       const rotation = heading !== null ? heading : 0;
       svgIcon = `
-        <svg width="56" height="56" viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg">
+        <svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <filter id="shadow-mobile" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+              <feGaussianBlur in="SourceAlpha" stdDeviation="4"/>
               <feOffset dx="0" dy="2" result="offsetblur"/>
               <feComponentTransfer>
-                <feFuncA type="linear" slope="0.5"/>
+                <feFuncA type="linear" slope="0.4"/>
               </feComponentTransfer>
               <feMerge>
                 <feMergeNode/>
@@ -493,15 +493,18 @@ const MapView = ({
               </feMerge>
             </filter>
           </defs>
-          <!-- 반투명 외곽 원 (연한 파란색) -->
-          <circle cx="28" cy="28" r="24" fill="#3b82f6" fill-opacity="0.2" filter="url(#shadow-mobile)"/>
-          <!-- 외부 원 (흰색 테두리) -->
-          <circle cx="28" cy="28" r="18" fill="white" stroke="#3b82f6" stroke-width="3"/>
+          <!-- 큰 반투명 외곽 원 (연한 파란색 글로우) -->
+          <circle cx="32" cy="32" r="28" fill="#3b82f6" fill-opacity="0.15" filter="url(#shadow-mobile)"/>
+          <!-- 외부 원 (흰색 테두리 굵게) -->
+          <circle cx="32" cy="32" r="20" fill="white" stroke="#3b82f6" stroke-width="4"/>
           <!-- 내부 원 (파란색) -->
-          <circle cx="28" cy="28" r="14" fill="#3b82f6"/>
-          <!-- 나침반 화살표 (회전 적용) -->
-          <g transform="rotate(${rotation} 28 28)">
-            <path d="M28 14 L32 28 L28 26 L24 28 Z" fill="white" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>
+          <circle cx="32" cy="32" r="15" fill="#3b82f6"/>
+          <!-- 나침반 화살표 (회전 적용, 더 크고 명확하게) -->
+          <g transform="rotate(${rotation} 32 32)">
+            <!-- 화살표 섀도우 -->
+            <path d="M32 14 L38 32 L32 30 L26 32 Z" fill="rgba(0,0,0,0.2)" transform="translate(0, 1)"/>
+            <!-- 화살표 본체 -->
+            <path d="M32 14 L38 32 L32 30 L26 32 Z" fill="white" stroke="white" stroke-width="2" stroke-linejoin="round"/>
           </g>
         </svg>
       `;
@@ -531,7 +534,7 @@ const MapView = ({
     }
 
     const iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgIcon)}`;
-    const markerSize = isMobile ? 56 : 40;
+    const markerSize = isMobile ? 64 : 40;
 
     const marker = new window.Tmapv2.Marker({
       position: position,
@@ -678,7 +681,7 @@ const MapView = ({
       const iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg)}`;
 
       // 모바일에서 터치 영역 확대를 위해 마커 크기 조정
-      const markerSize = isMobile ? 56 : 40;
+      const markerSize = isMobile ? 64 : 48;
 
       const marker = new window.Tmapv2.Marker({
         position: position,
@@ -686,27 +689,30 @@ const MapView = ({
         icon: iconUrl,
         iconSize: new window.Tmapv2.Size(markerSize, markerSize),
         title: barrier.name,
-        zIndex: 100,
+        zIndex: 500, // 높은 z-index로 클릭 우선순위 확보
+        clickable: true,
       });
 
       console.log(`✅ 마커 ${index + 1} 생성 완료:`, barrier.name);
 
-      // 마커 클릭 이벤트 - 배리어 상세 정보 열기
-      marker.addListener("click", (e: any) => {
-        e.stopPropagation();
+      // 마커 클릭 이벤트 핸들러
+      const handleMarkerClick = (e: any) => {
+        if (e && e.stopPropagation) {
+          e.stopPropagation();
+        }
+        console.log("마커 클릭됨:", barrier.name);
         if (onBarrierClick) {
           onBarrierClick(barrier);
         }
-      });
+      };
 
-      // 모바일에서 터치 이벤트 추가
+      // 클릭 이벤트
+      marker.addListener("click", handleMarkerClick);
+      
+      // 모바일 터치 이벤트 (touchstart로 변경하여 더 빠른 반응)
       if (isMobile) {
-        marker.addListener("touchend", (e: any) => {
-          e.stopPropagation();
-          if (onBarrierClick) {
-            onBarrierClick(barrier);
-          }
-        });
+        marker.addListener("touchstart", handleMarkerClick);
+        marker.addListener("touchend", handleMarkerClick);
       }
 
       barrierMarkersRef.current.push(marker);
@@ -1481,11 +1487,11 @@ const MapView = ({
         className={`absolute right-6 h-14 w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground z-20 border-4 border-background transition-all duration-300 ${
           isMobile
             ? isRouteSelecting
-              ? "bottom-[272px]"
-              : "bottom-[200px]"
+              ? "bottom-[300px]"
+              : "bottom-[220px]"
             : selectedSearchPlace
-              ? "bottom-[180px]"
-              : "bottom-24"
+              ? "bottom-[200px]"
+              : "bottom-28"
         }`}
         title="현재 위치"
         disabled={loading}
