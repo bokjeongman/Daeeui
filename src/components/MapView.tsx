@@ -1491,7 +1491,7 @@ const MapView = ({
               : "bottom-[220px]"
             : selectedSearchPlace
               ? "bottom-[200px]"
-              : "bottom-24"
+              : "bottom-23"
         }`}
         title="현재 위치"
         disabled={loading}
