@@ -699,31 +699,9 @@ const MapView = ({
         }
       };
 
-      // 데스크톱과 모바일 모두 click 이벤트 추가
+      // 데스크톱과 모바일 모두에서 동작하도록 click / touchend 이벤트 모두 등록
       marker.addListener("click", handleMarkerClick);
-
-      // 모바일을 위한 추가 이벤트 리스너
-      if (isMobile) {
-        marker.addListener("touchstart", handleMarkerClick);
-        marker.addListener("touchend", handleMarkerClick);
-        
-        // DOM 요소에 직접 터치 이벤트 추가 (T Map API 우회)
-        setTimeout(() => {
-          const markerElement = marker.getElement?.();
-          if (markerElement) {
-            markerElement.style.cursor = 'pointer';
-            markerElement.style.touchAction = 'manipulation';
-            markerElement.addEventListener('touchstart', (e: Event) => {
-              e.stopPropagation();
-              handleMarkerClick();
-            }, { passive: false });
-            markerElement.addEventListener('click', (e: Event) => {
-              e.stopPropagation();
-              handleMarkerClick();
-            });
-          }
-        }, 100);
-      }
+      marker.addListener("touchend", handleMarkerClick);
 
       barrierMarkersRef.current.push(marker);
     });
@@ -1499,8 +1477,8 @@ const MapView = ({
             ? isRouteSelecting
               ? "bottom-[272px]"
               : "bottom-[200px]"
-            : isRouteSelecting
-              ? "bottom-[184px]"
+            : selectedSearchPlace
+              ? "bottom-[180px]"
               : "bottom-24"
         }`}
         title="현재 위치"
