@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import RoadView from "./RoadView";
+import { useGeolocationWatch } from "@/hooks/useGeolocationWatch";
 
 // T Map 타입 선언
 declare global {
@@ -117,72 +118,34 @@ const MapView = ({
   const [isMobile] = useState(() =>
     /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent),
   );
+  const [pathHistory, setPathHistory] = useState<Array<{ lat: number; lon: number }>>([]);
+  const pathHistoryPolylineRef = useRef<any>(null);
 
-  // 현재 위치 가져오기 (모바일/데스크탑 공통 구현)
+  // useGeolocationWatch 훅 사용
+  const { 
+    position: geoPosition, 
+    error: geoError, 
+    isTracking, 
+    startTracking, 
+    stopTracking 
+  } = useGeolocationWatch();
+
+  // 실시간 위치 추적 시작 (버튼 클릭 시 호출)
   const getCurrentLocation = () => {
-    setLoading(true);
-    setError(null);
-
-    if (!navigator.geolocation) {
-      const msg = "이 브라우저는 위치 서비스를 지원하지 않습니다.";
-      setError(msg);
-      setLoading(false);
-      toast.error(msg);
-      return;
+    if (!isTracking) {
+      startTracking();
+      // 나침반 추적 시작 (모바일만)
+      if (isMobile) {
+        startCompassTracking();
+      }
     }
-
-    // 이전 위치 추적 중지
-    if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-      watchIdRef.current = null;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        const location = { lat: latitude, lon: longitude };
-
-        setUserLocation(location);
-        if (onUserLocationChange) {
-          onUserLocationChange(location);
-        }
-        setLoading(false);
-
-        // 버튼을 누르면 항상 지도 중심을 현재 위치로 이동
-        if (map && window.Tmapv2) {
-          hasInitializedPositionRef.current = false;
-          const centerPos = new window.Tmapv2.LatLng(latitude, longitude);
-          map.setCenter(centerPos);
-          map.setZoom(16);
-        }
-      },
-      (error) => {
-        let errorMessage = "위치를 가져올 수 없습니다.";
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage = "위치 접근 권한이 거부되었습니다. 브라우저 설정에서 위치 권한을 허용해주세요.";
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMessage = "위치 정보를 사용할 수 없습니다.";
-            break;
-          case error.TIMEOUT:
-            errorMessage = "위치 정보 요청 시간이 초과되었습니다.";
-            break;
-        }
-        setError(errorMessage);
-        setLoading(false);
-        toast.error(errorMessage);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 0,
-      },
-    );
-
-    // 나침반 방향 추적 시작 (모바일만)
-    if (isMobile) {
-      startCompassTracking();
+    
+    // 현재 위치로 지도 중심 이동
+    if (map && window.Tmapv2 && userLocation) {
+      hasInitializedPositionRef.current = false;
+      const centerPos = new window.Tmapv2.LatLng(userLocation.lat, userLocation.lon);
+      map.setCenter(centerPos);
+      map.setZoom(16);
     }
   };
 
@@ -218,12 +181,60 @@ const MapView = ({
     }
   };
 
-  // 컴포넌트 언마운트 시 watch 정리
+  // useGeolocationWatch의 위치 정보를 userLocation에 동기화
+  useEffect(() => {
+    if (geoPosition) {
+      const location = { lat: geoPosition.latitude, lon: geoPosition.longitude };
+      setUserLocation(location);
+      
+      // 위치 변경 콜백 호출
+      if (onUserLocationChange) {
+        onUserLocationChange(location);
+      }
+
+      // 경로 히스토리에 추가 (10m 이상 이동했을 때만)
+      setPathHistory((prev) => {
+        if (prev.length === 0) {
+          return [location];
+        }
+        const lastPoint = prev[prev.length - 1];
+        const distance = calculateDistance(lastPoint.lat, lastPoint.lon, location.lat, location.lon);
+        
+        // 10m 이상 이동했을 때만 기록
+        if (distance > 10) {
+          return [...prev, location];
+        }
+        return prev;
+      });
+
+      setLoading(false);
+    }
+  }, [geoPosition, onUserLocationChange]);
+
+  // useGeolocationWatch의 에러 처리
+  useEffect(() => {
+    if (geoError) {
+      setError(geoError.message);
+      toast.error(geoError.message);
+      setLoading(false);
+    }
+  }, [geoError]);
+
+  // 컴포넌트 마운트 시 자동 추적 시작
+  useEffect(() => {
+    if (!isTracking) {
+      startTracking();
+      // 나침반 추적 시작 (모바일만)
+      if (isMobile) {
+        startCompassTracking();
+      }
+    }
+  }, []);
+
+  // 컴포넌트 언마운트 시 정리
   useEffect(() => {
     return () => {
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-      }
+      stopTracking();
       window.removeEventListener("deviceorientationabsolute", handleOrientation, true);
       window.removeEventListener("deviceorientation", handleOrientation, true);
     };
@@ -346,8 +357,6 @@ const MapView = ({
 
       setMap(tmapInstance);
       setLoading(false);
-      // 최초 진입 시 현재 위치 자동 요청
-      getCurrentLocation();
 
       // 지도 클릭 이벤트 - POI 검색
       tmapInstance.addListener("click", async (evt: any) => {
@@ -550,6 +559,33 @@ const MapView = ({
       hasInitializedPositionRef.current = true;
     }
   }, [map, userLocation, heading, startPoint, endPoint, isMobile]);
+
+  // 실시간 이동 경로 표시 (노란색)
+  useEffect(() => {
+    if (!map || !window.Tmapv2 || pathHistory.length < 2) return;
+
+    // 기존 경로 히스토리 폴리라인 제거
+    if (pathHistoryPolylineRef.current) {
+      pathHistoryPolylineRef.current.setMap(null);
+    }
+
+    // 경로 히스토리를 Tmap LatLng 배열로 변환
+    const pathPoints = pathHistory.map(
+      (point) => new window.Tmapv2.LatLng(point.lat, point.lon)
+    );
+
+    // 노란색 폴리라인으로 지나간 경로 표시
+    const polyline = new window.Tmapv2.Polyline({
+      path: pathPoints,
+      strokeColor: "#fbbf24", // 노란색
+      strokeWeight: 5,
+      strokeOpacity: 0.8,
+      map: map,
+      zIndex: 45, // 경로보다 낮게, 배리어보다는 높게
+    });
+
+    pathHistoryPolylineRef.current = polyline;
+  }, [map, pathHistory]);
 
   // 배리어 마커 표시
   useEffect(() => {
