@@ -22,8 +22,11 @@ const CampaignPopup = ({ onAgree }: CampaignPopupProps) => {
     const status = localStorage.getItem("campaignPopupStatus");
     const lastShown = localStorage.getItem("campaignPopupLastShown");
 
+    console.log("캠페인 팝업 상태 확인:", { status, lastShown });
+
     // "다시는 보지 않기"를 선택한 경우
     if (status === "never") {
+      console.log("팝업 표시 안 함: 다시는 보지 않기 선택됨");
       return;
     }
 
@@ -32,22 +35,27 @@ const CampaignPopup = ({ onAgree }: CampaignPopupProps) => {
       const lastDate = new Date(lastShown);
       const today = new Date();
       
+      console.log("나중에 할게요 확인:", { lastDate, today });
+      
       // 같은 날이면 팝업 표시 안 함
       if (
         lastDate.getFullYear() === today.getFullYear() &&
         lastDate.getMonth() === today.getMonth() &&
         lastDate.getDate() === today.getDate()
       ) {
+        console.log("팝업 표시 안 함: 오늘 이미 표시됨");
         return;
       }
     }
 
     // "지금 공유하기"를 선택한 경우
     if (status === "agreed") {
+      console.log("팝업 표시 안 함: 이미 동의함");
       return;
     }
 
     // 그 외의 경우 팝업 표시
+    console.log("캠페인 팝업 표시");
     setOpen(true);
   }, []);
 
