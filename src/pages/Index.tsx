@@ -14,6 +14,7 @@ import PlaceReviewModal from "@/components/PlaceReviewModal";
 import WheelchairBadge from "@/components/WheelchairBadge";
 import BarrierDetailSheet from "@/components/BarrierDetailSheet";
 import RouteSelector from "@/components/RouteSelector";
+import CampaignPopup from "@/components/CampaignPopup";
 import { toast } from "sonner";
 import { reverseGeocode } from "@/lib/utils";
 const Index = () => {
@@ -71,6 +72,39 @@ const Index = () => {
   const [mapCenter, setMapCenter] = useState<{ lat: number; lon: number } | null>(null);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [selectedSearchPlace, setSelectedSearchPlace] = useState<{ lat: number; lon: number; name: string } | null>(null);
+  const [watchId, setWatchId] = useState<number | null>(null);
+
+  const handleStartTracking = () => {
+    if ("geolocation" in navigator) {
+      const id = navigator.geolocation.watchPosition(
+        (position) => {
+          console.log("위치 추적 중:", position.coords.latitude, position.coords.longitude);
+          // 필요시 위치 정보를 서버에 전송하거나 다른 작업 수행
+        },
+        (error) => {
+          console.error("위치 추적 오류:", error);
+          toast.error("위치 추적에 실패했습니다.");
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+      setWatchId(id);
+    } else {
+      toast.error("이 브라우저는 위치 추적을 지원하지 않습니다.");
+    }
+  };
+
+  // 컴포넌트 언마운트 시 위치 추적 중지
+  useEffect(() => {
+    return () => {
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
+  }, [watchId]);
 
   // 로그인 체크 및 경로 복원
   useEffect(() => {
@@ -255,6 +289,9 @@ const Index = () => {
   
   return (
     <div className="h-screen flex flex-col overflow-hidden">
+      {/* 캠페인 팝업 */}
+      <CampaignPopup onStartTracking={handleStartTracking} />
+      
       {/* 헤더 - 경로 탐색 중일 때는 경로 정보로 대체 */}
       {(!hasRoute || routeOptions.length === 0 || !selectedRouteType) ? (
         <div className="relative z-10">

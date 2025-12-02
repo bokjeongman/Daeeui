@@ -1,0 +1,126 @@
+import { useState, useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+
+interface CampaignPopupProps {
+  onStartTracking: () => void;
+}
+
+const CampaignPopup = ({ onStartTracking }: CampaignPopupProps) => {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    // localStorage에서 사용자 선택 확인
+    const status = localStorage.getItem("campaignPopupStatus");
+    const lastShown = localStorage.getItem("campaignPopupLastShown");
+
+    // "다시는 보지 않기"를 선택한 경우
+    if (status === "never") {
+      return;
+    }
+
+    // "나중에 할게요"를 선택한 경우 - 오늘 날짜와 비교
+    if (status === "later" && lastShown) {
+      const lastDate = new Date(lastShown);
+      const today = new Date();
+      
+      // 같은 날이면 팝업 표시 안 함
+      if (
+        lastDate.getFullYear() === today.getFullYear() &&
+        lastDate.getMonth() === today.getMonth() &&
+        lastDate.getDate() === today.getDate()
+      ) {
+        return;
+      }
+    }
+
+    // "지금 공유하기"를 선택한 경우
+    if (status === "agreed") {
+      return;
+    }
+
+    // 그 외의 경우 팝업 표시
+    setOpen(true);
+  }, []);
+
+  const handleAgree = async () => {
+    try {
+      // 위치 권한 요청
+      const permission = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+      
+      if (permission.state === 'denied') {
+        toast.error("위치 권한이 거부되었습니다. 브라우저 설정에서 위치 권한을 허용해주세요.");
+        return;
+      }
+
+      localStorage.setItem("campaignPopupStatus", "agreed");
+      setOpen(false);
+      onStartTracking();
+      toast.success("위치 정보 공유가 시작되었습니다. 감사합니다!");
+    } catch (error) {
+      console.error("위치 권한 요청 실패:", error);
+      toast.error("위치 권한 요청에 실패했습니다.");
+    }
+  };
+
+  const handleLater = () => {
+    localStorage.setItem("campaignPopupStatus", "later");
+    localStorage.setItem("campaignPopupLastShown", new Date().toISOString());
+    setOpen(false);
+    toast.info("나중에 다시 알려드리겠습니다.");
+  };
+
+  const handleNever = () => {
+    localStorage.setItem("campaignPopupStatus", "never");
+    setOpen(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-center text-xl">접근성 정보 공유</DialogTitle>
+          <DialogDescription className="text-center text-base pt-4">
+            자주 가는 장소의 접근성 정보를 공유해 주세요.
+          </DialogDescription>
+        </DialogHeader>
+        
+        <DialogFooter className="flex flex-col gap-2 sm:flex-col sm:space-x-0">
+          <Button
+            onClick={handleAgree}
+            className="w-full"
+            size="lg"
+          >
+            지금 공유하기
+          </Button>
+          <Button
+            onClick={handleLater}
+            variant="outline"
+            className="w-full"
+            size="lg"
+          >
+            나중에 할게요
+          </Button>
+          <Button
+            onClick={handleNever}
+            variant="ghost"
+            className="w-full"
+            size="lg"
+          >
+            다시는 보지 않기
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default CampaignPopup;
