@@ -72,39 +72,11 @@ const Index = () => {
   const [mapCenter, setMapCenter] = useState<{ lat: number; lon: number } | null>(null);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [selectedSearchPlace, setSelectedSearchPlace] = useState<{ lat: number; lon: number; name: string } | null>(null);
-  const [watchId, setWatchId] = useState<number | null>(null);
 
-  const handleStartTracking = () => {
-    if ("geolocation" in navigator) {
-      const id = navigator.geolocation.watchPosition(
-        (position) => {
-          console.log("위치 추적 중:", position.coords.latitude, position.coords.longitude);
-          // 필요시 위치 정보를 서버에 전송하거나 다른 작업 수행
-        },
-        (error) => {
-          console.error("위치 추적 오류:", error);
-          toast.error("위치 추적에 실패했습니다.");
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
-        }
-      );
-      setWatchId(id);
-    } else {
-      toast.error("이 브라우저는 위치 추적을 지원하지 않습니다.");
-    }
+  const handleCampaignAgree = () => {
+    setReviewModalOpen(true);
+    toast.success("접근성 정보를 공유해 주셔서 감사합니다!");
   };
-
-  // 컴포넌트 언마운트 시 위치 추적 중지
-  useEffect(() => {
-    return () => {
-      if (watchId !== null) {
-        navigator.geolocation.clearWatch(watchId);
-      }
-    };
-  }, [watchId]);
 
   // 로그인 체크 및 경로 복원
   useEffect(() => {
@@ -290,7 +262,7 @@ const Index = () => {
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       {/* 캠페인 팝업 */}
-      <CampaignPopup onStartTracking={handleStartTracking} />
+      <CampaignPopup onAgree={handleCampaignAgree} />
       
       {/* 헤더 - 경로 탐색 중일 때는 경로 정보로 대체 */}
       {(!hasRoute || routeOptions.length === 0 || !selectedRouteType) ? (

@@ -11,10 +11,10 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 interface CampaignPopupProps {
-  onStartTracking: () => void;
+  onAgree: () => void;
 }
 
-const CampaignPopup = ({ onStartTracking }: CampaignPopupProps) => {
+const CampaignPopup = ({ onAgree }: CampaignPopupProps) => {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -51,24 +51,10 @@ const CampaignPopup = ({ onStartTracking }: CampaignPopupProps) => {
     setOpen(true);
   }, []);
 
-  const handleAgree = async () => {
-    try {
-      // 위치 권한 요청
-      const permission = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
-      
-      if (permission.state === 'denied') {
-        toast.error("위치 권한이 거부되었습니다. 브라우저 설정에서 위치 권한을 허용해주세요.");
-        return;
-      }
-
-      localStorage.setItem("campaignPopupStatus", "agreed");
-      setOpen(false);
-      onStartTracking();
-      toast.success("위치 정보 공유가 시작되었습니다. 감사합니다!");
-    } catch (error) {
-      console.error("위치 권한 요청 실패:", error);
-      toast.error("위치 권한 요청에 실패했습니다.");
-    }
+  const handleAgree = () => {
+    localStorage.setItem("campaignPopupStatus", "agreed");
+    setOpen(false);
+    onAgree();
   };
 
   const handleLater = () => {
