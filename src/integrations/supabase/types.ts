@@ -118,6 +118,70 @@ export type Database = {
           },
         ]
       }
+      modification_requests: {
+        Row: {
+          created_at: string
+          id: string
+          proposed_details: string | null
+          proposed_photo_urls: string[] | null
+          reason: string
+          report_id: string
+          request_type: string
+          requester_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          proposed_details?: string | null
+          proposed_photo_urls?: string[] | null
+          reason: string
+          report_id: string
+          request_type: string
+          requester_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          proposed_details?: string | null
+          proposed_photo_urls?: string[] | null
+          reason?: string
+          report_id?: string
+          request_type?: string
+          requester_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "modification_requests_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "accessibility_reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "modification_requests_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "modification_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string | null
