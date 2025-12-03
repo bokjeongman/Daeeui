@@ -12,6 +12,9 @@ export interface BarrierPoint {
   photo_urls?: string[];
   created_at?: string;
   accessibility_level?: string;
+  user_id?: string;
+  reports?: any[];
+  reportCount?: number;
 }
 
 export interface ClusterProperties {

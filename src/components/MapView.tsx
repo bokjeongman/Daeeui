@@ -276,7 +276,7 @@ const MapView = ({
         console.log("🔍 가져온 제보 데이터:", allData.length, "개");
 
         // 제보 데이터를 barrierData 형식으로 변환
-        const barriers = allData.map((report) => {
+        const rawBarriers = allData.map((report) => {
           let severity = "safe";
           if (report.accessibility_level === "verified") {
             severity = "verified";
@@ -298,9 +298,44 @@ const MapView = ({
             photo_urls: report.photo_urls || [],
             created_at: report.created_at,
             accessibility_level: report.accessibility_level,
+            user_id: report.user_id,
           };
         });
-        setBarrierData(barriers);
+
+        // 같은 위치의 제보들을 그룹화 (위도/경도 소수점 5자리까지 동일하면 같은 장소로 취급)
+        const locationMap = new Map<string, any[]>();
+        rawBarriers.forEach((barrier) => {
+          const locationKey = `${barrier.lat.toFixed(5)},${barrier.lon.toFixed(5)}`;
+          if (!locationMap.has(locationKey)) {
+            locationMap.set(locationKey, []);
+          }
+          locationMap.get(locationKey)!.push(barrier);
+        });
+
+        // 그룹화된 데이터를 대표 마커로 변환 (가장 위험한 등급 우선)
+        const severityPriority: Record<string, number> = {
+          danger: 4,
+          warning: 3,
+          safe: 2,
+          verified: 1,
+        };
+
+        const groupedBarriers = Array.from(locationMap.values()).map((reports) => {
+          // 가장 위험한 등급 찾기
+          reports.sort((a, b) => 
+            (severityPriority[b.severity] || 0) - (severityPriority[a.severity] || 0)
+          );
+          
+          const representative = reports[0];
+          
+          return {
+            ...representative,
+            reports: reports, // 모든 제보 포함
+            reportCount: reports.length,
+          };
+        });
+
+        setBarrierData(groupedBarriers);
       } catch (error) {
         if (import.meta.env.DEV) console.error("제보 데이터 로딩 실패:", error);
       }
@@ -773,8 +808,8 @@ const MapView = ({
     `;
   }, []);
 
-  // 카테고리별 SVG 픽토그램 생성 함수
-  const getCategoryIcon = useCallback((category: string, severity: string, uniqueId: string) => {
+  // 카테고리별 SVG 픽토그램 생성 함수 (reportCount로 +N 뱃지 추가)
+  const getCategoryIcon = useCallback((category: string, severity: string, uniqueId: string, reportCount?: number) => {
     let fillColor = "#22c55e";
     if (severity === "verified") {
       fillColor = "#3b82f6";
@@ -784,9 +819,21 @@ const MapView = ({
       fillColor = "#ef4444";
     }
 
+    // 추가 제보 뱃지 (+N)
+    const extraCount = (reportCount || 1) - 1;
+    const badgeSvg = extraCount > 0 ? `
+      <circle cx="28" cy="6" r="8" fill="#ef4444" stroke="white" stroke-width="1.5"/>
+      <text x="28" y="9" font-family="Arial, sans-serif" font-size="8" font-weight="bold" fill="white" text-anchor="middle">+${extraCount > 9 ? '9+' : extraCount}</text>
+    ` : '';
+
+    // 뱃지가 있으면 viewBox 확장
+    const viewBox = extraCount > 0 ? "0 0 40 40" : "0 0 32 32";
+    const width = extraCount > 0 ? 48 : 40;
+    const height = extraCount > 0 ? 48 : 40;
+
     if (severity === "verified") {
       return `
-        <svg width="40" height="40" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+        <svg width="${width}" height="${height}" viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <filter id="barrier-shadow-${uniqueId}" x="-50%" y="-50%" width="200%" height="200%">
               <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
@@ -800,42 +847,44 @@ const MapView = ({
               </feMerge>
             </filter>
           </defs>
-          <rect x="4" y="4" width="24" height="24" rx="2" fill="${fillColor}" stroke="white" stroke-width="2" filter="url(#barrier-shadow-${uniqueId})"/>
-          <path d="M10 16 L14 20 L22 12" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <rect x="4" y="${extraCount > 0 ? 8 : 4}" width="24" height="24" rx="2" fill="${fillColor}" stroke="white" stroke-width="2" filter="url(#barrier-shadow-${uniqueId})"/>
+          <path d="M10 ${extraCount > 0 ? 20 : 16} L14 ${extraCount > 0 ? 24 : 20} L22 ${extraCount > 0 ? 16 : 12}" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          ${badgeSvg}
         </svg>
       `;
     }
 
+    const yOffset = extraCount > 0 ? 4 : 0;
     let iconPath = "";
     switch (category) {
       case "ramp":
-        iconPath = `<path d="M8 20 L16 12 L24 20" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/><rect x="6" y="20" width="20" height="2" fill="white"/>`;
+        iconPath = `<path d="M8 ${20 + yOffset} L16 ${12 + yOffset} L24 ${20 + yOffset}" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/><rect x="6" y="${20 + yOffset}" width="20" height="2" fill="white"/>`;
         break;
       case "elevator":
-        iconPath = `<rect x="10" y="8" width="12" height="16" rx="1" fill="white" stroke="white" stroke-width="1"/><path d="M16 14 L16 18 M14 16 L18 16" stroke="${fillColor}" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="11" r="1.5" fill="${fillColor}"/>`;
+        iconPath = `<rect x="10" y="${8 + yOffset}" width="12" height="16" rx="1" fill="white" stroke="white" stroke-width="1"/><path d="M16 ${14 + yOffset} L16 ${18 + yOffset} M14 ${16 + yOffset} L18 ${16 + yOffset}" stroke="${fillColor}" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="${11 + yOffset}" r="1.5" fill="${fillColor}"/>`;
         break;
       case "curb":
-        iconPath = `<path d="M8 20 L12 20 L12 16 L16 16 L16 12 L20 12" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+        iconPath = `<path d="M8 ${20 + yOffset} L12 ${20 + yOffset} L12 ${16 + yOffset} L16 ${16 + yOffset} L16 ${12 + yOffset} L20 ${12 + yOffset}" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
         break;
       case "stairs":
-        iconPath = `<path d="M8 20 L12 20 L12 18 L14 18 L14 16 L16 16 L16 14 L18 14 L18 12 L20 12" stroke="white" stroke-width="2" fill="none" stroke-linecap="square" stroke-linejoin="miter"/>`;
+        iconPath = `<path d="M8 ${20 + yOffset} L12 ${20 + yOffset} L12 ${18 + yOffset} L14 ${18 + yOffset} L14 ${16 + yOffset} L16 ${16 + yOffset} L16 ${14 + yOffset} L18 ${14 + yOffset} L18 ${12 + yOffset} L20 ${12 + yOffset}" stroke="white" stroke-width="2" fill="none" stroke-linecap="square" stroke-linejoin="miter"/>`;
         break;
       case "parking":
-        iconPath = `<text x="16" y="21" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="white" text-anchor="middle">P</text>`;
+        iconPath = `<text x="16" y="${21 + yOffset}" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="white" text-anchor="middle">P</text>`;
         break;
       case "restroom":
-        iconPath = `<circle cx="16" cy="11" r="2" fill="white"/><path d="M16 13 L16 18 M13 15 L19 15" stroke="white" stroke-width="2" stroke-linecap="round"/>`;
+        iconPath = `<circle cx="16" cy="${11 + yOffset}" r="2" fill="white"/><path d="M16 ${13 + yOffset} L16 ${18 + yOffset} M13 ${15 + yOffset} L19 ${15 + yOffset}" stroke="white" stroke-width="2" stroke-linecap="round"/>`;
         break;
       case "entrance":
-        iconPath = `<rect x="10" y="10" width="12" height="12" rx="1" stroke="white" stroke-width="2" fill="none"/><path d="M16 14 L16 18 M16 14 L18 16 M16 14 L14 16" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+        iconPath = `<rect x="10" y="${10 + yOffset}" width="12" height="12" rx="1" stroke="white" stroke-width="2" fill="none"/><path d="M16 ${14 + yOffset} L16 ${18 + yOffset} M16 ${14 + yOffset} L18 ${16 + yOffset} M16 ${14 + yOffset} L14 ${16 + yOffset}" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
         break;
       default:
-        iconPath = `<circle cx="16" cy="16" r="3" fill="white"/>`;
+        iconPath = `<circle cx="16" cy="${16 + yOffset}" r="3" fill="white"/>`;
         break;
     }
 
     return `
-      <svg width="40" height="40" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+      <svg width="${width}" height="${height}" viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <filter id="barrier-shadow-${uniqueId}" x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
@@ -849,8 +898,9 @@ const MapView = ({
             </feMerge>
           </filter>
         </defs>
-        <rect x="4" y="4" width="24" height="24" rx="2" fill="${fillColor}" stroke="white" stroke-width="2" filter="url(#barrier-shadow-${uniqueId})"/>
+        <rect x="4" y="${4 + yOffset}" width="24" height="24" rx="2" fill="${fillColor}" stroke="white" stroke-width="2" filter="url(#barrier-shadow-${uniqueId})"/>
         ${iconPath}
+        ${badgeSvg}
       </svg>
     `;
   }, []);
@@ -930,9 +980,12 @@ const MapView = ({
         if (!barrier) return;
 
         const uniqueId = `${barrier.type}-${barrier.id}`;
-        const iconSvg = getCategoryIcon(barrier.type, barrier.severity, uniqueId);
+        const reportCount = barrier.reportCount || 1;
+        const iconSvg = getCategoryIcon(barrier.type, barrier.severity, uniqueId, reportCount);
         const iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg)}`;
-        const markerSize = isMobile ? 64 : 40;
+        // 뱃지가 있으면 마커 크기 증가
+        const hasExtraReports = reportCount > 1;
+        const markerSize = isMobile ? (hasExtraReports ? 72 : 64) : (hasExtraReports ? 48 : 40);
 
         const marker = new window.Tmapv2.Marker({
           position: position,

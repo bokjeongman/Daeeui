@@ -1,9 +1,26 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, AlertTriangle, Calendar, ShieldCheck } from "lucide-react";
+import { MapPin, AlertTriangle, Calendar, ShieldCheck, User } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { useEffect, useState } from "react";
 import { reverseGeocode } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+interface ReportData {
+  id: string;
+  name: string;
+  type: string;
+  severity: string;
+  details: string;
+  photo_urls?: string[];
+  latitude: number;
+  longitude: number;
+  created_at?: string;
+  accessibility_level?: string;
+  user_id?: string;
+  nickname?: string;
+}
 
 interface BarrierDetailSheetProps {
   open: boolean;
@@ -18,22 +35,81 @@ interface BarrierDetailSheetProps {
     longitude: number;
     created_at?: string;
     accessibility_level?: string;
+    reports?: ReportData[];
+    reportCount?: number;
   } | null;
 }
 
 const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetProps) => {
   const [address, setAddress] = useState<string>("");
+  const [reportsWithNicknames, setReportsWithNicknames] = useState<ReportData[]>([]);
 
   useEffect(() => {
     if (barrier && open) {
       reverseGeocode(barrier.latitude, barrier.longitude).then(setAddress);
+      
+      // 작성자 닉네임 가져오기
+      const fetchNicknames = async () => {
+        const reports = barrier.reports || [{
+          id: "single",
+          name: barrier.name,
+          type: barrier.type,
+          severity: barrier.severity,
+          details: barrier.details,
+          photo_urls: barrier.photo_urls,
+          latitude: barrier.latitude,
+          longitude: barrier.longitude,
+          created_at: barrier.created_at,
+          accessibility_level: barrier.accessibility_level,
+        }];
+        
+        // user_id가 있는 제보들의 닉네임 가져오기
+        const userIds = [...new Set(reports.filter(r => r.user_id).map(r => r.user_id))];
+        
+        if (userIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from("profiles")
+            .select("id, nickname")
+            .in("id", userIds);
+          
+          const nicknameMap = new Map(profiles?.map(p => [p.id, p.nickname]) || []);
+          
+          const reportsWithNames = reports.map(r => ({
+            ...r,
+            nickname: r.user_id ? (nicknameMap.get(r.user_id) || "익명 사용자") : 
+                      (r.accessibility_level === "verified" ? "공공데이터" : "익명 사용자")
+          }));
+          
+          // 최신순 정렬
+          reportsWithNames.sort((a, b) => {
+            const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+            const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+            return dateB - dateA;
+          });
+          
+          setReportsWithNicknames(reportsWithNames);
+        } else {
+          const reportsWithNames = reports.map(r => ({
+            ...r,
+            nickname: r.accessibility_level === "verified" ? "공공데이터" : "익명 사용자"
+          }));
+          reportsWithNames.sort((a, b) => {
+            const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+            const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+            return dateB - dateA;
+          });
+          setReportsWithNicknames(reportsWithNames);
+        }
+      };
+      
+      fetchNicknames();
     }
   }, [barrier, open]);
 
   if (!barrier) return null;
 
-  const getSeverityBadge = () => {
-    switch (barrier.severity) {
+  const getSeverityBadge = (severity: string) => {
+    switch (severity) {
       case "verified":
         return <Badge className="bg-blue-500 text-white">공공데이터 인증</Badge>;
       case "safe":
@@ -47,8 +123,8 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
     }
   };
 
-  const getCategoryText = () => {
-    switch (barrier.type) {
+  const getCategoryText = (type: string) => {
+    switch (type) {
       case "ramp":
         return "경사로";
       case "elevator":
@@ -68,110 +144,134 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
     }
   };
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString('ko-KR', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const hasMultipleReports = reportsWithNicknames.length > 1;
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[85vh] overflow-y-auto">
-        <SheetHeader className="mb-4">
+      <SheetContent side="bottom" className="h-[85vh] overflow-hidden flex flex-col">
+        <SheetHeader className="mb-4 flex-shrink-0">
           <SheetTitle className="flex items-center gap-2 text-xl">
             <MapPin className="h-6 w-6 text-primary" />
             {barrier.name}
+            {hasMultipleReports && (
+              <Badge variant="secondary" className="ml-2">
+                {reportsWithNicknames.length}개 제보
+              </Badge>
+            )}
           </SheetTitle>
         </SheetHeader>
 
-        <div className="space-y-6">
-          {/* 공공데이터 인증 뱃지 */}
-          {barrier.accessibility_level === "verified" && (
-            <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
-              <ShieldCheck className="h-5 w-5 text-blue-500" />
-              <span className="text-sm font-medium text-blue-700 dark:text-blue-300">[공공데이터 인증] 정부 공공데이터로 검증된 정보입니다</span>
-            </div>
-          )}
+        <ScrollArea className="flex-1 pr-4">
+          <div className="space-y-4">
+            {/* 제보 목록 */}
+            {reportsWithNicknames.map((report, index) => (
+              <div 
+                key={report.id || index} 
+                className={`rounded-lg border bg-card p-4 space-y-4 ${
+                  hasMultipleReports ? 'shadow-sm' : ''
+                }`}
+              >
+                {/* 작성자 정보 */}
+                <div className="flex items-center gap-2 text-sm">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">{report.nickname}</span>
+                  {report.accessibility_level === "verified" && (
+                    <ShieldCheck className="h-4 w-4 text-blue-500" />
+                  )}
+                </div>
 
-          {/* 접근성 정보 */}
-          <div className="flex gap-3 flex-wrap">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-muted-foreground" />
-              <span className="text-sm font-medium">접근성:</span>
-              {getSeverityBadge()}
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">분류:</span>
-              <Badge variant="outline">{getCategoryText()}</Badge>
-            </div>
-          </div>
+                {/* 상세 정보 (상단, 크게) + 등록 시각 */}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    {report.details ? (
+                      <p className="text-base leading-relaxed">
+                        {report.details}
+                      </p>
+                    ) : (
+                      <p className="text-base text-muted-foreground italic">
+                        상세 정보가 없습니다
+                      </p>
+                    )}
+                  </div>
+                  {report.created_at && (
+                    <div className="flex-shrink-0 text-right">
+                      <p className="text-xs text-muted-foreground">
+                        {formatDate(report.created_at)}
+                      </p>
+                    </div>
+                  )}
+                </div>
 
-          {/* 위치 정보 */}
-          <div className="bg-muted p-4 rounded-lg">
-            <p className="text-sm text-muted-foreground mb-1">위치</p>
-            <p className="text-sm font-medium">{barrier.name}</p>
-            <p className="text-sm text-muted-foreground mt-2">
-              {address || "주소를 가져오는 중..."}
-            </p>
-          </div>
+                {/* 접근성 정보 및 분류 */}
+                <div className="flex gap-3 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">접근성:</span>
+                    {getSeverityBadge(report.severity)}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">분류:</span>
+                    <Badge variant="outline">{getCategoryText(report.type)}</Badge>
+                  </div>
+                </div>
 
-          {/* 등록 시각 */}
-          {barrier.created_at && (
-            <div className="bg-muted p-4 rounded-lg flex items-center gap-3">
-              <Calendar className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">등록 시각</p>
-                <p className="text-sm font-medium">
-                  {new Date(barrier.created_at).toLocaleString('ko-KR', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* 상세 설명 */}
-          {barrier.details && (
-            <div>
-              <h3 className="text-sm font-semibold mb-2">상세 정보</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {barrier.details}
-              </p>
-            </div>
-          )}
-
-          {/* 사진 갤러리 */}
-          {barrier.photo_urls && barrier.photo_urls.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold mb-3">사진</h3>
-              <Carousel className="w-full">
-                <CarouselContent>
-                  {barrier.photo_urls.map((url, index) => (
-                    <CarouselItem key={index}>
-                      <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-muted">
-                        <img
-                          src={url}
-                          alt={`${barrier.name} 사진 ${index + 1}`}
-                          className="object-cover w-full h-full"
-                          onError={(e) => {
-                            e.currentTarget.src = "/placeholder.svg";
-                          }}
-                        />
-                      </div>
-                    </CarouselItem>
-                  ))}
-                </CarouselContent>
-                {barrier.photo_urls.length > 1 && (
-                  <>
-                    <CarouselPrevious className="left-2" />
-                    <CarouselNext className="right-2" />
-                  </>
+                {/* 사진 갤러리 */}
+                {report.photo_urls && report.photo_urls.length > 0 && (
+                  <div>
+                    <Carousel className="w-full">
+                      <CarouselContent>
+                        {report.photo_urls.map((url, photoIndex) => (
+                          <CarouselItem key={photoIndex}>
+                            <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-muted">
+                              <img
+                                src={url}
+                                alt={`${report.name} 사진 ${photoIndex + 1}`}
+                                className="object-cover w-full h-full"
+                                onError={(e) => {
+                                  e.currentTarget.src = "/placeholder.svg";
+                                }}
+                              />
+                            </div>
+                          </CarouselItem>
+                        ))}
+                      </CarouselContent>
+                      {report.photo_urls.length > 1 && (
+                        <>
+                          <CarouselPrevious className="left-2" />
+                          <CarouselNext className="right-2" />
+                        </>
+                      )}
+                    </Carousel>
+                    {report.photo_urls.length > 1 && (
+                      <p className="text-xs text-muted-foreground text-center mt-2">
+                        {report.photo_urls.length}개의 사진
+                      </p>
+                    )}
+                  </div>
                 )}
-              </Carousel>
-              <p className="text-xs text-muted-foreground text-center mt-2">
-                {barrier.photo_urls.length}개의 사진
+              </div>
+            ))}
+
+            {/* 위치 정보 (맨 아래) */}
+            <div className="bg-muted p-4 rounded-lg mt-4">
+              <p className="text-sm text-muted-foreground mb-1">위치</p>
+              <p className="text-sm font-medium">{barrier.name}</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                {address || "주소를 가져오는 중..."}
               </p>
             </div>
-          )}
-        </div>
+          </div>
+        </ScrollArea>
       </SheetContent>
     </Sheet>
   );
