@@ -246,17 +246,37 @@ const MapView = ({
     };
   }, []);
 
-  // 제보된 배리어 데이터 가져오기 (모든 제보 표시)
+  // 제보된 배리어 데이터 가져오기 (모든 제보 표시 - 페이지네이션으로 1000개 제한 해제)
   useEffect(() => {
     const fetchApprovedReports = async () => {
       try {
-        const { data, error } = await supabase.from("accessibility_reports").select("*");
-        if (error) throw error;
+        // Supabase 기본 1000개 제한 우회를 위한 페이지네이션
+        let allData: any[] = [];
+        let from = 0;
+        const pageSize = 1000;
+        let hasMore = true;
 
-        console.log("🔍 가져온 제보 데이터:", data?.length, "개", data);
+        while (hasMore) {
+          const { data, error } = await supabase
+            .from("accessibility_reports")
+            .select("*")
+            .range(from, from + pageSize - 1);
+          
+          if (error) throw error;
+          
+          if (data && data.length > 0) {
+            allData = [...allData, ...data];
+            from += pageSize;
+            hasMore = data.length === pageSize;
+          } else {
+            hasMore = false;
+          }
+        }
+
+        console.log("🔍 가져온 제보 데이터:", allData.length, "개");
 
         // 제보 데이터를 barrierData 형식으로 변환
-        const barriers = (data || []).map((report) => {
+        const barriers = allData.map((report) => {
           let severity = "safe";
           if (report.accessibility_level === "verified") {
             severity = "verified";
