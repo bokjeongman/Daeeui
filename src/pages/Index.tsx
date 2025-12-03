@@ -307,6 +307,7 @@ const Index = () => {
                 <RouteSelector
                   startPoint={startPoint}
                   endPoint={endPoint}
+                  currentLocation={currentLocation}
                   onStartClick={handleEditStart}
                   onEndClick={handleEditEnd}
                   onSwap={handleSwapPoints}
@@ -343,6 +344,7 @@ const Index = () => {
               <RouteSelector
                 startPoint={startPoint}
                 endPoint={endPoint}
+                currentLocation={currentLocation}
                 onStartClick={handleEditStart}
                 onEndClick={handleEditEnd}
                 onSwap={handleSwapPoints}

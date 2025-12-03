@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 interface RouteSelectorProps {
   startPoint: { lat: number; lon: number; name: string } | null;
   endPoint: { lat: number; lon: number; name: string } | null;
+  currentLocation?: { lat: number; lon: number } | null;
   onStartClick: () => void;
   onEndClick: () => void;
   onSwap: () => void;
@@ -13,11 +14,14 @@ interface RouteSelectorProps {
 const RouteSelector = ({
   startPoint,
   endPoint,
+  currentLocation,
   onStartClick,
   onEndClick,
   onSwap,
   onCancel,
 }: RouteSelectorProps) => {
+  // 출발지 표시: startPoint가 없으면 현위치 사용
+  const startDisplayName = startPoint?.name || (currentLocation ? "현위치" : "출발지 입력");
   return (
     <div className="bg-background border-b">
       <div className="p-2">
@@ -33,7 +37,7 @@ const RouteSelector = ({
                 >
                   <div className="w-2.5 h-2.5 rounded-full bg-green-500 flex-shrink-0" />
                   <span className="text-sm font-medium text-foreground truncate">
-                    {startPoint?.name || "출발지 입력"}
+                    {startDisplayName}
                   </span>
                 </button>
 

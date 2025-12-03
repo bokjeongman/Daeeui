@@ -589,24 +589,26 @@ const MapView = ({
     }
   }, [map, selectedSearchPlace]);
 
-  // 사용자 위치가 변경되면 현재 위치 마커 표시
+  // 사용자 위치가 변경되면 현재 위치 마커 표시 (위치만 업데이트, 마커 재생성 방지)
   useEffect(() => {
     if (!map || !userLocation) return;
     const { lat, lon } = userLocation;
     const position = new window.Tmapv2.LatLng(lat, lon);
 
-    // 기존 마커 및 정확도 원 제거
+    // 기존 마커가 있으면 위치만 업데이트
     if (currentMarkerRef.current) {
-      currentMarkerRef.current.setMap(null);
+      currentMarkerRef.current.setPosition(position);
+      return;
     }
+
+    // 기존 정확도 원 제거
     if (accuracyCircleRef.current) {
       accuracyCircleRef.current.setMap(null);
     }
 
-    // 모바일에서는 나침반 기능이 있는 마커, 데스크톱에서는 단순 원형 마커
+    // 최초 1회만 마커 생성
     let svgIcon;
     if (isMobile) {
-      // 네이버맵 스타일 나침반 마커 (모바일) - heading이 null이어도 표시
       const rotation = heading !== null ? heading : 0;
       svgIcon = `
         <svg width="56" height="56" viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg">
@@ -623,20 +625,15 @@ const MapView = ({
               </feMerge>
             </filter>
           </defs>
-          <!-- 반투명 외곽 원 (연한 파란색) -->
           <circle cx="28" cy="28" r="24" fill="#3b82f6" fill-opacity="0.2" filter="url(#shadow-mobile)"/>
-          <!-- 외부 원 (흰색 테두리) -->
           <circle cx="28" cy="28" r="18" fill="white" stroke="#3b82f6" stroke-width="3"/>
-          <!-- 내부 원 (파란색) -->
           <circle cx="28" cy="28" r="14" fill="#3b82f6"/>
-          <!-- 나침반 화살표 (회전 적용) -->
           <g transform="rotate(${rotation} 28 28)">
             <path d="M28 14 L32 28 L28 26 L24 28 Z" fill="white" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>
           </g>
         </svg>
       `;
     } else {
-      // 단순한 파란색 원 마커 (데스크톱)
       svgIcon = `
         <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
           <defs>
@@ -652,9 +649,7 @@ const MapView = ({
               </feMerge>
             </filter>
           </defs>
-          <!-- 외부 원 (흰색 테두리) -->
           <circle cx="20" cy="20" r="16" fill="white" filter="url(#shadow)" stroke="#3b82f6" stroke-width="2"/>
-          <!-- 내부 원 (파란색) -->
           <circle cx="20" cy="20" r="12" fill="#3b82f6"/>
         </svg>
       `;
@@ -673,13 +668,44 @@ const MapView = ({
     });
     currentMarkerRef.current = marker;
 
-    // 데스크톱에서만 최초 1회 자동 중심 이동, 모바일에서는 버튼 클릭 시에만 이동
+    // 데스크톱에서만 최초 1회 자동 중심 이동
     if (!isMobile && !startPoint && !endPoint && !hasInitializedPositionRef.current) {
       map.setCenter(position);
       map.setZoom(16);
       hasInitializedPositionRef.current = true;
     }
-  }, [map, userLocation, heading, startPoint, endPoint, isMobile]);
+  }, [map, userLocation, isMobile]);
+
+  // 모바일 나침반 방향 업데이트 (마커 재생성 없이 아이콘만 변경)
+  useEffect(() => {
+    if (!isMobile || !currentMarkerRef.current || heading === null) return;
+    
+    const svgIcon = `
+      <svg width="56" height="56" viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="shadow-mobile" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+            <feOffset dx="0" dy="2" result="offsetblur"/>
+            <feComponentTransfer>
+              <feFuncA type="linear" slope="0.5"/>
+            </feComponentTransfer>
+            <feMerge>
+              <feMergeNode/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+        <circle cx="28" cy="28" r="24" fill="#3b82f6" fill-opacity="0.2" filter="url(#shadow-mobile)"/>
+        <circle cx="28" cy="28" r="18" fill="white" stroke="#3b82f6" stroke-width="3"/>
+        <circle cx="28" cy="28" r="14" fill="#3b82f6"/>
+        <g transform="rotate(${heading} 28 28)">
+          <path d="M28 14 L32 28 L28 26 L24 28 Z" fill="white" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>
+        </g>
+      </svg>
+    `;
+    const iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgIcon)}`;
+    currentMarkerRef.current.setIcon(iconUrl);
+  }, [heading, isMobile]);
 
   // 실시간 이동 경로 표시 (노란색)
   useEffect(() => {
@@ -1077,27 +1103,15 @@ const MapView = ({
     userLocationRef.current = userLocation;
   }, [userLocation]);
 
-  // 여러 교통수단으로 경로 탐색 (도보 경로 1회만 호출)
+  // 마지막으로 요청한 경로 정보 저장 (중복 호출 방지)
+  const lastRouteRequestRef = useRef<string>("");
+
+  // 도보 경로 탐색 (TMap API 1회만 호출)
   useEffect(() => {
     if (!map || !window.Tmapv2) return;
 
-    // clearKey가 변경되면 무조건 경로/마커 제거 (취소 버튼 전용)
-    if (clearKey !== undefined && clearKey > 0) {
-      if (!endPoint || !selectedRouteType) {
-        if (routeLayerRef.current && routeLayerRef.current.length) {
-          routeLayerRef.current.forEach((layer: any) => layer.setMap(null));
-          routeLayerRef.current = [];
-        }
-        markersRef.current.forEach((marker) => marker.setMap(null));
-        markersRef.current = [];
-        arrowMarkersRef.current.forEach((marker) => marker.setMap(null));
-        arrowMarkersRef.current = [];
-        return;
-      }
-    }
-
-    // endPoint가 없거나 selectedRouteType이 없으면 기존 경로 제거하고 종료
-    if (!endPoint || !selectedRouteType) {
+    // 경로 제거 함수
+    const clearRoutes = () => {
       if (routeLayerRef.current && routeLayerRef.current.length) {
         routeLayerRef.current.forEach((layer: any) => layer.setMap(null));
         routeLayerRef.current = [];
@@ -1106,354 +1120,217 @@ const MapView = ({
       markersRef.current = [];
       arrowMarkersRef.current.forEach((marker) => marker.setMap(null));
       arrowMarkersRef.current = [];
+    };
+
+    // endPoint가 없거나 selectedRouteType이 없으면 경로 제거
+    if (!endPoint || !selectedRouteType) {
+      clearRoutes();
+      lastRouteRequestRef.current = "";
       return;
     }
 
-    // 출발지가 없으면 현재 위치(ref) 사용 - 둘 다 없으면 에러
+    // 출발지 결정: startPoint가 있으면 사용, 없으면 현재 위치 사용
     const start = startPoint || userLocationRef.current;
     if (!start) {
       toast.error("출발지를 설정해주세요.");
       return;
     }
 
-    console.log("✅ 도보 경로 API 호출 (1회)", { 
+    // 동일한 경로 요청인지 확인 (중복 호출 방지)
+    const routeKey = `${start.lat.toFixed(6)},${start.lon.toFixed(6)}-${endPoint.lat.toFixed(6)},${endPoint.lon.toFixed(6)}`;
+    if (routeKey === lastRouteRequestRef.current) {
+      console.log("⏭️ 동일한 경로 - API 호출 생략");
+      return;
+    }
+    lastRouteRequestRef.current = routeKey;
+
+    console.log("✅ 도보 경로 API 호출", { 
       start: { lat: start.lat, lon: start.lon },
       end: { lat: endPoint.lat, lon: endPoint.lon }
     });
 
-    const calculateAllRoutes = async () => {
+    const calculateRoute = async () => {
       try {
-        // 기존 경로 및 마커 제거
-        if (routeLayerRef.current && routeLayerRef.current.length) {
-          routeLayerRef.current.forEach((layer: any) => layer.setMap(null));
-          routeLayerRef.current = [];
+        clearRoutes();
+
+        const requestBody = {
+          startX: start.lon.toString(),
+          startY: start.lat.toString(),
+          endX: endPoint.lon.toString(),
+          endY: endPoint.lat.toString(),
+          reqCoordType: "WGS84GEO",
+          resCoordType: "WGS84GEO",
+          startName: startPoint?.name || "현재 위치",
+          endName: endPoint.name,
+        };
+
+        const response = await fetch("https://apis.openapi.sk.com/tmap/routes/pedestrian?version=1", {
+          method: "POST",
+          headers: {
+            appKey: "KZDXJtx63R735Qktn8zkkaJv4tbaUqDc1lXzyjLT",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requestBody),
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+          console.warn("API 에러:", data.error);
+          toast.error("도보 경로를 찾을 수 없습니다.");
+          return;
         }
-        markersRef.current.forEach((marker) => marker.setMap(null));
-        markersRef.current = [];
-        arrowMarkersRef.current.forEach((marker) => marker.setMap(null));
-        arrowMarkersRef.current = [];
 
-        // 도보 경로만 계산
-        const routesToCalculate = ["walk"];
-        const calculatedRoutes: any[] = [];
-        for (const routeType of routesToCalculate) {
-          try {
-            let apiUrl = "";
-            let requestBody: any = {
-              startX: start.lon.toString(),
-              startY: start.lat.toString(),
-              endX: endPoint.lon.toString(),
-              endY: endPoint.lat.toString(),
-              reqCoordType: "WGS84GEO",
-              resCoordType: "WGS84GEO",
-              startName: startPoint?.name || "현재 위치",
-              endName: endPoint.name,
-            };
+        if (!data.features) {
+          toast.error("경로를 찾을 수 없습니다.");
+          return;
+        }
 
-            // 교통수단별 API 엔드포인트 설정
-            if (routeType === "walk") {
-              apiUrl = "https://apis.openapi.sk.com/tmap/routes/pedestrian?version=1";
-            } else if (routeType === "car") {
-              apiUrl = "https://apis.openapi.sk.com/tmap/routes?version=1";
-              requestBody.searchOption = "10"; // 실시간 빠른 경로
-              requestBody.trafficInfo = "Y"; // 실시간 교통정보 반영
-            }
-            // 대중교통 경로 주석 처리 (API 사용량 절약)
-            // else if (routeType === "transit") {
-            //   // 대중교통 경로
-            //   apiUrl = "https://apis.openapi.sk.com/transit/routes?version=1";
-            //   requestBody.format = "json";
-            // }
+        // 경로 데이터 처리
+        const lineStrings: any[] = [];
+        let totalDistance = 0;
+        let totalTime = 0;
 
-            const response = await fetch(apiUrl, {
-              method: "POST",
-              headers: {
-                appKey: "KZDXJtx63R735Qktn8zkkaJv4tbaUqDc1lXzyjLT",
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(requestBody),
+        data.features.forEach((feature: any) => {
+          if (feature.geometry.type === "LineString") {
+            feature.geometry.coordinates.forEach((coord: any) => {
+              lineStrings.push(new window.Tmapv2.LatLng(coord[1], coord[0]));
             });
-            const data = await response.json();
-
-            // API 에러 응답 체크
-            if (data.error) {
-              console.warn(`${routeType} API 에러:`, data.error);
-              toast.warning(`${routeType === "walk" ? "도보" : "자동차"} 경로를 찾을 수 없습니다.`);
-              continue;
-            }
-
-            // 대중교통 경로 처리 주석 (대중교통 비활성화)
-            // if (routeType === "transit" && data.metaData && data.metaData.plan) {
-            //   // 대중교통 경로 처리
-            //   const itinerary = data.metaData.plan.itineraries[0];
-            //   if (itinerary) {
-            //     let totalDistance = 0;
-            //     let totalTime = itinerary.totalTime || 0;
-            //     const transitInfo: any = {
-            //       legs: [],
-            //       transfers: 0,
-            //     };
-            //
-            //     itinerary.legs.forEach((leg: any) => {
-            //       totalDistance += leg.distance || 0;
-            //       if (leg.mode === "BUS" || leg.mode === "SUBWAY") {
-            //         transitInfo.legs.push({
-            //           mode: leg.mode,
-            //           route: leg.route || leg.routeId,
-            //           from: leg.from?.name,
-            //           to: leg.to?.name,
-            //           distance: leg.distance,
-            //           time: leg.sectionTime,
-            //         });
-            //         if (transitInfo.legs.length > 1) {
-            //           transitInfo.transfers++;
-            //         }
-            //       }
-            //     });
-            //
-            //     setTransitDetails(transitInfo);
-            //     calculatedRoutes.push({
-            //       type: "transit",
-            //       distance: totalDistance,
-            //       duration: totalTime,
-            //       safePercentage: 85,
-            //       warningPercentage: 15,
-            //       dangerPercentage: 0,
-            //       barriers: [],
-            //       transitInfo,
-            //     });
-            //   }
-            // } else
-            if (data.features) {
-              // 도보/자동차 경로 처리
-              const lineStrings: any[] = [];
-              let totalDistance = 0;
-              let totalTime = 0;
-              data.features.forEach((feature: any) => {
-                if (feature.geometry.type === "LineString") {
-                  feature.geometry.coordinates.forEach((coord: any) => {
-                    lineStrings.push(new window.Tmapv2.LatLng(coord[1], coord[0]));
-                  });
-                }
-                if (feature.properties) {
-                  if (feature.properties.distance) {
-                    totalDistance += feature.properties.distance;
-                  }
-                  if (feature.properties.time) {
-                    totalTime += feature.properties.time;
-                  }
-                }
-              });
-
-              // 경로 근처의 배리어 찾기
-              const nearbyBarriers = barrierData.filter((barrier) => {
-                return lineStrings.some((point) => {
-                  const distance = calculateDistance(point.lat(), point.lng(), barrier.latitude, barrier.longitude);
-                  return distance < 0.05; // 50m 이내
-                });
-              });
-
-              // 안전도 계산
-              const dangerCount = nearbyBarriers.filter((b) => b.severity === "danger" && filter.danger).length;
-              const warningCount = nearbyBarriers.filter((b) => b.severity === "warning" && filter.warning).length;
-              const totalBarriers = dangerCount + warningCount;
-              let dangerPercentage = 0;
-              let warningPercentage = 0;
-              let safePercentage = 100;
-              if (totalBarriers > 0) {
-                dangerPercentage = (dangerCount / totalBarriers) * 100;
-                warningPercentage = (warningCount / totalBarriers) * 100;
-                safePercentage = 100 - dangerPercentage - warningPercentage;
-              }
-
-              // 첫 번째 feature의 정보 가져오기
-              const firstFeature = data.features[0];
-              if (firstFeature && firstFeature.properties) {
-                totalDistance = firstFeature.properties.totalDistance || totalDistance;
-                totalTime = firstFeature.properties.totalTime || totalTime;
-              }
-              calculatedRoutes.push({
-                type: routeType,
-                distance: totalDistance,
-                duration: totalTime,
-                safePercentage,
-                warningPercentage,
-                dangerPercentage,
-                barriers: nearbyBarriers,
-                lineStrings,
-              });
-              if (import.meta.env.DEV) {
-                console.log(`✅ ${routeType} 경로 계산 완료:`, {
-                  distance: totalDistance,
-                  duration: totalTime,
-                  dangerPercentage,
-                  warningPercentage,
-                  safePercentage,
-                });
-              }
-
-              // 자동차 경로일 때 이전 시간과 비교하여 알림
-              if (routeType === "car" && previousDuration !== null && routeUpdateTrigger > 1) {
-                const timeDiff = totalTime - previousDuration;
-                const minuteDiff = Math.abs(Math.round(timeDiff / 60));
-                if (minuteDiff > 2) {
-                  if (timeDiff > 0) {
-                    toast.error(`⚠️ 교통 정체로 ${minuteDiff}분 지연 예상`, {
-                      description: "실시간 교통 정보가 반영되었습니다.",
-                    });
-                  } else {
-                    toast.success(`✅ 교통 상황 개선! ${minuteDiff}분 단축`, {
-                      description: "실시간 교통 정보가 반영되었습니다.",
-                    });
-                  }
-                }
-              }
-              if (routeType === "car") {
-                setPreviousDuration(totalTime);
-              }
-            }
-          } catch (error) {
-            if (import.meta.env.DEV) console.error(`${routeType} 경로 계산 실패:`, error);
-            // 에러가 발생해도 다음 경로는 계속 시도
-            continue;
           }
+          if (feature.properties) {
+            if (feature.properties.distance) totalDistance += feature.properties.distance;
+            if (feature.properties.time) totalTime += feature.properties.time;
+          }
+        });
+
+        // 첫 번째 feature의 총 정보 사용
+        const firstFeature = data.features[0];
+        if (firstFeature?.properties) {
+          totalDistance = firstFeature.properties.totalDistance || totalDistance;
+          totalTime = firstFeature.properties.totalTime || totalTime;
         }
 
-        // 모든 경로 계산 후 콜백 호출
-        if (calculatedRoutes.length > 0) {
-          if (import.meta.env.DEV) {
-            console.log("📍 모든 경로 계산 완료:", calculatedRoutes.length, "개");
-          }
-          if (onRoutesCalculated) {
-            onRoutesCalculated(calculatedRoutes);
-          }
+        // 경로 근처의 배리어 찾기
+        const nearbyBarriers = barrierData.filter((barrier) => {
+          return lineStrings.some((point) => {
+            const distance = calculateDistance(point.lat(), point.lng(), barrier.latitude, barrier.longitude);
+            return distance < 0.05;
+          });
+        });
 
-          // 일부 경로만 성공한 경우 알림
-          const failedRoutes = routesToCalculate.filter((rt) => !calculatedRoutes.find((cr) => cr.type === rt));
-          if (failedRoutes.length > 0 && failedRoutes.length < routesToCalculate.length) {
-            const routeNames = failedRoutes
-              .map((rt) => (rt === "walk" ? "도보" : rt === "car" ? "자동차" : "대중교통"))
-              .join(", ");
-            toast.info(`${routeNames} 경로를 제외한 경로를 표시합니다.`);
-          }
-        } else {
-          if (import.meta.env.DEV) {
-            console.log("⚠️ 경로를 찾을 수 없습니다. 시도한 경로:", routesToCalculate);
-          }
-          toast.error("경로를 찾을 수 없습니다. 다시 시도해주세요.");
+        // 안전도 계산
+        const dangerCount = nearbyBarriers.filter((b) => b.severity === "danger").length;
+        const warningCount = nearbyBarriers.filter((b) => b.severity === "warning").length;
+        const totalBarriers = dangerCount + warningCount;
+        let dangerPercentage = 0, warningPercentage = 0, safePercentage = 100;
+        if (totalBarriers > 0) {
+          dangerPercentage = (dangerCount / totalBarriers) * 100;
+          warningPercentage = (warningCount / totalBarriers) * 100;
+          safePercentage = 100 - dangerPercentage - warningPercentage;
         }
 
-        // 선택된 경로가 있으면 해당 경로만 지도에 표시
-        if (selectedRouteType && calculatedRoutes.length > 0) {
-          const selectedRoute = calculatedRoutes.find((r) => r.type === selectedRouteType);
-          if (import.meta.env.DEV) {
-            console.log("🗺️ 선택된 경로 표시:", selectedRouteType, selectedRoute ? "찾음" : "없음");
-          }
-          if (selectedRoute && selectedRoute.lineStrings) {
-            // 경로 그리기
-            const routeSegments = createRouteSegments(selectedRoute.lineStrings);
-            const createdPolylines: any[] = [];
-            routeSegments.forEach((segment) => {
-              const polyline = new window.Tmapv2.Polyline({
-                path: segment.path,
-                strokeColor: segment.color,
-                strokeWeight: 6,
-                map: map,
-              });
-              createdPolylines.push(polyline);
-            });
-            routeLayerRef.current = createdPolylines;
+        const routeResult = {
+          type: "walk" as const,
+          distance: totalDistance,
+          duration: totalTime,
+          safePercentage,
+          warningPercentage,
+          dangerPercentage,
+          barriers: nearbyBarriers,
+          lineStrings,
+        };
 
-            // 화살표 마커 추가 (일정 간격으로)
-            addArrowMarkers(selectedRoute.lineStrings);
+        console.log("✅ 경로 계산 완료:", { distance: totalDistance, duration: totalTime });
 
-            // 출발지 마커 (초록색, 배리어 마커보다 낮은 z-index)
-            if (startPoint) {
-              const startIconSvg = `
-                <svg width="36" height="48" viewBox="0 0 36 48" xmlns="http://www.w3.org/2000/svg">
-                  <defs>
-                    <filter id="start-shadow" x="-50%" y="-50%" width="200%" height="200%">
-                      <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
-                      <feOffset dx="0" dy="2" result="offsetblur"/>
-                      <feComponentTransfer>
-                        <feFuncA type="linear" slope="0.4"/>
-                      </feComponentTransfer>
-                      <feMerge>
-                        <feMergeNode/>
-                        <feMergeNode in="SourceGraphic"/>
-                      </feMerge>
-                    </filter>
-                  </defs>
-                  <path d="M18 0 C8 0 0 8 0 18 C0 28 18 48 18 48 C18 48 36 28 36 18 C36 8 28 0 18 0 Z" 
-                        fill="#22c55e" 
-                        stroke="white" 
-                        stroke-width="3" 
-                        filter="url(#start-shadow)"/>
-                  <circle cx="18" cy="18" r="10" fill="white"/>
-                  <text x="18" y="23" text-anchor="middle" font-size="16" font-weight="bold" fill="#22c55e">S</text>
-                </svg>
-              `;
-              const startIconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(startIconSvg)}`;
-              const startMarker = new window.Tmapv2.Marker({
-                position: new window.Tmapv2.LatLng(startPoint.lat, startPoint.lon),
-                icon: startIconUrl,
-                iconSize: new window.Tmapv2.Size(36, 48),
-                map: map,
-                title: "출발",
-                zIndex: 90, // 배리어 마커(100)보다 낮게
-              });
-              markersRef.current.push(startMarker);
-            }
-
-            // 도착지 마커 (빨간색, 배리어 마커보다 낮은 z-index)
-            const endIconSvg = `
-              <svg width="36" height="48" viewBox="0 0 36 48" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                  <filter id="end-shadow" x="-50%" y="-50%" width="200%" height="200%">
-                    <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
-                    <feOffset dx="0" dy="2" result="offsetblur"/>
-                    <feComponentTransfer>
-                      <feFuncA type="linear" slope="0.4"/>
-                    </feComponentTransfer>
-                    <feMerge>
-                      <feMergeNode/>
-                      <feMergeNode in="SourceGraphic"/>
-                    </feMerge>
-                  </filter>
-                </defs>
-                <path d="M18 0 C8 0 0 8 0 18 C0 28 18 48 18 48 C18 48 36 28 36 18 C36 8 28 0 18 0 Z" 
-                      fill="#ef4444" 
-                      stroke="white" 
-                      stroke-width="3" 
-                      filter="url(#end-shadow)"/>
-                <circle cx="18" cy="18" r="10" fill="white"/>
-                <text x="18" y="23" text-anchor="middle" font-size="16" font-weight="bold" fill="#ef4444">E</text>
-              </svg>
-            `;
-            const endIconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(endIconSvg)}`;
-            const endMarker = new window.Tmapv2.Marker({
-              position: new window.Tmapv2.LatLng(endPoint.lat, endPoint.lon),
-              icon: endIconUrl,
-              iconSize: new window.Tmapv2.Size(36, 48),
-              map: map,
-              title: "도착",
-              zIndex: 90, // 배리어 마커(100)보다 낮게
-            });
-            markersRef.current.push(endMarker);
-
-            // 지도 범위 조정
-            const bounds = new window.Tmapv2.LatLngBounds();
-            selectedRoute.lineStrings.forEach((point: any) => bounds.extend(point));
-            map.fitBounds(bounds);
-          }
+        // 콜백 호출
+        if (onRoutesCalculated) {
+          onRoutesCalculated([routeResult]);
         }
+
+        // 경로 그리기
+        const routeSegments = createRouteSegments(lineStrings);
+        const createdPolylines: any[] = [];
+        routeSegments.forEach((segment) => {
+          const polyline = new window.Tmapv2.Polyline({
+            path: segment.path,
+            strokeColor: segment.color,
+            strokeWeight: 6,
+            map: map,
+          });
+          createdPolylines.push(polyline);
+        });
+        routeLayerRef.current = createdPolylines;
+
+        // 화살표 마커 추가
+        addArrowMarkers(lineStrings);
+
+        // 출발지 마커 (초록색)
+        if (startPoint) {
+          const startIconSvg = `
+            <svg width="36" height="48" viewBox="0 0 36 48" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <filter id="start-shadow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+                  <feOffset dx="0" dy="2" result="offsetblur"/>
+                  <feComponentTransfer><feFuncA type="linear" slope="0.4"/></feComponentTransfer>
+                  <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+              </defs>
+              <path d="M18 0 C8 0 0 8 0 18 C0 28 18 48 18 48 C18 48 36 28 36 18 C36 8 28 0 18 0 Z" fill="#22c55e" stroke="white" stroke-width="3" filter="url(#start-shadow)"/>
+              <circle cx="18" cy="18" r="10" fill="white"/>
+              <text x="18" y="23" text-anchor="middle" font-size="16" font-weight="bold" fill="#22c55e">S</text>
+            </svg>
+          `;
+          const startMarker = new window.Tmapv2.Marker({
+            position: new window.Tmapv2.LatLng(startPoint.lat, startPoint.lon),
+            icon: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(startIconSvg)}`,
+            iconSize: new window.Tmapv2.Size(36, 48),
+            map: map,
+            title: "출발",
+            zIndex: 90,
+          });
+          markersRef.current.push(startMarker);
+        }
+
+        // 도착지 마커 (빨간색)
+        const endIconSvg = `
+          <svg width="36" height="48" viewBox="0 0 36 48" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <filter id="end-shadow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+                <feOffset dx="0" dy="2" result="offsetblur"/>
+                <feComponentTransfer><feFuncA type="linear" slope="0.4"/></feComponentTransfer>
+                <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+            <path d="M18 0 C8 0 0 8 0 18 C0 28 18 48 18 48 C18 48 36 28 36 18 C36 8 28 0 18 0 Z" fill="#ef4444" stroke="white" stroke-width="3" filter="url(#end-shadow)"/>
+            <circle cx="18" cy="18" r="10" fill="white"/>
+            <text x="18" y="23" text-anchor="middle" font-size="16" font-weight="bold" fill="#ef4444">E</text>
+          </svg>
+        `;
+        const endMarker = new window.Tmapv2.Marker({
+          position: new window.Tmapv2.LatLng(endPoint.lat, endPoint.lon),
+          icon: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(endIconSvg)}`,
+          iconSize: new window.Tmapv2.Size(36, 48),
+          map: map,
+          title: "도착",
+          zIndex: 90,
+        });
+        markersRef.current.push(endMarker);
+
+        // 지도 범위 조정
+        const bounds = new window.Tmapv2.LatLngBounds();
+        lineStrings.forEach((point: any) => bounds.extend(point));
+        map.fitBounds(bounds);
+
       } catch (error) {
-        if (import.meta.env.DEV) console.error("경로 탐색 실패:", error);
+        console.error("경로 탐색 실패:", error);
         toast.error("경로를 찾을 수 없습니다.");
       }
     };
-    calculateAllRoutes();
-  }, [map, startPoint, endPoint, barrierData, onRoutesCalculated, selectedRouteType, routeUpdateTrigger, clearKey]);
+
+    calculateRoute();
+  }, [map, startPoint, endPoint, selectedRouteType, clearKey]);
 
   // 실시간 교통 정보 자동 업데이트 (자동차 경로가 선택되었을 때만)
   useEffect(() => {
