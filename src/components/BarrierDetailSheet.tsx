@@ -191,8 +191,8 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
 
   // 공통 컨텐츠
   const ContentBody = () => (
-    <ScrollArea className="flex-1 pr-4">
-      <div className="space-y-4">
+    <ScrollArea className="h-full w-full">
+      <div className="space-y-4 pr-4 pb-4">
         {/* 제보 목록 */}
         {reportsWithNicknames.map((report, index) => (
           <div 
@@ -314,29 +314,6 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
     </ScrollArea>
   );
 
-  // 헤더 컴포넌트
-  const HeaderContent = () => (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2 text-xl font-semibold">
-        <MapPin className="h-6 w-6 text-primary" />
-        {barrier.name}
-        {hasMultipleReports && (
-          <Badge variant="secondary" className="ml-2">
-            {reportsWithNicknames.length}개 제보
-          </Badge>
-        )}
-      </div>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8"
-        onClick={() => onOpenChange(false)}
-      >
-        <X className="h-5 w-5" />
-      </Button>
-    </div>
-  );
-
   // 모바일: Drawer (스와이프로 닫기 가능)
   if (isMobile) {
     return (
@@ -344,9 +321,30 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
         <Drawer open={open} onOpenChange={onOpenChange}>
           <DrawerContent className="h-[85vh] flex flex-col">
             <DrawerHeader className="mb-2 flex-shrink-0">
-              <HeaderContent />
+              <DrawerTitle className="flex items-center justify-between pr-2">
+                <div className="flex items-center gap-2 text-xl font-semibold">
+                  <MapPin className="h-6 w-6 text-primary" />
+                  {barrier.name}
+                  {hasMultipleReports && (
+                    <Badge variant="secondary" className="ml-2">
+                      {reportsWithNicknames.length}개 제보
+                    </Badge>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 z-50"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenChange(false);
+                  }}
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </DrawerTitle>
             </DrawerHeader>
-            <div className="flex-1 overflow-hidden px-4 pb-4">
+            <div className="flex-1 min-h-0 px-4 pb-4">
               <ContentBody />
             </div>
           </DrawerContent>
@@ -378,11 +376,32 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent side="bottom" className="h-[85vh] overflow-hidden flex flex-col">
           <SheetHeader className="mb-4 flex-shrink-0">
-            <SheetTitle asChild>
-              <HeaderContent />
+            <SheetTitle className="flex items-center justify-between pr-2">
+              <div className="flex items-center gap-2 text-xl font-semibold">
+                <MapPin className="h-6 w-6 text-primary" />
+                {barrier.name}
+                {hasMultipleReports && (
+                  <Badge variant="secondary" className="ml-2">
+                    {reportsWithNicknames.length}개 제보
+                  </Badge>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 z-50"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenChange(false);
+                }}
+              >
+                <X className="h-5 w-5" />
+              </Button>
             </SheetTitle>
           </SheetHeader>
-          <ContentBody />
+          <div className="flex-1 min-h-0">
+            <ContentBody />
+          </div>
         </SheetContent>
       </Sheet>
 
