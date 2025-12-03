@@ -446,6 +446,26 @@ const MapView = ({
       return;
     }
     try {
+      // 새 맵 생성 전 기존 마커 refs 정리
+      if (currentMarkerRef.current) {
+        try {
+          currentMarkerRef.current.setMap(null);
+        } catch (e) {}
+        currentMarkerRef.current = null;
+      }
+      if (accuracyCircleRef.current) {
+        try {
+          accuracyCircleRef.current.setMap(null);
+        } catch (e) {}
+        accuracyCircleRef.current = null;
+      }
+      if (searchPlaceMarkerRef.current) {
+        try {
+          searchPlaceMarkerRef.current.setMap(null);
+        } catch (e) {}
+        searchPlaceMarkerRef.current = null;
+      }
+
       const tmapInstance = new window.Tmapv2.Map(mapRef.current, {
         center: new window.Tmapv2.LatLng(37.5665, 126.978),
         // 서울시청 기본 위치
@@ -591,14 +611,27 @@ const MapView = ({
 
   // 사용자 위치가 변경되면 현재 위치 마커 표시 (위치만 업데이트, 마커 재생성 방지)
   useEffect(() => {
-    if (!map || !userLocation) return;
+    if (!map || !userLocation || !window.Tmapv2) return;
     const { lat, lon } = userLocation;
     const position = new window.Tmapv2.LatLng(lat, lon);
 
-    // 기존 마커가 있으면 위치만 업데이트
+    // 기존 마커가 있고 맵에 연결되어 있으면 위치만 업데이트
     if (currentMarkerRef.current) {
-      currentMarkerRef.current.setPosition(position);
-      return;
+      try {
+        // 마커가 유효한 맵에 연결되어 있는지 확인
+        const markerMap = currentMarkerRef.current.getMap();
+        if (markerMap && markerMap === map) {
+          currentMarkerRef.current.setPosition(position);
+          return;
+        } else {
+          // 마커가 다른 맵에 연결되어 있거나 맵이 없으면 제거
+          currentMarkerRef.current.setMap(null);
+          currentMarkerRef.current = null;
+        }
+      } catch (e) {
+        // 마커 상태 확인 실패 시 마커 재생성
+        currentMarkerRef.current = null;
+      }
     }
 
     // 기존 정확도 원 제거
