@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useCallback, useRef } from "react";
 import Supercluster from "supercluster";
 
 export interface BarrierPoint {
@@ -20,6 +20,14 @@ export interface ClusterProperties {
   point_count?: number;
   point_count_abbreviated?: string;
   barrier?: BarrierPoint;
+  // 클러스터 내 접근성 레벨 통계
+  severityCounts?: {
+    safe: number;
+    warning: number;
+    danger: number;
+    verified: number;
+  };
+  dominantSeverity?: string;
 }
 
 export interface ClusterFeature {
@@ -84,6 +92,43 @@ export function useMarkerCluster(
     return cluster;
   }, [barriers, filter]);
 
+  // 클러스터 내 접근성 레벨 통계 계산
+  const getClusterSeverityStats = useCallback((clusterId: number) => {
+    try {
+      const leaves = supercluster.getLeaves(clusterId, Infinity);
+      const counts = { safe: 0, warning: 0, danger: 0, verified: 0 };
+      
+      leaves.forEach((leaf: any) => {
+        const severity = leaf.properties.barrier?.severity;
+        if (severity === "safe") counts.safe++;
+        else if (severity === "warning") counts.warning++;
+        else if (severity === "danger") counts.danger++;
+        else if (severity === "verified") counts.verified++;
+      });
+
+      // dominant severity 결정 (위험 > 보통 > 양호/인증)
+      let dominantSeverity = "safe";
+      const total = counts.safe + counts.warning + counts.danger + counts.verified;
+      
+      if (total > 0) {
+        const dangerRatio = counts.danger / total;
+        const warningRatio = counts.warning / total;
+        
+        if (dangerRatio >= 0.3) {
+          dominantSeverity = "danger";
+        } else if (warningRatio >= 0.3 || counts.danger > 0) {
+          dominantSeverity = "warning";
+        } else if (counts.verified > counts.safe) {
+          dominantSeverity = "verified";
+        }
+      }
+
+      return { counts, dominantSeverity };
+    } catch {
+      return { counts: { safe: 0, warning: 0, danger: 0, verified: 0 }, dominantSeverity: "safe" };
+    }
+  }, [supercluster]);
+
   // Get clusters for current bounds and zoom
   const clusters = useMemo(() => {
     if (!bounds) return [];
@@ -96,21 +141,37 @@ export function useMarkerCluster(
         bounds.north,
       ];
 
-      return supercluster.getClusters(bbox, Math.floor(zoom)) as ClusterFeature[];
+      const rawClusters = supercluster.getClusters(bbox, Math.floor(zoom));
+      
+      // 클러스터에 접근성 통계 추가
+      return rawClusters.map((feature: any) => {
+        if (feature.properties.cluster && feature.properties.cluster_id !== undefined) {
+          const stats = getClusterSeverityStats(feature.properties.cluster_id);
+          return {
+            ...feature,
+            properties: {
+              ...feature.properties,
+              severityCounts: stats.counts,
+              dominantSeverity: stats.dominantSeverity,
+            },
+          };
+        }
+        return feature;
+      }) as ClusterFeature[];
     } catch (error) {
       console.error("Error getting clusters:", error);
       return [];
     }
-  }, [supercluster, bounds, zoom]);
+  }, [supercluster, bounds, zoom, getClusterSeverityStats]);
 
   // Function to get cluster expansion zoom
-  const getClusterExpansionZoom = (clusterId: number): number => {
+  const getClusterExpansionZoom = useCallback((clusterId: number): number => {
     try {
       return supercluster.getClusterExpansionZoom(clusterId);
     } catch {
       return zoom + 2;
     }
-  };
+  }, [supercluster, zoom]);
 
-  return { clusters, getClusterExpansionZoom, supercluster };
+  return { clusters, getClusterExpansionZoom, supercluster, getClusterSeverityStats };
 }

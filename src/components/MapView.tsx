@@ -345,7 +345,11 @@ const MapView = ({
     };
   }, []);
 
-  // 지도 bounds/zoom 업데이트 함수
+  // 이전 bounds/zoom 값을 저장하는 ref
+  const prevBoundsRef = useRef<string>("");
+  const prevZoomRef = useRef<number>(16);
+
+  // 지도 bounds/zoom 업데이트 함수 (무한 루프 방지)
   const updateMapBoundsAndZoom = useCallback((mapInstance: any) => {
     if (!mapInstance || !window.Tmapv2) return;
     
@@ -356,14 +360,26 @@ const MapView = ({
       if (bounds) {
         const sw = bounds.getSouthWest();
         const ne = bounds.getNorthEast();
-        setMapBounds({
+        const newBounds = {
           west: sw.lng(),
           south: sw.lat(),
           east: ne.lng(),
           north: ne.lat(),
-        });
+        };
+        
+        // 변경 여부 확인 (문자열 비교로 성능 최적화)
+        const boundsKey = `${newBounds.west.toFixed(4)},${newBounds.south.toFixed(4)},${newBounds.east.toFixed(4)},${newBounds.north.toFixed(4)}`;
+        
+        if (boundsKey !== prevBoundsRef.current) {
+          prevBoundsRef.current = boundsKey;
+          setMapBounds(newBounds);
+        }
       }
-      setMapZoom(zoom);
+      
+      if (zoom !== prevZoomRef.current) {
+        prevZoomRef.current = zoom;
+        setMapZoom(zoom);
+      }
     } catch (error) {
       if (import.meta.env.DEV) console.error("Bounds 업데이트 실패:", error);
     }
@@ -388,18 +404,17 @@ const MapView = ({
         hasInitializedPositionRef.current = true;
       });
 
-      // 클러스터링을 위한 이벤트 리스너
-      tmapInstance.addListener("zoom_changed", () => {
-        updateMapBoundsAndZoom(tmapInstance);
-      });
+      // 클러스터링을 위한 이벤트 리스너 (debounce 적용)
+      let updateTimeout: NodeJS.Timeout | null = null;
+      const debouncedUpdate = () => {
+        if (updateTimeout) clearTimeout(updateTimeout);
+        updateTimeout = setTimeout(() => {
+          updateMapBoundsAndZoom(tmapInstance);
+        }, 100);
+      };
       
-      tmapInstance.addListener("dragend", () => {
-        updateMapBoundsAndZoom(tmapInstance);
-      });
-      
-      tmapInstance.addListener("idle", () => {
-        updateMapBoundsAndZoom(tmapInstance);
-      });
+      tmapInstance.addListener("zoom_changed", debouncedUpdate);
+      tmapInstance.addListener("dragend", debouncedUpdate);
 
       setMap(tmapInstance);
       setLoading(false);
@@ -646,29 +661,79 @@ const MapView = ({
     filter
   );
 
-  // 클러스터 마커용 SVG 생성 함수
-  const getClusterIcon = useCallback((count: number) => {
-    // 클러스터 크기에 따른 색상과 크기
+  // 클러스터 마커용 SVG 생성 함수 (접근성 레벨별 색상)
+  const getClusterIcon = useCallback((count: number, dominantSeverity?: string, severityCounts?: { safe: number; warning: number; danger: number; verified: number }) => {
+    // 클러스터 크기에 따른 기본 크기
     let size = 40;
-    let color = "#3b82f6"; // 파랑
-    
     if (count >= 100) {
       size = 56;
-      color = "#ef4444"; // 빨강
     } else if (count >= 30) {
       size = 48;
-      color = "#f97316"; // 주황
     } else if (count >= 10) {
       size = 44;
-      color = "#eab308"; // 노랑
+    }
+
+    // 접근성 레벨에 따른 색상
+    let color = "#22c55e"; // 기본: 안전 (초록)
+    let borderColor = "#16a34a";
+    
+    if (dominantSeverity === "danger") {
+      color = "#ef4444"; // 위험 (빨강)
+      borderColor = "#dc2626";
+    } else if (dominantSeverity === "warning") {
+      color = "#eab308"; // 보통 (노랑)
+      borderColor = "#ca8a04";
+    } else if (dominantSeverity === "verified") {
+      color = "#3b82f6"; // 인증 (파랑)
+      borderColor = "#2563eb";
     }
 
     const fontSize = count >= 100 ? 14 : count >= 10 ? 12 : 11;
+    const uniqueId = `cluster-${count}-${Date.now()}`;
+
+    // 접근성 비율 표시를 위한 원형 차트 (선택적)
+    let chartSegments = "";
+    if (severityCounts) {
+      const total = severityCounts.safe + severityCounts.warning + severityCounts.danger + severityCounts.verified;
+      if (total > 0) {
+        const radius = size / 2 - 4;
+        const cx = size / 2;
+        const cy = size / 2;
+        let startAngle = -90; // 12시 방향부터 시작
+        
+        const segments = [
+          { count: severityCounts.danger, color: "#ef4444" },
+          { count: severityCounts.warning, color: "#eab308" },
+          { count: severityCounts.verified, color: "#3b82f6" },
+          { count: severityCounts.safe, color: "#22c55e" },
+        ];
+        
+        segments.forEach(seg => {
+          if (seg.count > 0) {
+            const angle = (seg.count / total) * 360;
+            const endAngle = startAngle + angle;
+            
+            const startRad = (startAngle * Math.PI) / 180;
+            const endRad = (endAngle * Math.PI) / 180;
+            
+            const x1 = cx + radius * Math.cos(startRad);
+            const y1 = cy + radius * Math.sin(startRad);
+            const x2 = cx + radius * Math.cos(endRad);
+            const y2 = cy + radius * Math.sin(endRad);
+            
+            const largeArc = angle > 180 ? 1 : 0;
+            
+            chartSegments += `<path d="M${cx},${cy} L${x1},${y1} A${radius},${radius} 0 ${largeArc},1 ${x2},${y2} Z" fill="${seg.color}" opacity="0.9"/>`;
+            startAngle = endAngle;
+          }
+        });
+      }
+    }
 
     return `
       <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <filter id="cluster-shadow" x="-50%" y="-50%" width="200%" height="200%">
+          <filter id="cluster-shadow-${uniqueId}" x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
             <feOffset dx="0" dy="2" result="offsetblur"/>
             <feComponentTransfer>
@@ -680,8 +745,10 @@ const MapView = ({
             </feMerge>
           </filter>
         </defs>
-        <circle cx="${size/2}" cy="${size/2}" r="${size/2 - 4}" fill="${color}" stroke="white" stroke-width="3" filter="url(#cluster-shadow)"/>
-        <text x="${size/2}" y="${size/2 + fontSize/3}" font-family="Arial, sans-serif" font-size="${fontSize}" font-weight="bold" fill="white" text-anchor="middle">${count}</text>
+        <circle cx="${size/2}" cy="${size/2}" r="${size/2 - 4}" fill="${color}" stroke="white" stroke-width="3" filter="url(#cluster-shadow-${uniqueId})"/>
+        ${chartSegments}
+        <circle cx="${size/2}" cy="${size/2}" r="${size/3}" fill="white" opacity="0.95"/>
+        <text x="${size/2}" y="${size/2 + fontSize/3}" font-family="Arial, sans-serif" font-size="${fontSize}" font-weight="bold" fill="${color}" text-anchor="middle">${count}</text>
       </svg>
     `;
   }, []);
@@ -788,7 +855,9 @@ const MapView = ({
         // 클러스터 마커
         const count = feature.properties.point_count || 0;
         const clusterId = feature.properties.cluster_id;
-        const iconSvg = getClusterIcon(count);
+        const dominantSeverity = feature.properties.dominantSeverity;
+        const severityCounts = feature.properties.severityCounts;
+        const iconSvg = getClusterIcon(count, dominantSeverity, severityCounts);
         const iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg)}`;
         
         const size = count >= 100 ? 56 : count >= 30 ? 48 : count >= 10 ? 44 : 40;
