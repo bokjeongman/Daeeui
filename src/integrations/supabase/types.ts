@@ -215,6 +215,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      find_email_by_nickname: {
+        Args: { search_nickname: string }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
