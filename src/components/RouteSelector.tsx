@@ -29,10 +29,10 @@ const RouteSelector = ({
                 {/* 출발지 */}
                 <button
                   onClick={onStartClick}
-                  className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-accent transition-colors text-left"
+                  className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-accent active:bg-accent active:scale-[0.98] transition-all text-left touch-manipulation"
                 >
                   <div className="w-2.5 h-2.5 rounded-full bg-green-500 flex-shrink-0" />
-                  <span className="text-sm font-medium text-foreground">
+                  <span className="text-sm font-medium text-foreground truncate">
                     {startPoint?.name || "출발지 입력"}
                   </span>
                 </button>
@@ -43,10 +43,10 @@ const RouteSelector = ({
                 {/* 도착지 */}
                 <button
                   onClick={onEndClick}
-                  className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-accent transition-colors text-left"
+                  className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-accent active:bg-accent active:scale-[0.98] transition-all text-left touch-manipulation"
                 >
                   <div className="w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0" />
-                  <span className="text-sm font-medium text-foreground">
+                  <span className="text-sm font-medium text-foreground truncate">
                     {endPoint?.name || "도착지 입력"}
                   </span>
                 </button>
@@ -58,7 +58,7 @@ const RouteSelector = ({
                 size="icon"
                 onClick={onSwap}
                 disabled={!startPoint || !endPoint}
-                className="h-8 w-8 flex-shrink-0"
+                className="h-8 w-8 flex-shrink-0 active:scale-95 touch-manipulation"
               >
                 <ArrowUpDown className="h-3.5 w-3.5" />
               </Button>
@@ -72,7 +72,7 @@ const RouteSelector = ({
               variant="ghost"
               size="icon"
               onClick={onCancel}
-              className="h-8 w-8 hover:bg-destructive/10"
+              className="h-8 w-8 hover:bg-destructive/10 active:scale-95 touch-manipulation"
             >
               <X className="h-4 w-4" />
             </Button>

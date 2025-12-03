@@ -102,7 +102,17 @@ const SearchBar = ({
             placeholder={placeholder}
             value={searchQuery}
             onChange={(e) => handleSearch(e.target.value)}
-            className="pl-10 pr-10 h-12 text-base bg-background border-border"
+            onFocus={() => {
+              // 모바일에서 포커스 시 즉각 반응하도록 처리
+              if (searchQuery.trim()) {
+                setShowResults(true);
+              }
+            }}
+            className="pl-10 pr-10 h-12 text-base bg-background border-border touch-manipulation"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck="false"
           />
           {searchQuery && (
             <button
@@ -110,7 +120,7 @@ const SearchBar = ({
                 setSearchQuery("");
                 setShowResults(false);
               }}
-              className="absolute right-3 top-1/2 -translate-y-1/2"
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-2 touch-manipulation active:scale-90"
             >
               <X className="h-5 w-5 text-muted-foreground" />
             </button>

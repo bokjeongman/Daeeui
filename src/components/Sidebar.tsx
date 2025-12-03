@@ -53,29 +53,30 @@ const Sidebar = ({ open, onOpenChange }: SidebarProps) => {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="left" className="w-72 p-0">
-        <SheetHeader className="p-6 pb-4 border-b">
-          <div className="flex items-center justify-between gap-2">
-            <SheetTitle className="flex items-center gap-2 flex-1 min-w-0">
-              <span className="truncate">🦽 {nickname || "휠체어 경로 안내"}</span>
+        <SheetHeader className="p-4 pb-3 border-b">
+          <div className="flex items-center justify-between gap-1">
+            <SheetTitle className="flex items-center gap-1.5 flex-1 min-w-0 text-sm">
+              <span className="text-base">🦽</span>
+              <span className="truncate">{nickname || "휠체어 경로 안내"}</span>
             </SheetTitle>
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="flex items-center shrink-0">
               {nickname && (
                 <Button
                   variant="ghost"
-                  size="icon"
+                  size="sm"
                   onClick={handleLogout}
-                  className="text-destructive hover:text-destructive active:scale-95 touch-manipulation"
+                  className="text-destructive hover:text-destructive active:scale-95 touch-manipulation h-8 w-8 p-0"
                 >
                   <LogOut className="h-4 w-4" />
                 </Button>
               )}
               <Button
                 variant="ghost"
-                size="icon"
+                size="sm"
                 onClick={() => onOpenChange(false)}
-                className="active:scale-95 touch-manipulation"
+                className="active:scale-95 touch-manipulation h-8 w-8 p-0"
               >
-                <span className="text-lg font-medium">✕</span>
+                <span className="text-base font-medium">✕</span>
               </Button>
             </div>
           </div>
