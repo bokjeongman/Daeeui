@@ -144,18 +144,6 @@ const Index = () => {
         return;
       }
 
-      // 출발지가 없고 현재 위치도 없는 경우 경고
-      if (!startPoint && !currentLocation) {
-        toast.warning("현재 위치를 확인 중입니다. 잠시 후 다시 시도해주세요.");
-        // 일단 도착지는 설정하고 경로 탐색은 위치 획득 후 시도
-        setEndPoint(place);
-        setSearchMode(null);
-        setHasRoute(true);
-        setRouteOptions([]);
-        setSelectedRouteType("walk");
-        return;
-      }
-
       setEndPoint(place);
       setSearchMode(null);
       setHasRoute(true);
