@@ -46,7 +46,7 @@ const Sidebar = ({ open, onOpenChange }: SidebarProps) => {
     await supabase.auth.signOut();
     toast.success("로그아웃 되었습니다.");
     onOpenChange(false);
-    navigate("/");
+    navigate("/auth");
   };
 
   return (
