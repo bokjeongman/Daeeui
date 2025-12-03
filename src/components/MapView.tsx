@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { MapPin, Loader2, AlertCircle, Navigation, Filter, Star, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import RoadView from "./RoadView";
 import { useGeolocationWatch } from "@/hooks/useGeolocationWatch";
+import { useMarkerCluster, BarrierPoint, ClusterFeature } from "@/hooks/useMarkerCluster";
 
 // T Map 타입 선언
 declare global {
@@ -120,6 +121,11 @@ const MapView = ({
   );
   const [pathHistory, setPathHistory] = useState<Array<{ lat: number; lon: number }>>([]);
   const pathHistoryPolylineRef = useRef<any>(null);
+  
+  // 클러스터링을 위한 상태
+  const [mapZoom, setMapZoom] = useState(16);
+  const [mapBounds, setMapBounds] = useState<{ west: number; south: number; east: number; north: number } | null>(null);
+  const clusterMarkersRef = useRef<any[]>([]);
 
   // useGeolocationWatch 훅 사용
   const { 
@@ -339,6 +345,30 @@ const MapView = ({
     };
   }, []);
 
+  // 지도 bounds/zoom 업데이트 함수
+  const updateMapBoundsAndZoom = useCallback((mapInstance: any) => {
+    if (!mapInstance || !window.Tmapv2) return;
+    
+    try {
+      const bounds = mapInstance.getBounds();
+      const zoom = mapInstance.getZoom();
+      
+      if (bounds) {
+        const sw = bounds.getSouthWest();
+        const ne = bounds.getNorthEast();
+        setMapBounds({
+          west: sw.lng(),
+          south: sw.lat(),
+          east: ne.lng(),
+          north: ne.lat(),
+        });
+      }
+      setMapZoom(zoom);
+    } catch (error) {
+      if (import.meta.env.DEV) console.error("Bounds 업데이트 실패:", error);
+    }
+  }, []);
+
   // 지도 초기화
   useEffect(() => {
     if (!mapRef.current || !window.Tmapv2) {
@@ -358,8 +388,26 @@ const MapView = ({
         hasInitializedPositionRef.current = true;
       });
 
+      // 클러스터링을 위한 이벤트 리스너
+      tmapInstance.addListener("zoom_changed", () => {
+        updateMapBoundsAndZoom(tmapInstance);
+      });
+      
+      tmapInstance.addListener("dragend", () => {
+        updateMapBoundsAndZoom(tmapInstance);
+      });
+      
+      tmapInstance.addListener("idle", () => {
+        updateMapBoundsAndZoom(tmapInstance);
+      });
+
       setMap(tmapInstance);
       setLoading(false);
+      
+      // 초기 bounds 설정
+      setTimeout(() => {
+        updateMapBoundsAndZoom(tmapInstance);
+      }, 100);
 
       // 지도 클릭 이벤트 - POI 검색
       tmapInstance.addListener("click", async (evt: any) => {
@@ -399,7 +447,7 @@ const MapView = ({
       setError("지도를 불러오는데 실패했습니다.");
       setLoading(false);
     }
-  }, []);
+  }, [updateMapBoundsAndZoom]);
 
   // 제보 모달에서 장소 선택 시 지도 중심 이동
   useEffect(() => {
@@ -590,104 +638,66 @@ const MapView = ({
     pathHistoryPolylineRef.current = polyline;
   }, [map, pathHistory]);
 
-  // 배리어 마커 표시
-  useEffect(() => {
-    if (!map || !window.Tmapv2) return;
+  // 클러스터 훅 사용
+  const { clusters, getClusterExpansionZoom } = useMarkerCluster(
+    barrierData as BarrierPoint[],
+    mapBounds,
+    mapZoom,
+    filter
+  );
 
-    // 기존 배리어 마커 제거
-    barrierMarkersRef.current.forEach((marker) => marker.setMap(null));
-    barrierMarkersRef.current = [];
-
-    if (barrierData.length === 0) {
-      console.log("⚠️ 표시할 배리어 데이터가 없습니다");
-      return;
+  // 클러스터 마커용 SVG 생성 함수
+  const getClusterIcon = useCallback((count: number) => {
+    // 클러스터 크기에 따른 색상과 크기
+    let size = 40;
+    let color = "#3b82f6"; // 파랑
+    
+    if (count >= 100) {
+      size = 56;
+      color = "#ef4444"; // 빨강
+    } else if (count >= 30) {
+      size = 48;
+      color = "#f97316"; // 주황
+    } else if (count >= 10) {
+      size = 44;
+      color = "#eab308"; // 노랑
     }
 
-    // 카테고리별 SVG 픽토그램 생성 함수
-    const getCategoryIcon = (category: string, severity: string, uniqueId: string) => {
-      // 접근성 레벨에 따른 색상
-      let fillColor = "#22c55e"; // 양호 (초록)
-      if (severity === "verified") {
-        fillColor = "#3b82f6"; // 공공데이터 인증 (파랑)
-      } else if (severity === "warning") {
-        fillColor = "#eab308"; // 보통 (노랑)
-      } else if (severity === "danger") {
-        fillColor = "#ef4444"; // 어려움 (빨강)
-      }
+    const fontSize = count >= 100 ? 14 : count >= 10 ? 12 : 11;
 
-      // verified인 경우 체크 아이콘 표시
-      if (severity === "verified") {
-        return `
-          <svg width="40" height="40" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <filter id="barrier-shadow-${uniqueId}" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
-                <feOffset dx="0" dy="2" result="offsetblur"/>
-                <feComponentTransfer>
-                  <feFuncA type="linear" slope="0.5"/>
-                </feComponentTransfer>
-                <feMerge>
-                  <feMergeNode/>
-                  <feMergeNode in="SourceGraphic"/>
-                </feMerge>
-              </filter>
-            </defs>
-            <rect x="4" y="4" width="24" height="24" rx="2" fill="${fillColor}" stroke="white" stroke-width="2" filter="url(#barrier-shadow-${uniqueId})"/>
-            <path d="M10 16 L14 20 L22 12" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        `;
-      }
+    return `
+      <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="cluster-shadow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+            <feOffset dx="0" dy="2" result="offsetblur"/>
+            <feComponentTransfer>
+              <feFuncA type="linear" slope="0.4"/>
+            </feComponentTransfer>
+            <feMerge>
+              <feMergeNode/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+        <circle cx="${size/2}" cy="${size/2}" r="${size/2 - 4}" fill="${color}" stroke="white" stroke-width="3" filter="url(#cluster-shadow)"/>
+        <text x="${size/2}" y="${size/2 + fontSize/3}" font-family="Arial, sans-serif" font-size="${fontSize}" font-weight="bold" fill="white" text-anchor="middle">${count}</text>
+      </svg>
+    `;
+  }, []);
 
-      let iconPath = "";
-      switch (category) {
-        case "ramp": // 경사로
-          iconPath = `
-            <path d="M8 20 L16 12 L24 20" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/>
-            <rect x="6" y="20" width="20" height="2" fill="white"/>
-          `;
-          break;
-        case "elevator": // 엘리베이터
-          iconPath = `
-            <rect x="10" y="8" width="12" height="16" rx="1" fill="white" stroke="white" stroke-width="1"/>
-            <path d="M16 14 L16 18 M14 16 L18 16" stroke="${fillColor}" stroke-width="2" stroke-linecap="round"/>
-            <circle cx="16" cy="11" r="1.5" fill="${fillColor}"/>
-          `;
-          break;
-        case "curb": // 턱
-          iconPath = `
-            <path d="M8 20 L12 20 L12 16 L16 16 L16 12 L20 12" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-          `;
-          break;
-        case "stairs": // 계단
-          iconPath = `
-            <path d="M8 20 L12 20 L12 18 L14 18 L14 16 L16 16 L16 14 L18 14 L18 12 L20 12" stroke="white" stroke-width="2" fill="none" stroke-linecap="square" stroke-linejoin="miter"/>
-          `;
-          break;
-        case "parking": // 주차장
-          iconPath = `
-            <text x="16" y="21" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="white" text-anchor="middle">P</text>
-          `;
-          break;
-        case "restroom": // 화장실
-          iconPath = `
-            <circle cx="16" cy="11" r="2" fill="white"/>
-            <path d="M16 13 L16 18 M13 15 L19 15" stroke="white" stroke-width="2" stroke-linecap="round"/>
-          `;
-          break;
-        case "entrance": // 출입구
-          iconPath = `
-            <rect x="10" y="10" width="12" height="12" rx="1" stroke="white" stroke-width="2" fill="none"/>
-            <path d="M16 14 L16 18 M16 14 L18 16 M16 14 L14 16" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          `;
-          break;
-        case "other": // 기타
-        default:
-          iconPath = `
-            <circle cx="16" cy="16" r="3" fill="white"/>
-          `;
-          break;
-      }
+  // 카테고리별 SVG 픽토그램 생성 함수
+  const getCategoryIcon = useCallback((category: string, severity: string, uniqueId: string) => {
+    let fillColor = "#22c55e";
+    if (severity === "verified") {
+      fillColor = "#3b82f6";
+    } else if (severity === "warning") {
+      fillColor = "#eab308";
+    } else if (severity === "danger") {
+      fillColor = "#ef4444";
+    }
 
+    if (severity === "verified") {
       return `
         <svg width="40" height="40" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
           <defs>
@@ -704,74 +714,137 @@ const MapView = ({
             </filter>
           </defs>
           <rect x="4" y="4" width="24" height="24" rx="2" fill="${fillColor}" stroke="white" stroke-width="2" filter="url(#barrier-shadow-${uniqueId})"/>
-          ${iconPath}
+          <path d="M10 16 L14 20 L22 12" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       `;
-    };
+    }
 
-    // 배리어 마커 생성 (필터 적용)
-    console.log("🎯 마커 생성 시작 - barrierData 개수:", barrierData.length, barrierData);
+    let iconPath = "";
+    switch (category) {
+      case "ramp":
+        iconPath = `<path d="M8 20 L16 12 L24 20" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/><rect x="6" y="20" width="20" height="2" fill="white"/>`;
+        break;
+      case "elevator":
+        iconPath = `<rect x="10" y="8" width="12" height="16" rx="1" fill="white" stroke="white" stroke-width="1"/><path d="M16 14 L16 18 M14 16 L18 16" stroke="${fillColor}" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="11" r="1.5" fill="${fillColor}"/>`;
+        break;
+      case "curb":
+        iconPath = `<path d="M8 20 L12 20 L12 16 L16 16 L16 12 L20 12" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+        break;
+      case "stairs":
+        iconPath = `<path d="M8 20 L12 20 L12 18 L14 18 L14 16 L16 16 L16 14 L18 14 L18 12 L20 12" stroke="white" stroke-width="2" fill="none" stroke-linecap="square" stroke-linejoin="miter"/>`;
+        break;
+      case "parking":
+        iconPath = `<text x="16" y="21" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="white" text-anchor="middle">P</text>`;
+        break;
+      case "restroom":
+        iconPath = `<circle cx="16" cy="11" r="2" fill="white"/><path d="M16 13 L16 18 M13 15 L19 15" stroke="white" stroke-width="2" stroke-linecap="round"/>`;
+        break;
+      case "entrance":
+        iconPath = `<rect x="10" y="10" width="12" height="12" rx="1" stroke="white" stroke-width="2" fill="none"/><path d="M16 14 L16 18 M16 14 L18 16 M16 14 L14 16" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+        break;
+      default:
+        iconPath = `<circle cx="16" cy="16" r="3" fill="white"/>`;
+        break;
+    }
 
-    barrierData.forEach((barrier, index) => {
-      console.log(
-        `마커 ${index + 1}:`,
-        barrier.name,
-        "lat:",
-        barrier.lat,
-        "lon:",
-        barrier.lon,
-        "severity:",
-        barrier.severity,
-      );
+    return `
+      <svg width="40" height="40" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="barrier-shadow-${uniqueId}" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+            <feOffset dx="0" dy="2" result="offsetblur"/>
+            <feComponentTransfer>
+              <feFuncA type="linear" slope="0.5"/>
+            </feComponentTransfer>
+            <feMerge>
+              <feMergeNode/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+        <rect x="4" y="4" width="24" height="24" rx="2" fill="${fillColor}" stroke="white" stroke-width="2" filter="url(#barrier-shadow-${uniqueId})"/>
+        ${iconPath}
+      </svg>
+    `;
+  }, []);
 
-      // 필터 상태에 따라 표시 여부 결정
-      if (
-        (barrier.severity === "safe" && !filter.safe) ||
-        (barrier.severity === "warning" && !filter.warning) ||
-        (barrier.severity === "danger" && !filter.danger)
-      ) {
-        console.log(`마커 ${index + 1} 필터로 제외됨`);
-        return;
+  // 클러스터 및 개별 마커 표시
+  useEffect(() => {
+    if (!map || !window.Tmapv2) return;
+
+    // 기존 마커 제거
+    barrierMarkersRef.current.forEach((marker) => marker.setMap(null));
+    barrierMarkersRef.current = [];
+    clusterMarkersRef.current.forEach((marker) => marker.setMap(null));
+    clusterMarkersRef.current = [];
+
+    if (clusters.length === 0) return;
+
+    clusters.forEach((feature, index) => {
+      const [lon, lat] = feature.geometry.coordinates;
+      const position = new window.Tmapv2.LatLng(lat, lon);
+
+      if (feature.properties.cluster) {
+        // 클러스터 마커
+        const count = feature.properties.point_count || 0;
+        const clusterId = feature.properties.cluster_id;
+        const iconSvg = getClusterIcon(count);
+        const iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg)}`;
+        
+        const size = count >= 100 ? 56 : count >= 30 ? 48 : count >= 10 ? 44 : 40;
+
+        const marker = new window.Tmapv2.Marker({
+          position: position,
+          map: map,
+          icon: iconUrl,
+          iconSize: new window.Tmapv2.Size(size, size),
+          title: `${count}개 마커`,
+          zIndex: 150,
+        });
+
+        // 클러스터 클릭 시 확대
+        const handleClusterClick = () => {
+          if (clusterId !== undefined) {
+            const expansionZoom = getClusterExpansionZoom(clusterId);
+            map.setCenter(position);
+            map.setZoom(Math.min(expansionZoom, 18));
+          }
+        };
+
+        marker.addListener("click", handleClusterClick);
+        marker.addListener("touchend", handleClusterClick);
+        clusterMarkersRef.current.push(marker);
+      } else {
+        // 개별 마커
+        const barrier = feature.properties.barrier;
+        if (!barrier) return;
+
+        const uniqueId = `${barrier.type}-${index}`;
+        const iconSvg = getCategoryIcon(barrier.type, barrier.severity, uniqueId);
+        const iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg)}`;
+        const markerSize = isMobile ? 64 : 40;
+
+        const marker = new window.Tmapv2.Marker({
+          position: position,
+          map: map,
+          icon: iconUrl,
+          iconSize: new window.Tmapv2.Size(markerSize, markerSize),
+          title: barrier.name,
+          zIndex: 100,
+        });
+
+        const handleMarkerClick = () => {
+          if (onBarrierClick) {
+            onBarrierClick(barrier);
+          }
+        };
+
+        marker.addListener("click", handleMarkerClick);
+        marker.addListener("touchend", handleMarkerClick);
+        barrierMarkersRef.current.push(marker);
       }
-
-      const position = new window.Tmapv2.LatLng(barrier.lat, barrier.lon);
-
-      // 고유한 ID로 픽토그램 아이콘 생성
-      const uniqueId = `${barrier.type}-${index}`;
-      const iconSvg = getCategoryIcon(barrier.type, barrier.severity, uniqueId);
-      const iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg)}`;
-
-      // 모바일에서 터치 영역 확대를 위해 마커 크기 조정
-      const markerSize = isMobile ? 64 : 40;
-
-      const marker = new window.Tmapv2.Marker({
-        position: position,
-        map: map,
-        icon: iconUrl,
-        iconSize: new window.Tmapv2.Size(markerSize, markerSize),
-        title: barrier.name,
-        zIndex: 100,
-      });
-
-      console.log(`✅ 마커 ${index + 1} 생성 완료:`, barrier.name);
-
-      // 마커 클릭 핸들러 함수
-      const handleMarkerClick = () => {
-        console.log("🎯 배리어 마커 클릭:", barrier.name);
-        if (onBarrierClick) {
-          onBarrierClick(barrier);
-        }
-      };
-
-      // 데스크톱과 모바일 모두에서 동작하도록 click / touchend 이벤트 모두 등록
-      marker.addListener("click", handleMarkerClick);
-      marker.addListener("touchend", handleMarkerClick);
-
-      barrierMarkersRef.current.push(marker);
     });
-
-    console.log("✨ 총", barrierMarkersRef.current.length, "개 마커 생성됨");
-  }, [map, barrierData, filter, onBarrierClick]);
+  }, [map, clusters, getClusterIcon, getCategoryIcon, getClusterExpansionZoom, onBarrierClick, isMobile]);
 
   // 즐겨찾기 마커 표시
   useEffect(() => {
