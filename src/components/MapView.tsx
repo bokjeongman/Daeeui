@@ -778,13 +778,13 @@ const MapView = ({
   // 클러스터 마커용 SVG 생성 함수 (접근성 레벨별 색상)
   const getClusterIcon = useCallback((count: number, dominantSeverity?: string, severityCounts?: { safe: number; warning: number; danger: number; verified: number }) => {
     // 클러스터 크기에 따른 기본 크기
-    let size = 40;
+    let size = 48;
     if (count >= 100) {
-      size = 56;
+      size = 64;
     } else if (count >= 30) {
-      size = 48;
+      size = 56;
     } else if (count >= 10) {
-      size = 44;
+      size = 52;
     }
 
     // 접근성 레벨에 따른 색상
@@ -795,29 +795,30 @@ const MapView = ({
       color = "#ef4444"; // 위험 (빨강)
       borderColor = "#dc2626";
     } else if (dominantSeverity === "warning") {
-      color = "#eab308"; // 보통 (노랑)
-      borderColor = "#ca8a04";
+      color = "#f59e0b"; // 보통 (노랑/주황)
+      borderColor = "#d97706";
     } else if (dominantSeverity === "verified") {
       color = "#3b82f6"; // 인증 (파랑)
       borderColor = "#2563eb";
     }
 
-    const fontSize = count >= 100 ? 14 : count >= 10 ? 12 : 11;
+    const fontSize = count >= 100 ? 16 : count >= 10 ? 14 : 13;
     const uniqueId = `cluster-${count}-${Date.now()}`;
 
-    // 접근성 비율 표시를 위한 원형 차트 (선택적)
+    // 접근성 비율 표시를 위한 도넛 차트
     let chartSegments = "";
     if (severityCounts) {
       const total = severityCounts.safe + severityCounts.warning + severityCounts.danger + severityCounts.verified;
       if (total > 0) {
-        const radius = size / 2 - 4;
+        const outerRadius = size / 2 - 3;
+        const innerRadius = size / 2 - 10;
         const cx = size / 2;
         const cy = size / 2;
-        let startAngle = -90; // 12시 방향부터 시작
+        let startAngle = -90;
         
         const segments = [
           { count: severityCounts.danger, color: "#ef4444" },
-          { count: severityCounts.warning, color: "#eab308" },
+          { count: severityCounts.warning, color: "#f59e0b" },
           { count: severityCounts.verified, color: "#3b82f6" },
           { count: severityCounts.safe, color: "#22c55e" },
         ];
@@ -830,14 +831,18 @@ const MapView = ({
             const startRad = (startAngle * Math.PI) / 180;
             const endRad = (endAngle * Math.PI) / 180;
             
-            const x1 = cx + radius * Math.cos(startRad);
-            const y1 = cy + radius * Math.sin(startRad);
-            const x2 = cx + radius * Math.cos(endRad);
-            const y2 = cy + radius * Math.sin(endRad);
+            const x1Outer = cx + outerRadius * Math.cos(startRad);
+            const y1Outer = cy + outerRadius * Math.sin(startRad);
+            const x2Outer = cx + outerRadius * Math.cos(endRad);
+            const y2Outer = cy + outerRadius * Math.sin(endRad);
+            const x1Inner = cx + innerRadius * Math.cos(startRad);
+            const y1Inner = cy + innerRadius * Math.sin(startRad);
+            const x2Inner = cx + innerRadius * Math.cos(endRad);
+            const y2Inner = cy + innerRadius * Math.sin(endRad);
             
             const largeArc = angle > 180 ? 1 : 0;
             
-            chartSegments += `<path d="M${cx},${cy} L${x1},${y1} A${radius},${radius} 0 ${largeArc},1 ${x2},${y2} Z" fill="${seg.color}" opacity="0.9"/>`;
+            chartSegments += `<path d="M${x1Outer},${y1Outer} A${outerRadius},${outerRadius} 0 ${largeArc},1 ${x2Outer},${y2Outer} L${x2Inner},${y2Inner} A${innerRadius},${innerRadius} 0 ${largeArc},0 ${x1Inner},${y1Inner} Z" fill="${seg.color}"/>`;
             startAngle = endAngle;
           }
         });
@@ -848,20 +853,28 @@ const MapView = ({
       <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <filter id="cluster-shadow-${uniqueId}" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
-            <feOffset dx="0" dy="2" result="offsetblur"/>
+            <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+            <feOffset dx="0" dy="3" result="offsetblur"/>
             <feComponentTransfer>
-              <feFuncA type="linear" slope="0.4"/>
+              <feFuncA type="linear" slope="0.35"/>
             </feComponentTransfer>
             <feMerge>
               <feMergeNode/>
               <feMergeNode in="SourceGraphic"/>
             </feMerge>
           </filter>
+          <linearGradient id="cluster-grad-${uniqueId}" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:${color}"/>
+            <stop offset="100%" style="stop-color:${borderColor}"/>
+          </linearGradient>
         </defs>
-        <circle cx="${size/2}" cy="${size/2}" r="${size/2 - 4}" fill="${color}" stroke="white" stroke-width="3" filter="url(#cluster-shadow-${uniqueId})"/>
+        <!-- 외곽 원 -->
+        <circle cx="${size/2}" cy="${size/2}" r="${size/2 - 3}" fill="url(#cluster-grad-${uniqueId})" stroke="white" stroke-width="3" filter="url(#cluster-shadow-${uniqueId})"/>
+        <!-- 도넛 차트 세그먼트 -->
         ${chartSegments}
-        <circle cx="${size/2}" cy="${size/2}" r="${size/3}" fill="white" opacity="0.95"/>
+        <!-- 중앙 흰색 원 -->
+        <circle cx="${size/2}" cy="${size/2}" r="${size/3}" fill="white"/>
+        <!-- 숫자 -->
         <text x="${size/2}" y="${size/2 + fontSize/3}" font-family="Arial, sans-serif" font-size="${fontSize}" font-weight="bold" fill="${color}" text-anchor="middle">${count}</text>
       </svg>
     `;
@@ -870,75 +883,155 @@ const MapView = ({
   // 카테고리별 SVG 픽토그램 생성 함수 (reportCount로 +N 뱃지 추가)
   const getCategoryIcon = useCallback((category: string, severity: string, uniqueId: string, reportCount?: number) => {
     let fillColor = "#22c55e";
+    let borderColor = "#16a34a";
     if (severity === "verified") {
       fillColor = "#3b82f6";
+      borderColor = "#2563eb";
     } else if (severity === "warning") {
-      fillColor = "#eab308";
+      fillColor = "#f59e0b";
+      borderColor = "#d97706";
     } else if (severity === "danger") {
       fillColor = "#ef4444";
+      borderColor = "#dc2626";
     }
 
     // 추가 제보 뱃지 (+N)
     const extraCount = (reportCount || 1) - 1;
     const badgeSvg = extraCount > 0 ? `
-      <circle cx="28" cy="6" r="8" fill="#ef4444" stroke="white" stroke-width="1.5"/>
-      <text x="28" y="9" font-family="Arial, sans-serif" font-size="8" font-weight="bold" fill="white" text-anchor="middle">+${extraCount > 9 ? '9+' : extraCount}</text>
+      <circle cx="34" cy="8" r="10" fill="#ef4444" stroke="white" stroke-width="2"/>
+      <text x="34" y="12" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="white" text-anchor="middle">+${extraCount > 9 ? '9+' : extraCount}</text>
     ` : '';
 
     // 뱃지가 있으면 viewBox 확장
-    const viewBox = extraCount > 0 ? "0 0 40 40" : "0 0 32 32";
-    const width = extraCount > 0 ? 48 : 40;
-    const height = extraCount > 0 ? 48 : 40;
+    const viewBox = extraCount > 0 ? "0 0 48 48" : "0 0 40 40";
+    const width = extraCount > 0 ? 52 : 44;
+    const height = extraCount > 0 ? 52 : 44;
+    const yOffset = extraCount > 0 ? 4 : 0;
+    const cx = extraCount > 0 ? 20 : 20;
+    const cy = extraCount > 0 ? 24 : 20;
 
+    // 인증된 장소 - 체크 마크와 휠체어 조합
     if (severity === "verified") {
       return `
         <svg width="${width}" height="${height}" viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <filter id="barrier-shadow-${uniqueId}" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
-              <feOffset dx="0" dy="2" result="offsetblur"/>
+              <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+              <feOffset dx="0" dy="3" result="offsetblur"/>
               <feComponentTransfer>
-                <feFuncA type="linear" slope="0.5"/>
+                <feFuncA type="linear" slope="0.4"/>
               </feComponentTransfer>
               <feMerge>
                 <feMergeNode/>
                 <feMergeNode in="SourceGraphic"/>
               </feMerge>
             </filter>
+            <linearGradient id="verified-grad-${uniqueId}" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#60a5fa"/>
+              <stop offset="100%" style="stop-color:#2563eb"/>
+            </linearGradient>
           </defs>
-          <rect x="4" y="${extraCount > 0 ? 8 : 4}" width="24" height="24" rx="2" fill="${fillColor}" stroke="white" stroke-width="2" filter="url(#barrier-shadow-${uniqueId})"/>
-          <path d="M10 ${extraCount > 0 ? 20 : 16} L14 ${extraCount > 0 ? 24 : 20} L22 ${extraCount > 0 ? 16 : 12}" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="${cx}" cy="${cy}" r="16" fill="url(#verified-grad-${uniqueId})" stroke="white" stroke-width="3" filter="url(#barrier-shadow-${uniqueId})"/>
+          <!-- 휠체어 아이콘 -->
+          <circle cx="${cx - 3}" cy="${cy - 6}" r="2.5" fill="white"/>
+          <path d="M${cx - 3} ${cy - 3} L${cx - 3} ${cy + 2} L${cx + 3} ${cy + 2}" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="${cx - 1}" cy="${cy + 5}" r="4" fill="none" stroke="white" stroke-width="2"/>
+          <!-- 체크 마크 -->
+          <circle cx="${cx + 8}" cy="${cy - 8}" r="6" fill="#22c55e" stroke="white" stroke-width="1.5"/>
+          <path d="M${cx + 5} ${cy - 8} L${cx + 7.5} ${cy - 5.5} L${cx + 11} ${cy - 10}" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
           ${badgeSvg}
         </svg>
       `;
     }
 
-    const yOffset = extraCount > 0 ? 4 : 0;
-    let iconPath = "";
+    let iconContent = "";
     switch (category) {
       case "ramp":
-        iconPath = `<path d="M8 ${20 + yOffset} L16 ${12 + yOffset} L24 ${20 + yOffset}" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/><rect x="6" y="${20 + yOffset}" width="20" height="2" fill="white"/>`;
+        // 경사로 - 휠체어 + 경사면 아이콘
+        iconContent = `
+          <!-- 경사면 -->
+          <path d="M${cx - 10} ${cy + 8} L${cx + 10} ${cy + 8} L${cx + 10} ${cy - 4} Z" fill="white" opacity="0.3"/>
+          <path d="M${cx - 10} ${cy + 8} L${cx + 10} ${cy - 4}" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- 휠체어 심볼 -->
+          <circle cx="${cx - 2}" cy="${cy - 4}" r="2" fill="white"/>
+          <path d="M${cx - 2} ${cy - 2} L${cx - 2} ${cy + 2} L${cx + 2} ${cy + 2}" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <circle cx="${cx}" cy="${cy + 4}" r="3" fill="none" stroke="white" stroke-width="1.5"/>
+        `;
         break;
       case "elevator":
-        iconPath = `<rect x="10" y="${8 + yOffset}" width="12" height="16" rx="1" fill="white" stroke="white" stroke-width="1"/><path d="M16 ${14 + yOffset} L16 ${18 + yOffset} M14 ${16 + yOffset} L18 ${16 + yOffset}" stroke="${fillColor}" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="${11 + yOffset}" r="1.5" fill="${fillColor}"/>`;
+        // 엘리베이터 - 문 + 상하 화살표
+        iconContent = `
+          <!-- 엘리베이터 박스 -->
+          <rect x="${cx - 9}" y="${cy - 10}" width="18" height="20" rx="2" fill="white" opacity="0.2" stroke="white" stroke-width="2"/>
+          <!-- 문 -->
+          <line x1="${cx}" y1="${cy - 8}" x2="${cx}" y2="${cy + 8}" stroke="white" stroke-width="1.5" stroke-dasharray="2,2"/>
+          <!-- 상하 화살표 -->
+          <path d="M${cx - 4} ${cy - 3} L${cx - 4} ${cy - 7} M${cx - 6} ${cy - 5} L${cx - 4} ${cy - 7} L${cx - 2} ${cy - 5}" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M${cx + 4} ${cy + 3} L${cx + 4} ${cy + 7} M${cx + 2} ${cy + 5} L${cx + 4} ${cy + 7} L${cx + 6} ${cy + 5}" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        `;
         break;
       case "curb":
-        iconPath = `<path d="M8 ${20 + yOffset} L12 ${20 + yOffset} L12 ${16 + yOffset} L16 ${16 + yOffset} L16 ${12 + yOffset} L20 ${12 + yOffset}" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+        // 턱/단차 - 단차 표시와 주의 심볼
+        iconContent = `
+          <!-- 단차 표시 -->
+          <path d="M${cx - 10} ${cy + 6} L${cx - 2} ${cy + 6} L${cx - 2} ${cy - 2} L${cx + 10} ${cy - 2}" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <!-- 높이 표시 화살표 -->
+          <path d="M${cx + 2} ${cy - 2} L${cx + 2} ${cy + 6}" stroke="white" stroke-width="1.5" stroke-dasharray="2,1"/>
+          <path d="M${cx + 1} ${cy} L${cx + 2} ${cy - 2} L${cx + 3} ${cy}" stroke="white" stroke-width="1.5" fill="none"/>
+          <path d="M${cx + 1} ${cy + 4} L${cx + 2} ${cy + 6} L${cx + 3} ${cy + 4}" stroke="white" stroke-width="1.5" fill="none"/>
+        `;
         break;
       case "stairs":
-        iconPath = `<path d="M8 ${20 + yOffset} L12 ${20 + yOffset} L12 ${18 + yOffset} L14 ${18 + yOffset} L14 ${16 + yOffset} L16 ${16 + yOffset} L16 ${14 + yOffset} L18 ${14 + yOffset} L18 ${12 + yOffset} L20 ${12 + yOffset}" stroke="white" stroke-width="2" fill="none" stroke-linecap="square" stroke-linejoin="miter"/>`;
+        // 계단 - 명확한 계단 아이콘
+        iconContent = `
+          <!-- 계단 3단 -->
+          <path d="M${cx - 8} ${cy + 8} L${cx - 8} ${cy + 3} L${cx - 2} ${cy + 3} L${cx - 2} ${cy - 2} L${cx + 4} ${cy - 2} L${cx + 4} ${cy - 7} L${cx + 10} ${cy - 7}" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <!-- 사람 실루엣 -->
+          <circle cx="${cx - 4}" cy="${cy - 6}" r="2" fill="white"/>
+          <path d="M${cx - 4} ${cy - 4} L${cx - 4} ${cy}" stroke="white" stroke-width="2" stroke-linecap="round"/>
+        `;
         break;
       case "parking":
-        iconPath = `<text x="16" y="${21 + yOffset}" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="white" text-anchor="middle">P</text>`;
+        // 주차 - P와 휠체어 조합
+        iconContent = `
+          <!-- 주차 P -->
+          <text x="${cx}" y="${cy + 6}" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="white" text-anchor="middle">P</text>
+          <!-- 휠체어 마크 -->
+          <circle cx="${cx + 8}" cy="${cy - 6}" r="5" fill="white"/>
+          <circle cx="${cx + 7}" cy="${cy - 8}" r="1.2" fill="${fillColor}"/>
+          <path d="M${cx + 7} ${cy - 7} L${cx + 7} ${cy - 4} L${cx + 9} ${cy - 4}" stroke="${fillColor}" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+          <circle cx="${cx + 7.5}" cy="${cy - 3}" r="1.8" fill="none" stroke="${fillColor}" stroke-width="1"/>
+        `;
         break;
       case "restroom":
-        iconPath = `<circle cx="16" cy="${11 + yOffset}" r="2" fill="white"/><path d="M16 ${13 + yOffset} L16 ${18 + yOffset} M13 ${15 + yOffset} L19 ${15 + yOffset}" stroke="white" stroke-width="2" stroke-linecap="round"/>`;
+        // 화장실 - 접근 가능 화장실 아이콘
+        iconContent = `
+          <!-- 화장실 문 -->
+          <rect x="${cx - 8}" y="${cy - 9}" width="16" height="18" rx="2" fill="white" opacity="0.2" stroke="white" stroke-width="2"/>
+          <!-- 휠체어 심볼 -->
+          <circle cx="${cx}" cy="${cy - 4}" r="2.5" fill="white"/>
+          <path d="M${cx} ${cy - 1} L${cx} ${cy + 4} L${cx + 4} ${cy + 4}" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="${cx + 1}" cy="${cy + 6}" r="3.5" fill="none" stroke="white" stroke-width="2"/>
+        `;
         break;
       case "entrance":
-        iconPath = `<rect x="10" y="${10 + yOffset}" width="12" height="12" rx="1" stroke="white" stroke-width="2" fill="none"/><path d="M16 ${14 + yOffset} L16 ${18 + yOffset} M16 ${14 + yOffset} L18 ${16 + yOffset} M16 ${14 + yOffset} L14 ${16 + yOffset}" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+        // 입구 - 문과 화살표
+        iconContent = `
+          <!-- 문 프레임 -->
+          <rect x="${cx - 8}" y="${cy - 10}" width="16" height="20" rx="1" fill="none" stroke="white" stroke-width="2.5"/>
+          <!-- 진입 화살표 -->
+          <path d="M${cx - 2} ${cy} L${cx + 6} ${cy}" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M${cx + 3} ${cy - 3} L${cx + 6} ${cy} L${cx + 3} ${cy + 3}" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <!-- 손잡이 -->
+          <circle cx="${cx + 4}" cy="${cy + 4}" r="1.5" fill="white"/>
+        `;
         break;
       default:
-        iconPath = `<circle cx="16" cy="${16 + yOffset}" r="3" fill="white"/>`;
+        // 기본 - 정보 아이콘
+        iconContent = `
+          <circle cx="${cx}" cy="${cy - 4}" r="2" fill="white"/>
+          <path d="M${cx} ${cy} L${cx} ${cy + 8}" stroke="white" stroke-width="3" stroke-linecap="round"/>
+        `;
         break;
     }
 
@@ -946,19 +1039,23 @@ const MapView = ({
       <svg width="${width}" height="${height}" viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <filter id="barrier-shadow-${uniqueId}" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
-            <feOffset dx="0" dy="2" result="offsetblur"/>
+            <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+            <feOffset dx="0" dy="3" result="offsetblur"/>
             <feComponentTransfer>
-              <feFuncA type="linear" slope="0.5"/>
+              <feFuncA type="linear" slope="0.4"/>
             </feComponentTransfer>
             <feMerge>
               <feMergeNode/>
               <feMergeNode in="SourceGraphic"/>
             </feMerge>
           </filter>
+          <linearGradient id="marker-grad-${uniqueId}" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:${fillColor}"/>
+            <stop offset="100%" style="stop-color:${borderColor}"/>
+          </linearGradient>
         </defs>
-        <rect x="4" y="${4 + yOffset}" width="24" height="24" rx="2" fill="${fillColor}" stroke="white" stroke-width="2" filter="url(#barrier-shadow-${uniqueId})"/>
-        ${iconPath}
+        <circle cx="${cx}" cy="${cy}" r="16" fill="url(#marker-grad-${uniqueId})" stroke="white" stroke-width="3" filter="url(#barrier-shadow-${uniqueId})"/>
+        ${iconContent}
         ${badgeSvg}
       </svg>
     `;
@@ -1010,7 +1107,7 @@ const MapView = ({
         const iconSvg = getClusterIcon(count, dominantSeverity, severityCounts);
         const iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg)}`;
         
-        const size = count >= 100 ? 56 : count >= 30 ? 48 : count >= 10 ? 44 : 40;
+        const size = count >= 100 ? 64 : count >= 30 ? 56 : count >= 10 ? 52 : 48;
 
         const marker = new window.Tmapv2.Marker({
           position: position,
@@ -1042,9 +1139,9 @@ const MapView = ({
         const reportCount = barrier.reportCount || 1;
         const iconSvg = getCategoryIcon(barrier.type, barrier.severity, uniqueId, reportCount);
         const iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg)}`;
-        // 뱃지가 있으면 마커 크기 증가 (모바일은 1/4 크기)
+        // 뱃지가 있으면 마커 크기 증가 (모바일은 축소)
         const hasExtraReports = reportCount > 1;
-        const markerSize = isMobile ? (hasExtraReports ? 18 : 16) : (hasExtraReports ? 48 : 40);
+        const markerSize = isMobile ? (hasExtraReports ? 28 : 24) : (hasExtraReports ? 52 : 44);
 
         const marker = new window.Tmapv2.Marker({
           position: position,
@@ -1079,41 +1176,46 @@ const MapView = ({
     // 즐겨찾기 마커 생성
     favorites.forEach((favorite) => {
       const position = new window.Tmapv2.LatLng(Number(favorite.latitude), Number(favorite.longitude));
+      const uniqueId = `star-${favorite.id}`;
 
-      // 별표 SVG 아이콘
+      // 별표 SVG 아이콘 - 개선된 디자인
       const starIcon = `
-        <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+        <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
           <defs>
-            <filter id="star-shadow" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur in="SourceAlpha" stdDeviation="1"/>
-              <feOffset dx="0" dy="1" result="offsetblur"/>
+            <filter id="star-shadow-${uniqueId}" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+              <feOffset dx="0" dy="2" result="offsetblur"/>
               <feComponentTransfer>
-                <feFuncA type="linear" slope="0.4"/>
+                <feFuncA type="linear" slope="0.35"/>
               </feComponentTransfer>
               <feMerge>
                 <feMergeNode/>
                 <feMergeNode in="SourceGraphic"/>
               </feMerge>
             </filter>
+            <linearGradient id="star-grad-${uniqueId}" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#fcd34d"/>
+              <stop offset="100%" style="stop-color:#f59e0b"/>
+            </linearGradient>
           </defs>
-          <path d="M16 2 L19.5 12 L30 12 L21.5 18.5 L25 28 L16 22 L7 28 L10.5 18.5 L2 12 L12.5 12 Z" 
-                fill="#fbbf24" 
-                stroke="#f59e0b" 
-                stroke-width="1.5" 
-                filter="url(#star-shadow)"/>
+          <!-- 원형 배경 -->
+          <circle cx="20" cy="20" r="17" fill="white" stroke="#f59e0b" stroke-width="2.5" filter="url(#star-shadow-${uniqueId})"/>
+          <!-- 별 아이콘 -->
+          <path d="M20 6 L23.5 14.5 L32.5 14.5 L25.5 20.5 L28 29.5 L20 24 L12 29.5 L14.5 20.5 L7.5 14.5 L16.5 14.5 Z" 
+                fill="url(#star-grad-${uniqueId})" 
+                stroke="#d97706" 
+                stroke-width="1"/>
         </svg>
       `;
-      const markerDiv = document.createElement("div");
-      markerDiv.innerHTML = starIcon;
-      markerDiv.style.width = "32px";
-      markerDiv.style.height = "32px";
-      markerDiv.style.cursor = "pointer";
+      const iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(starIcon)}`;
+      
       const marker = new window.Tmapv2.Marker({
         position: position,
         map: map,
-        icon: markerDiv,
-        iconSize: new window.Tmapv2.Size(32, 32),
+        icon: iconUrl,
+        iconSize: new window.Tmapv2.Size(40, 40),
         title: favorite.place_name,
+        zIndex: 80,
       });
 
       // 마커 클릭 이벤트 - 장소 후기 열기
