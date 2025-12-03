@@ -1,12 +1,13 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, AlertTriangle, Calendar, ShieldCheck, User } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { MapPin, AlertTriangle, Calendar, ShieldCheck, User, Edit } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { useEffect, useState } from "react";
 import { reverseGeocode } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
-
+import ModificationRequestModal from "./ModificationRequestModal";
 interface ReportData {
   id: string;
   name: string;
@@ -20,6 +21,7 @@ interface ReportData {
   accessibility_level?: string;
   user_id?: string;
   nickname?: string;
+  reportId?: string;
 }
 
 interface BarrierDetailSheetProps {
@@ -43,7 +45,15 @@ interface BarrierDetailSheetProps {
 const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetProps) => {
   const [address, setAddress] = useState<string>("");
   const [reportsWithNicknames, setReportsWithNicknames] = useState<ReportData[]>([]);
+  const [modificationModalOpen, setModificationModalOpen] = useState(false);
+  const [selectedReportForModification, setSelectedReportForModification] = useState<ReportData | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setCurrentUserId(session?.user?.id || null);
+    });
+  }, []);
   useEffect(() => {
     if (barrier && open) {
       reverseGeocode(barrier.latitude, barrier.longitude).then(setAddress);
@@ -84,14 +94,15 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
           }) || []);
           
           const reportsWithNames = reports.map(r => {
+            const reportId = r.id !== "single" ? r.id : (barrier as any).reportId || (barrier as any).id;
             if (r.accessibility_level === "verified") {
-              return { ...r, nickname: "공공데이터" };
+              return { ...r, nickname: "공공데이터", reportId };
             }
             if (r.user_id) {
               const nickname = nicknameMap.get(r.user_id);
-              return { ...r, nickname: nickname || "사용자" };
+              return { ...r, nickname: nickname || "사용자", reportId };
             }
-            return { ...r, nickname: "사용자" };
+            return { ...r, nickname: "사용자", reportId };
           });
           
           // 최신순 정렬
@@ -103,10 +114,14 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
           
           setReportsWithNicknames(reportsWithNames);
         } else {
-          const reportsWithNames = reports.map(r => ({
-            ...r,
-            nickname: r.accessibility_level === "verified" ? "공공데이터" : "사용자"
-          }));
+          const reportsWithNames = reports.map(r => {
+            const reportId = r.id !== "single" ? r.id : (barrier as any).reportId || (barrier as any).id;
+            return {
+              ...r,
+              nickname: r.accessibility_level === "verified" ? "공공데이터" : "사용자",
+              reportId
+            };
+          });
           reportsWithNames.sort((a, b) => {
             const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
             const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
@@ -195,12 +210,32 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
                   hasMultipleReports ? 'shadow-sm' : ''
                 }`}
               >
-                {/* 작성자 정보 */}
-                <div className="flex items-center gap-2 text-sm">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">{report.nickname}</span>
-                  {report.accessibility_level === "verified" && (
-                    <ShieldCheck className="h-4 w-4 text-blue-500" />
+                {/* 작성자 정보 및 수정 요청 버튼 */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium">{report.nickname}</span>
+                    {report.accessibility_level === "verified" && (
+                      <ShieldCheck className="h-4 w-4 text-blue-500" />
+                    )}
+                  </div>
+                  {/* 수정 요청 버튼: 본인 제보가 아니고, 공공데이터가 아닌 경우만 표시 */}
+                  {currentUserId && report.user_id !== currentUserId && report.accessibility_level !== "verified" && report.reportId && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => {
+                        setSelectedReportForModification({
+                          ...report,
+                          id: report.reportId!,
+                        });
+                        setModificationModalOpen(true);
+                      }}
+                    >
+                      <Edit className="h-3 w-3 mr-1" />
+                      수정 요청
+                    </Button>
                   )}
                 </div>
 
@@ -287,6 +322,23 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
           </div>
         </ScrollArea>
       </SheetContent>
+
+      {/* 수정 요청 모달 */}
+      {selectedReportForModification && (
+        <ModificationRequestModal
+          open={modificationModalOpen}
+          onClose={() => {
+            setModificationModalOpen(false);
+            setSelectedReportForModification(null);
+          }}
+          report={{
+            id: selectedReportForModification.id,
+            details: selectedReportForModification.details,
+            photo_urls: selectedReportForModification.photo_urls,
+            location_name: selectedReportForModification.name,
+          }}
+        />
+      )}
     </Sheet>
   );
 };
