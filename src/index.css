@@ -113,3 +113,34 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* iOS Safe Area Support */
+@layer utilities {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  
+  .mb-safe {
+    margin-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  
+  /* Improved touch targets for mobile */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Better scrolling for mobile */
+  .overscroll-contain {
+    overscroll-behavior: contain;
+  }
+  
+  /* Prevent pull-to-refresh on mobile */
+  .no-overscroll {
+    overscroll-behavior-y: none;
+  }
+}

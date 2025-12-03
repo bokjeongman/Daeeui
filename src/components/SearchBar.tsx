@@ -94,9 +94,8 @@ const SearchBar = ({
 
   return (
     <div className={`w-full ${variant === "yellow" ? "bg-accent" : "bg-background"}`}>
-      <div className="p-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           <Input
             type="text"
             placeholder={placeholder}
@@ -114,18 +113,17 @@ const SearchBar = ({
             autoCapitalize="off"
             spellCheck="false"
           />
-          {searchQuery && (
-            <button
-              onClick={() => {
-                setSearchQuery("");
-                setShowResults(false);
-              }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-2 touch-manipulation active:scale-90"
-            >
-              <X className="h-5 w-5 text-muted-foreground" />
-            </button>
-          )}
-        </div>
+        {searchQuery && (
+          <button
+            onClick={() => {
+              setSearchQuery("");
+              setShowResults(false);
+            }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-2 touch-manipulation active:scale-90"
+          >
+            <X className="h-5 w-5 text-muted-foreground" />
+          </button>
+        )}
       </div>
 
       {showResults && searchResults.length > 0 && (
