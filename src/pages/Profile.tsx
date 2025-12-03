@@ -34,6 +34,7 @@ const Profile = () => {
   const [reports, setReports] = useState<AccessibilityReport[]>([]);
   const [stats, setStats] = useState<Stats>({ total: 0, approved: 0, pending: 0, rejected: 0 });
   const [loading, setLoading] = useState(true);
+  const [nickname, setNickname] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -51,6 +52,14 @@ const Profile = () => {
       }
 
       setUser(session.user);
+      
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("nickname")
+        .eq("id", session.user.id)
+        .single();
+      setNickname(profile?.nickname || null);
+      
       await fetchReports(session.user.id);
     } catch (error) {
       if (import.meta.env.DEV) console.error("초기화 오류:", error);
@@ -211,7 +220,7 @@ const Profile = () => {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold">내 프로필</h1>
+            <h1 className="text-3xl font-bold">{nickname ? `${nickname}의 프로필` : "내 프로필"}</h1>
             <p className="text-muted-foreground mt-1">제보 활동 내역 및 통계</p>
           </div>
         </div>
@@ -222,7 +231,7 @@ const Profile = () => {
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
-                사용자 정보
+                {nickname || "사용자 정보"}
               </CardTitle>
               <Button 
                 variant="outline" 

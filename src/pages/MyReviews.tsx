@@ -49,6 +49,7 @@ const MyReviews = () => {
   const [editedLevel, setEditedLevel] = useState("");
   const [deletingReviewId, setDeletingReviewId] = useState<string | null>(null);
   const [roadViewReview, setRoadViewReview] = useState<Review | null>(null);
+  const [nickname, setNickname] = useState<string | null>(null);
 
   useEffect(() => {
     checkUserAndFetchReviews();
@@ -63,6 +64,13 @@ const MyReviews = () => {
         navigate("/auth");
         return;
       }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("nickname")
+        .eq("id", user.id)
+        .single();
+      setNickname(profile?.nickname || null);
 
       await fetchReviews(user.id);
     } catch (error) {
@@ -205,7 +213,7 @@ const MyReviews = () => {
           >
             <ArrowLeft className="h-6 w-6" />
           </Button>
-          <h1 className="text-xl font-bold">내 후기</h1>
+          <h1 className="text-xl font-bold">{nickname ? `${nickname}의 후기` : "내 후기"}</h1>
         </div>
       </div>
 
