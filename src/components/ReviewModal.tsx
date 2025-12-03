@@ -307,9 +307,24 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
                 <SelectValue placeholder="선택하세요" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="good">양호</SelectItem>
-                <SelectItem value="moderate">보통</SelectItem>
-                <SelectItem value="difficult">어려움</SelectItem>
+                <SelectItem value="good" className="hover:!bg-green-100 dark:hover:!bg-green-900/30 data-[highlighted]:!bg-green-100 dark:data-[highlighted]:!bg-green-900/30">
+                  <span className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-green-500" />
+                    양호
+                  </span>
+                </SelectItem>
+                <SelectItem value="moderate" className="hover:!bg-yellow-100 dark:hover:!bg-yellow-900/30 data-[highlighted]:!bg-yellow-100 dark:data-[highlighted]:!bg-yellow-900/30">
+                  <span className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-yellow-500" />
+                    보통
+                  </span>
+                </SelectItem>
+                <SelectItem value="difficult" className="hover:!bg-red-100 dark:hover:!bg-red-900/30 data-[highlighted]:!bg-red-100 dark:data-[highlighted]:!bg-red-900/30">
+                  <span className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-red-500" />
+                    어려움
+                  </span>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -334,15 +349,36 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
             </Select>
           </div>
 
+          {/* 기타 선택 시 구체적 내용 입력 */}
+          {category === "other" && (
+            <div className="space-y-2">
+              <Label htmlFor="otherDetails">기타 분류 상세 내용 *</Label>
+              <Textarea
+                id="otherDetails"
+                placeholder="어떤 종류의 접근성 정보인지 구체적으로 입력해주세요"
+                value={details}
+                onChange={(e) => setDetails(e.target.value)}
+                rows={3}
+                className="border-primary/50"
+              />
+            </div>
+          )}
+
           {/* 상세 설명 */}
           <div className="space-y-2">
-            <Label htmlFor="details">상세 설명 (선택)</Label>
+            <Label htmlFor="details">{category === "other" ? "추가 설명 (선택)" : "상세 설명 (선택)"}</Label>
             <Textarea
               id="details"
               placeholder="접근성에 대한 상세한 설명을 입력해주세요"
-              value={details}
-              onChange={(e) => setDetails(e.target.value)}
+              value={category === "other" ? "" : details}
+              onChange={(e) => {
+                if (category !== "other") {
+                  setDetails(e.target.value);
+                }
+              }}
               rows={4}
+              disabled={category === "other"}
+              className={category === "other" ? "hidden" : ""}
             />
           </div>
 
