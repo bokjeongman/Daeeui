@@ -24,6 +24,7 @@ const MyRoutes = () => {
   const [routes, setRoutes] = useState<RouteHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [nickname, setNickname] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -41,6 +42,14 @@ const MyRoutes = () => {
       }
 
       setUser(session.user);
+      
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("nickname")
+        .eq("id", session.user.id)
+        .single();
+      setNickname(profile?.nickname || null);
+      
       await fetchRoutes(session.user.id);
     } catch (error) {
       if (import.meta.env.DEV) console.error("초기화 오류:", error);
@@ -115,7 +124,7 @@ const MyRoutes = () => {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold">내 경로</h1>
+            <h1 className="text-3xl font-bold">{nickname ? `${nickname}의 경로` : "내 경로"}</h1>
             <p className="text-muted-foreground mt-1">최근 검색한 경로를 확인하세요</p>
           </div>
         </div>

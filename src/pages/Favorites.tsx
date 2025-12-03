@@ -21,6 +21,7 @@ const Favorites = () => {
   const [loading, setLoading] = useState(true);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [user, setUser] = useState<any>(null);
+  const [nickname, setNickname] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -38,6 +39,14 @@ const Favorites = () => {
       }
 
       setUser(session.user);
+      
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("nickname")
+        .eq("id", session.user.id)
+        .single();
+      setNickname(profile?.nickname || null);
+      
       await fetchFavorites();
     } catch (error) {
       if (import.meta.env.DEV) console.error("초기화 오류:", error);
@@ -129,7 +138,7 @@ const Favorites = () => {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold">즐겨찾기</h1>
+            <h1 className="text-3xl font-bold">{nickname ? `${nickname}의 즐겨찾기` : "즐겨찾기"}</h1>
             <p className="text-muted-foreground mt-1">저장된 장소를 빠르게 찾아보세요</p>
           </div>
         </div>
