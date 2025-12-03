@@ -96,19 +96,13 @@ const Auth = () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
-        .from("profiles")
-        .select("email")
-        .eq("nickname", findNickname.trim())
-        .single();
+        .rpc("find_email_by_nickname", { search_nickname: findNickname.trim() });
 
-      if (error || !data?.email) {
+      if (error || !data) {
         toast.error("해당 닉네임으로 등록된 계정을 찾을 수 없습니다.");
         setFoundEmail(null);
       } else {
-        // 이메일 일부 마스킹 처리
-        const emailParts = data.email.split("@");
-        const masked = emailParts[0].slice(0, 3) + "***@" + emailParts[1];
-        setFoundEmail(masked);
+        setFoundEmail(data);
         toast.success("아이디를 찾았습니다!");
       }
     } catch (error) {
