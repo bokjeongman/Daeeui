@@ -248,8 +248,19 @@ const Profile = () => {
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-2">
             <p className="text-sm text-muted-foreground">이메일: {user?.email}</p>
+            {user?.last_sign_in_at && (
+              <p className="text-sm text-muted-foreground flex items-center gap-1">
+                <Clock className="h-4 w-4" />
+                최근 로그인: {new Date(user.last_sign_in_at).toLocaleString("ko-KR")}
+              </p>
+            )}
+            {user?.created_at && (
+              <p className="text-sm text-muted-foreground">
+                가입일: {new Date(user.created_at).toLocaleDateString("ko-KR")}
+              </p>
+            )}
           </CardContent>
         </Card>
 
