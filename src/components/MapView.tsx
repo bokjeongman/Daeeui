@@ -882,8 +882,11 @@ const MapView = ({
 
   // 카테고리별 SVG 픽토그램 생성 함수 (reportCount로 +N 뱃지 추가)
   const getCategoryIcon = useCallback((category: string, severity: string, uniqueId: string, reportCount?: number) => {
+    // 기본 초록색 - 모든 공공데이터는 초록색
     let fillColor = "#22c55e";
     let borderColor = "#16a34a";
+    
+    // severity에 따른 색상 (verified, warning, danger만 다른 색상)
     if (severity === "verified") {
       fillColor = "#3b82f6";
       borderColor = "#2563eb";
@@ -902,15 +905,13 @@ const MapView = ({
       <text x="34" y="12" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="white" text-anchor="middle">+${extraCount > 9 ? '9+' : extraCount}</text>
     ` : '';
 
-    // 뱃지가 있으면 viewBox 확장
     const viewBox = extraCount > 0 ? "0 0 48 48" : "0 0 40 40";
     const width = extraCount > 0 ? 52 : 44;
     const height = extraCount > 0 ? 52 : 44;
-    const yOffset = extraCount > 0 ? 4 : 0;
     const cx = extraCount > 0 ? 20 : 20;
     const cy = extraCount > 0 ? 24 : 20;
 
-    // 인증된 장소 - 체크 마크와 휠체어 조합
+    // 인증된 장소 - 체크 마크
     if (severity === "verified") {
       return `
         <svg width="${width}" height="${height}" viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">
@@ -918,13 +919,8 @@ const MapView = ({
             <filter id="barrier-shadow-${uniqueId}" x="-50%" y="-50%" width="200%" height="200%">
               <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
               <feOffset dx="0" dy="3" result="offsetblur"/>
-              <feComponentTransfer>
-                <feFuncA type="linear" slope="0.4"/>
-              </feComponentTransfer>
-              <feMerge>
-                <feMergeNode/>
-                <feMergeNode in="SourceGraphic"/>
-              </feMerge>
+              <feComponentTransfer><feFuncA type="linear" slope="0.4"/></feComponentTransfer>
+              <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
             </filter>
             <linearGradient id="verified-grad-${uniqueId}" x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" style="stop-color:#60a5fa"/>
@@ -932,13 +928,8 @@ const MapView = ({
             </linearGradient>
           </defs>
           <circle cx="${cx}" cy="${cy}" r="16" fill="url(#verified-grad-${uniqueId})" stroke="white" stroke-width="3" filter="url(#barrier-shadow-${uniqueId})"/>
-          <!-- 휠체어 아이콘 -->
-          <circle cx="${cx - 3}" cy="${cy - 6}" r="2.5" fill="white"/>
-          <path d="M${cx - 3} ${cy - 3} L${cx - 3} ${cy + 2} L${cx + 3} ${cy + 2}" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-          <circle cx="${cx - 1}" cy="${cy + 5}" r="4" fill="none" stroke="white" stroke-width="2"/>
           <!-- 체크 마크 -->
-          <circle cx="${cx + 8}" cy="${cy - 8}" r="6" fill="#22c55e" stroke="white" stroke-width="1.5"/>
-          <path d="M${cx + 5} ${cy - 8} L${cx + 7.5} ${cy - 5.5} L${cx + 11} ${cy - 10}" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M${cx - 6} ${cy} L${cx - 1} ${cy + 5} L${cx + 8} ${cy - 6}" stroke="white" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
           ${badgeSvg}
         </svg>
       `;
@@ -947,90 +938,93 @@ const MapView = ({
     let iconContent = "";
     switch (category) {
       case "ramp":
-        // 경사로 - 휠체어 + 경사면 아이콘
+        // 경사로 - 깔끔한 경사면 표현
         iconContent = `
-          <!-- 경사면 -->
-          <path d="M${cx - 10} ${cy + 8} L${cx + 10} ${cy + 8} L${cx + 10} ${cy - 4} Z" fill="white" opacity="0.3"/>
-          <path d="M${cx - 10} ${cy + 8} L${cx + 10} ${cy - 4}" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
-          <!-- 휠체어 심볼 -->
-          <circle cx="${cx - 2}" cy="${cy - 4}" r="2" fill="white"/>
-          <path d="M${cx - 2} ${cy - 2} L${cx - 2} ${cy + 2} L${cx + 2} ${cy + 2}" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/>
-          <circle cx="${cx}" cy="${cy + 4}" r="3" fill="none" stroke="white" stroke-width="1.5"/>
+          <!-- 경사면 바닥 -->
+          <polygon points="${cx - 10},${cy + 8} ${cx + 10},${cy + 8} ${cx + 10},${cy - 6}" fill="white" opacity="0.25"/>
+          <!-- 경사면 선 -->
+          <path d="M${cx - 10} ${cy + 8} L${cx + 10} ${cy - 6}" stroke="white" stroke-width="3" stroke-linecap="round"/>
+          <!-- 바닥선 -->
+          <path d="M${cx - 10} ${cy + 8} L${cx + 10} ${cy + 8}" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          <!-- 각도 표시 -->
+          <path d="M${cx + 6} ${cy + 8} L${cx + 6} ${cy + 2}" stroke="white" stroke-width="1.5" opacity="0.7"/>
         `;
         break;
       case "elevator":
-        // 엘리베이터 - 문 + 상하 화살표
+        // 엘리베이터 - 박스 + 상하 화살표
         iconContent = `
           <!-- 엘리베이터 박스 -->
-          <rect x="${cx - 9}" y="${cy - 10}" width="18" height="20" rx="2" fill="white" opacity="0.2" stroke="white" stroke-width="2"/>
-          <!-- 문 -->
-          <line x1="${cx}" y1="${cy - 8}" x2="${cx}" y2="${cy + 8}" stroke="white" stroke-width="1.5" stroke-dasharray="2,2"/>
-          <!-- 상하 화살표 -->
-          <path d="M${cx - 4} ${cy - 3} L${cx - 4} ${cy - 7} M${cx - 6} ${cy - 5} L${cx - 4} ${cy - 7} L${cx - 2} ${cy - 5}" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M${cx + 4} ${cy + 3} L${cx + 4} ${cy + 7} M${cx + 2} ${cy + 5} L${cx + 4} ${cy + 7} L${cx + 6} ${cy + 5}" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <rect x="${cx - 8}" y="${cy - 10}" width="16" height="20" rx="2" fill="none" stroke="white" stroke-width="2.5"/>
+          <!-- 중앙 분리선 -->
+          <line x1="${cx}" y1="${cy - 8}" x2="${cx}" y2="${cy + 8}" stroke="white" stroke-width="1.5" opacity="0.5"/>
+          <!-- 위 화살표 -->
+          <path d="M${cx - 4} ${cy + 2} L${cx - 4} ${cy - 5}" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M${cx - 6.5} ${cy - 2} L${cx - 4} ${cy - 5} L${cx - 1.5} ${cy - 2}" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <!-- 아래 화살표 -->
+          <path d="M${cx + 4} ${cy - 2} L${cx + 4} ${cy + 5}" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M${cx + 1.5} ${cy + 2} L${cx + 4} ${cy + 5} L${cx + 6.5} ${cy + 2}" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
         `;
         break;
       case "curb":
-        // 턱/단차 - 단차 표시와 주의 심볼
+        // 턱/단차 - 명확한 단차 표현
         iconContent = `
-          <!-- 단차 표시 -->
-          <path d="M${cx - 10} ${cy + 6} L${cx - 2} ${cy + 6} L${cx - 2} ${cy - 2} L${cx + 10} ${cy - 2}" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-          <!-- 높이 표시 화살표 -->
-          <path d="M${cx + 2} ${cy - 2} L${cx + 2} ${cy + 6}" stroke="white" stroke-width="1.5" stroke-dasharray="2,1"/>
-          <path d="M${cx + 1} ${cy} L${cx + 2} ${cy - 2} L${cx + 3} ${cy}" stroke="white" stroke-width="1.5" fill="none"/>
-          <path d="M${cx + 1} ${cy + 4} L${cx + 2} ${cy + 6} L${cx + 3} ${cy + 4}" stroke="white" stroke-width="1.5" fill="none"/>
+          <!-- 단차 형태 -->
+          <path d="M${cx - 10} ${cy + 6} L${cx - 2} ${cy + 6} L${cx - 2} ${cy - 4} L${cx + 10} ${cy - 4}" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <!-- 높이 표시 -->
+          <path d="M${cx + 4} ${cy - 4} L${cx + 4} ${cy + 6}" stroke="white" stroke-width="1.5" stroke-dasharray="2,2" opacity="0.7"/>
+          <!-- 위아래 화살표 -->
+          <path d="M${cx + 2} ${cy - 1} L${cx + 4} ${cy - 4} L${cx + 6} ${cy - 1}" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          <path d="M${cx + 2} ${cy + 3} L${cx + 4} ${cy + 6} L${cx + 6} ${cy + 3}" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/>
         `;
         break;
       case "stairs":
-        // 계단 - 명확한 계단 아이콘
+        // 계단 - 명확한 계단 형태
         iconContent = `
-          <!-- 계단 3단 -->
-          <path d="M${cx - 8} ${cy + 8} L${cx - 8} ${cy + 3} L${cx - 2} ${cy + 3} L${cx - 2} ${cy - 2} L${cx + 4} ${cy - 2} L${cx + 4} ${cy - 7} L${cx + 10} ${cy - 7}" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-          <!-- 사람 실루엣 -->
-          <circle cx="${cx - 4}" cy="${cy - 6}" r="2" fill="white"/>
-          <path d="M${cx - 4} ${cy - 4} L${cx - 4} ${cy}" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          <!-- 계단 4단 -->
+          <path d="M${cx - 9} ${cy + 9} L${cx - 9} ${cy + 4} L${cx - 4} ${cy + 4} L${cx - 4} ${cy - 1} L${cx + 1} ${cy - 1} L${cx + 1} ${cy - 6} L${cx + 6} ${cy - 6} L${cx + 6} ${cy - 11} L${cx + 11} ${cy - 11}" 
+                stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
         `;
         break;
       case "parking":
-        // 주차 - P와 휠체어 조합
+        // 주차장 - P 마크
         iconContent = `
-          <!-- 주차 P -->
-          <text x="${cx}" y="${cy + 6}" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="white" text-anchor="middle">P</text>
-          <!-- 휠체어 마크 -->
-          <circle cx="${cx + 8}" cy="${cy - 6}" r="5" fill="white"/>
-          <circle cx="${cx + 7}" cy="${cy - 8}" r="1.2" fill="${fillColor}"/>
-          <path d="M${cx + 7} ${cy - 7} L${cx + 7} ${cy - 4} L${cx + 9} ${cy - 4}" stroke="${fillColor}" stroke-width="1.2" fill="none" stroke-linecap="round"/>
-          <circle cx="${cx + 7.5}" cy="${cy - 3}" r="1.8" fill="none" stroke="${fillColor}" stroke-width="1"/>
+          <!-- P 텍스트 -->
+          <text x="${cx}" y="${cy + 7}" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="white" text-anchor="middle">P</text>
         `;
         break;
       case "restroom":
-        // 화장실 - 접근 가능 화장실 아이콘
+        // 화장실 - 남녀 심볼
         iconContent = `
-          <!-- 화장실 문 -->
-          <rect x="${cx - 8}" y="${cy - 9}" width="16" height="18" rx="2" fill="white" opacity="0.2" stroke="white" stroke-width="2"/>
-          <!-- 휠체어 심볼 -->
-          <circle cx="${cx}" cy="${cy - 4}" r="2.5" fill="white"/>
-          <path d="M${cx} ${cy - 1} L${cx} ${cy + 4} L${cx + 4} ${cy + 4}" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-          <circle cx="${cx + 1}" cy="${cy + 6}" r="3.5" fill="none" stroke="white" stroke-width="2"/>
+          <!-- 남자 (왼쪽) -->
+          <circle cx="${cx - 5}" cy="${cy - 7}" r="3" fill="white"/>
+          <path d="M${cx - 5} ${cy - 4} L${cx - 5} ${cy + 3}" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M${cx - 9} ${cy - 1} L${cx - 1} ${cy - 1}" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          <path d="M${cx - 5} ${cy + 3} L${cx - 8} ${cy + 9} M${cx - 5} ${cy + 3} L${cx - 2} ${cy + 9}" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          <!-- 여자 (오른쪽) -->
+          <circle cx="${cx + 5}" cy="${cy - 7}" r="3" fill="white"/>
+          <path d="M${cx + 5} ${cy - 4} L${cx + 5} ${cy}" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M${cx + 1} ${cy} L${cx + 9} ${cy} L${cx + 7} ${cy + 9} M${cx + 3} ${cy + 9} L${cx + 5} ${cy}" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
         `;
         break;
       case "entrance":
-        // 입구 - 문과 화살표
+        // 출입구 - 문과 화살표
         iconContent = `
           <!-- 문 프레임 -->
-          <rect x="${cx - 8}" y="${cy - 10}" width="16" height="20" rx="1" fill="none" stroke="white" stroke-width="2.5"/>
+          <rect x="${cx - 7}" y="${cy - 10}" width="14" height="20" rx="1" fill="none" stroke="white" stroke-width="2.5"/>
+          <!-- 문 손잡이 -->
+          <circle cx="${cx + 3}" cy="${cy + 2}" r="2" fill="white"/>
           <!-- 진입 화살표 -->
-          <path d="M${cx - 2} ${cy} L${cx + 6} ${cy}" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
-          <path d="M${cx + 3} ${cy - 3} L${cx + 6} ${cy} L${cx + 3} ${cy + 3}" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-          <!-- 손잡이 -->
-          <circle cx="${cx + 4}" cy="${cy + 4}" r="1.5" fill="white"/>
+          <path d="M${cx - 12} ${cy} L${cx - 4} ${cy}" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          <path d="M${cx - 7} ${cy - 3} L${cx - 4} ${cy} L${cx - 7} ${cy + 3}" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
         `;
         break;
       default:
-        // 기본 - 정보 아이콘
+        // 기본 - 위치 핀 (초록색으로 표시)
         iconContent = `
-          <circle cx="${cx}" cy="${cy - 4}" r="2" fill="white"/>
-          <path d="M${cx} ${cy} L${cx} ${cy + 8}" stroke="white" stroke-width="3" stroke-linecap="round"/>
+          <!-- 위치 핀 -->
+          <circle cx="${cx}" cy="${cy - 2}" r="5" fill="white"/>
+          <path d="M${cx} ${cy + 10} L${cx - 4} ${cy + 2} Q${cx - 8} ${cy - 6} ${cx} ${cy - 10} Q${cx + 8} ${cy - 6} ${cx + 4} ${cy + 2} Z" 
+                fill="none" stroke="white" stroke-width="2" opacity="0.5"/>
         `;
         break;
     }
