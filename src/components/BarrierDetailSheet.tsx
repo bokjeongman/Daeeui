@@ -1,7 +1,7 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, AlertTriangle, Calendar, ShieldCheck, User, Edit } from "lucide-react";
+import { MapPin, AlertTriangle, Calendar, ShieldCheck, User, Edit, X } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { useEffect, useState } from "react";
 import { reverseGeocode } from "@/lib/utils";
@@ -189,15 +189,25 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="h-[85vh] overflow-hidden flex flex-col">
         <SheetHeader className="mb-4 flex-shrink-0">
-          <SheetTitle className="flex items-center gap-2 text-xl">
-            <MapPin className="h-6 w-6 text-primary" />
-            {barrier.name}
-            {hasMultipleReports && (
-              <Badge variant="secondary" className="ml-2">
-                {reportsWithNicknames.length}개 제보
-              </Badge>
-            )}
-          </SheetTitle>
+          <div className="flex items-center justify-between">
+            <SheetTitle className="flex items-center gap-2 text-xl">
+              <MapPin className="h-6 w-6 text-primary" />
+              {barrier.name}
+              {hasMultipleReports && (
+                <Badge variant="secondary" className="ml-2">
+                  {reportsWithNicknames.length}개 제보
+                </Badge>
+              )}
+            </SheetTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => onOpenChange(false)}
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
         </SheetHeader>
 
         <ScrollArea className="flex-1 pr-4">
