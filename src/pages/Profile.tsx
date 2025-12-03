@@ -84,33 +84,49 @@ const Profile = () => {
 
   const fetchReports = async (userId: string) => {
     try {
-      const { data, error } = await supabase
-        .from("accessibility_reports")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false });
+      // Supabase 기본 1000개 제한 우회를 위한 페이지네이션
+      let allData: any[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      if (error) throw error;
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("accessibility_reports")
+          .select("*")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .range(from, from + pageSize - 1);
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          allData = [...allData, ...data];
+          from += pageSize;
+          hasMore = data.length === pageSize;
+        } else {
+          hasMore = false;
+        }
+      }
 
-      const reportsData = data || [];
-      
-      // 각 제보에 대해 주소 변환
+      // 통계는 전체 데이터로 계산
+      setStats({
+        total: allData.length,
+        approved: allData.filter(r => r.status === "approved").length,
+        pending: allData.filter(r => r.status === "pending").length,
+        rejected: allData.filter(r => r.status === "rejected").length,
+      });
+
+      // 최근 50개만 주소 변환 (성능 최적화)
+      const recentReports = allData.slice(0, 50);
       const reportsWithAddress = await Promise.all(
-        reportsData.map(async (report) => {
+        recentReports.map(async (report) => {
           const address = await reverseGeocode(report.latitude, report.longitude);
           return { ...report, address };
         })
       );
       
       setReports(reportsWithAddress);
-
-      // Calculate statistics
-      setStats({
-        total: reportsWithAddress.length,
-        approved: reportsWithAddress.filter(r => r.status === "approved").length,
-        pending: reportsWithAddress.filter(r => r.status === "pending").length,
-        rejected: reportsWithAddress.filter(r => r.status === "rejected").length,
-      });
     } catch (error) {
       if (import.meta.env.DEV) console.error("제보 조회 실패:", error);
       toast.error("제보 내역을 불러오는데 실패했습니다.");
@@ -260,7 +276,12 @@ const Profile = () => {
         <Card>
           <CardHeader>
             <CardTitle>제보 내역</CardTitle>
-            <CardDescription>최근 제보한 접근성 정보</CardDescription>
+            <CardDescription>
+              {stats.total > 50 
+                ? `최근 50개 표시 (전체 ${stats.total}개)`
+                : "최근 제보한 접근성 정보"
+              }
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {reports.length === 0 ? (
