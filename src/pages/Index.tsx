@@ -124,6 +124,8 @@ const Index = () => {
     lon: number;
     name: string;
   }, type: "start" | "end") => {
+    console.log("📍 handleSelectPlace 호출", { place, type });
+    
     if (type === "start") {
       setStartPoint(place);
       setSearchMode(null); // RouteSelector를 표시하기 위해 null로 설정
@@ -144,6 +146,11 @@ const Index = () => {
         return;
       }
 
+      console.log("🚀 도착지 설정 및 경로 탐색 시작", { 
+        endPoint: place, 
+        selectedRouteType: "walk" 
+      });
+      
       setEndPoint(place);
       setSearchMode(null);
       setHasRoute(true);

@@ -1073,7 +1073,19 @@ const MapView = ({
 
   // 여러 교통수단으로 경로 탐색
   useEffect(() => {
-    if (!map || !window.Tmapv2) return;
+    console.log("🗺️ 경로 계산 useEffect 실행", { 
+      hasMap: !!map, 
+      hasTmapv2: !!window.Tmapv2,
+      endPoint: endPoint ? { lat: endPoint.lat, lon: endPoint.lon, name: endPoint.name } : null,
+      selectedRouteType,
+      startPoint: startPoint ? { lat: startPoint.lat, lon: startPoint.lon } : null,
+      userLocation: userLocation ? { lat: userLocation.lat, lon: userLocation.lon } : null
+    });
+
+    if (!map || !window.Tmapv2) {
+      console.log("❌ 지도 또는 Tmapv2가 없음");
+      return;
+    }
 
     // clearKey가 변경되면 무조건 경로/마커 제거 (취소 버튼 전용)
     if (clearKey !== undefined && clearKey > 0) {
@@ -1092,6 +1104,7 @@ const MapView = ({
 
     // endPoint가 없거나 selectedRouteType이 없으면 기존 경로 제거하고 종료
     if (!endPoint || !selectedRouteType) {
+      console.log("❌ endPoint 또는 selectedRouteType이 없음", { endPoint: !!endPoint, selectedRouteType });
       if (routeLayerRef.current && routeLayerRef.current.length) {
         routeLayerRef.current.forEach((layer: any) => layer.setMap(null));
         routeLayerRef.current = [];
@@ -1106,10 +1119,14 @@ const MapView = ({
     // 출발지가 없으면 현재 위치 사용 - 둘 다 없으면 대기
     const start = startPoint || userLocation;
     if (!start) {
-      // 현재 위치를 아직 받지 못한 경우 - 위치 업데이트 시 다시 시도됨
-      if (import.meta.env.DEV) console.log("⏳ 현재 위치 대기 중...");
+      console.log("⏳ 현재 위치 대기 중...");
       return;
     }
+
+    console.log("✅ 경로 계산 시작", { 
+      start: { lat: start.lat, lon: start.lon },
+      end: { lat: endPoint.lat, lon: endPoint.lon }
+    });
 
     const calculateAllRoutes = async () => {
       try {
