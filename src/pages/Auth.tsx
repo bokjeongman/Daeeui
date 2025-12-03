@@ -294,7 +294,7 @@ const Auth = () => {
                 required
               />
             </div>
-            <div className="relative">
+            <div className={`relative ${recentMethod === "email" ? "mt-8" : ""}`}>
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "처리 중..." : isLogin ? "로그인" : "회원가입"}
               </Button>
