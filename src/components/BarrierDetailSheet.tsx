@@ -191,8 +191,8 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
 
   // 공통 컨텐츠
   const ContentBody = () => (
-    <ScrollArea className="h-full w-full">
-      <div className="space-y-4 pr-4 pb-4">
+    <ScrollArea className="h-full w-full [&_[data-radix-scroll-area-scrollbar]]:bg-muted [&_[data-radix-scroll-area-thumb]]:bg-border">
+      <div className="space-y-4 pr-4 pb-6">
         {/* 제보 목록 */}
         {reportsWithNicknames.map((report, index) => (
           <div 
