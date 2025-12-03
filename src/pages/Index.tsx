@@ -144,6 +144,18 @@ const Index = () => {
         return;
       }
 
+      // 출발지가 없고 현재 위치도 없는 경우 경고
+      if (!startPoint && !currentLocation) {
+        toast.warning("현재 위치를 확인 중입니다. 잠시 후 다시 시도해주세요.");
+        // 일단 도착지는 설정하고 경로 탐색은 위치 획득 후 시도
+        setEndPoint(place);
+        setSearchMode(null);
+        setHasRoute(true);
+        setRouteOptions([]);
+        setSelectedRouteType("walk");
+        return;
+      }
+
       setEndPoint(place);
       setSearchMode(null);
       setHasRoute(true);
@@ -272,7 +284,7 @@ const Index = () => {
             {!startPoint && !endPoint && (
               <>
                 <div className="flex items-center gap-3 px-4 py-3">
-                  <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)} className="shrink-0">
+                  <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)} className="shrink-0 active:scale-95 touch-manipulation">
                     <Menu className="h-6 w-6" />
                   </Button>
                   <div className="flex-1 min-w-0">
@@ -329,7 +341,7 @@ const Index = () => {
       ) : routeOptions.length > 0 && selectedRouteType && (
         <div className="relative z-10 bg-background border-b">
           <div className="flex items-center gap-3 px-4 py-3">
-            <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)} className="shrink-0">
+            <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)} className="shrink-0 active:scale-95 touch-manipulation">
               <Menu className="h-6 w-6" />
             </Button>
             <div className="flex-1">

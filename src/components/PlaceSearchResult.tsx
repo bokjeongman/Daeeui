@@ -170,7 +170,7 @@ const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace, onClearP
               <Button
                 variant="default"
                 size="default"
-                className="flex-1 h-12 bg-primary"
+                className="flex-1 h-12 bg-primary active:scale-[0.98] touch-manipulation"
                 onClick={() => {
                   onSelect(selectedPlace, searchMode);
                   setSelectedPlace(null);
@@ -184,7 +184,7 @@ const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace, onClearP
                 <Button
                   variant="outline"
                   size="default"
-                  className="flex-1 h-12"
+                  className="flex-1 h-12 active:scale-[0.98] touch-manipulation"
                   onClick={() => {
                     onSelect(selectedPlace, "start");
                     setSelectedPlace(null);
@@ -196,7 +196,7 @@ const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace, onClearP
                 <Button
                   variant="default"
                   size="default"
-                  className="flex-1 h-12 bg-primary"
+                  className="flex-1 h-12 bg-primary active:scale-[0.98] touch-manipulation"
                   onClick={() => {
                     onSelect(selectedPlace, "end");
                     setSelectedPlace(null);
@@ -224,7 +224,7 @@ const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace, onClearP
       {results.map((place) => (
         <Card
           key={place.id}
-          className="m-2 p-3 hover:bg-muted/50 transition-colors cursor-pointer"
+          className="m-2 p-3 hover:bg-muted/50 active:bg-muted active:scale-[0.98] transition-all cursor-pointer touch-manipulation"
           onClick={() => {
             if (onMoveToPlace) {
               onMoveToPlace({ lat: place.lat, lon: place.lon, name: place.name });
