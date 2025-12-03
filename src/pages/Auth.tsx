@@ -187,10 +187,16 @@ const Auth = () => {
   };
 
   const RecentBadge = () => (
-    <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse">
-      <MessageCircle className="w-3 h-3" />
-      최근 로그인
-    </span>
+    <div className="absolute -top-8 left-1/2 -translate-x-1/2 z-10">
+      <div className="relative bg-primary text-primary-foreground text-xs px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap">
+        <span className="flex items-center gap-1">
+          <MessageCircle className="w-3 h-3" />
+          최근 로그인
+        </span>
+        {/* 말풍선 꼬리 */}
+        <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-primary rotate-45" />
+      </div>
+    </div>
   );
 
   return (
