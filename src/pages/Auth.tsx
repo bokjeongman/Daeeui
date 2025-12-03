@@ -106,7 +106,7 @@ const Auth = () => {
         toast.success("로그인 성공!");
         await checkNicknameAndRedirect(data.user.id);
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -120,8 +120,15 @@ const Auth = () => {
           return;
         }
 
-        toast.success("회원가입이 완료되었습니다! 로그인해주세요.");
-        setIsLogin(true);
+        // 자동 확인이 활성화된 경우 바로 로그인됨
+        if (data.session) {
+          setRecentLoginMethod("email");
+          toast.success("회원가입 및 로그인 성공!");
+          await checkNicknameAndRedirect(data.user!.id);
+        } else {
+          toast.success("회원가입이 완료되었습니다! 이메일을 확인해주세요.");
+          setIsLogin(true);
+        }
       }
     } catch (error: any) {
       if (import.meta.env.DEV) console.error("인증 오류:", error);
