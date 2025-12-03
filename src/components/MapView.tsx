@@ -882,11 +882,14 @@ const MapView = ({
 
   // 카테고리별 SVG 픽토그램 생성 함수 (reportCount로 +N 뱃지 추가)
   const getCategoryIcon = useCallback((category: string, severity: string, uniqueId: string, reportCount?: number) => {
-    // 기본 초록색 - 모든 공공데이터는 초록색
+    // SVG ID에 사용할 수 있도록 uniqueId 정리 (특수문자 제거)
+    const safeId = uniqueId.replace(/[^a-zA-Z0-9]/g, '_');
+    
+    // 기본 초록색 - 모든 공공데이터는 초록색 (safe 포함 모든 경우)
     let fillColor = "#22c55e";
     let borderColor = "#16a34a";
     
-    // severity에 따른 색상 (verified, warning, danger만 다른 색상)
+    // severity에 따른 색상 (verified, warning, danger만 다른 색상, 나머지는 전부 초록색)
     if (severity === "verified") {
       fillColor = "#3b82f6";
       borderColor = "#2563eb";
@@ -897,6 +900,7 @@ const MapView = ({
       fillColor = "#ef4444";
       borderColor = "#dc2626";
     }
+    // else: safe, 빈값, 기타 모든 경우 → 초록색 유지
 
     // 추가 제보 뱃지 (+N)
     const extraCount = (reportCount || 1) - 1;
@@ -916,18 +920,18 @@ const MapView = ({
       return `
         <svg width="${width}" height="${height}" viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">
           <defs>
-            <filter id="barrier-shadow-${uniqueId}" x="-50%" y="-50%" width="200%" height="200%">
+            <filter id="barrier-shadow-${safeId}" x="-50%" y="-50%" width="200%" height="200%">
               <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
               <feOffset dx="0" dy="3" result="offsetblur"/>
               <feComponentTransfer><feFuncA type="linear" slope="0.4"/></feComponentTransfer>
               <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
             </filter>
-            <linearGradient id="verified-grad-${uniqueId}" x1="0%" y1="0%" x2="100%" y2="100%">
+            <linearGradient id="verified-grad-${safeId}" x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" style="stop-color:#60a5fa"/>
               <stop offset="100%" style="stop-color:#2563eb"/>
             </linearGradient>
           </defs>
-          <circle cx="${cx}" cy="${cy}" r="16" fill="url(#verified-grad-${uniqueId})" stroke="white" stroke-width="3" filter="url(#barrier-shadow-${uniqueId})"/>
+          <circle cx="${cx}" cy="${cy}" r="16" fill="url(#verified-grad-${safeId})" stroke="white" stroke-width="3" filter="url(#barrier-shadow-${safeId})"/>
           <!-- 체크 마크 -->
           <path d="M${cx - 6} ${cy} L${cx - 1} ${cy + 5} L${cx + 8} ${cy - 6}" stroke="white" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
           ${badgeSvg}
@@ -1032,7 +1036,7 @@ const MapView = ({
     return `
       <svg width="${width}" height="${height}" viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <filter id="barrier-shadow-${uniqueId}" x="-50%" y="-50%" width="200%" height="200%">
+          <filter id="barrier-shadow-${safeId}" x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
             <feOffset dx="0" dy="3" result="offsetblur"/>
             <feComponentTransfer>
@@ -1043,12 +1047,12 @@ const MapView = ({
               <feMergeNode in="SourceGraphic"/>
             </feMerge>
           </filter>
-          <linearGradient id="marker-grad-${uniqueId}" x1="0%" y1="0%" x2="100%" y2="100%">
+          <linearGradient id="marker-grad-${safeId}" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" style="stop-color:${fillColor}"/>
             <stop offset="100%" style="stop-color:${borderColor}"/>
           </linearGradient>
         </defs>
-        <circle cx="${cx}" cy="${cy}" r="16" fill="url(#marker-grad-${uniqueId})" stroke="white" stroke-width="3" filter="url(#barrier-shadow-${uniqueId})"/>
+        <circle cx="${cx}" cy="${cy}" r="16" fill="url(#marker-grad-${safeId})" stroke="white" stroke-width="3" filter="url(#barrier-shadow-${safeId})"/>
         ${iconContent}
         ${badgeSvg}
       </svg>
