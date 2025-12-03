@@ -145,6 +145,29 @@ const ModificationRequestsAdmin = () => {
 
       if (error) throw error;
 
+      // 요청자에게 결과 이메일 알림 발송
+      try {
+        const { data: requesterProfile } = await supabase
+          .from("profiles")
+          .select("email, nickname")
+          .eq("id", request.requester_id)
+          .single();
+
+        if (requesterProfile?.email) {
+          await supabase.functions.invoke("send-request-result-notification", {
+            body: {
+              requesterEmail: requesterProfile.email,
+              requesterNickname: requesterProfile.nickname || requesterProfile.email.split("@")[0],
+              requestType: request.request_type,
+              locationName: request.original_report?.location_name || "알 수 없음",
+              result: action === "approve" ? "approved" : "rejected",
+            },
+          });
+        }
+      } catch (emailError) {
+        console.error("결과 알림 이메일 발송 실패:", emailError);
+      }
+
       toast.success(
         action === "approve"
           ? request.request_type === "DELETE"

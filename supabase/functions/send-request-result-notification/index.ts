@@ -7,30 +7,32 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface NotificationRequest {
+interface ResultNotificationRequest {
+  requesterEmail: string;
   requesterNickname: string;
   requestType: "MODIFY" | "DELETE";
   locationName: string;
-  reason: string;
-  proposedDetails?: string;
+  result: "approved" | "rejected";
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { requesterNickname, requestType, locationName, reason, proposedDetails }: NotificationRequest = await req.json();
+    const { requesterEmail, requesterNickname, requestType, locationName, result }: ResultNotificationRequest = await req.json();
 
-    console.log("Sending notification email for modification request:", {
-      requesterNickname,
+    console.log("Sending result notification email:", {
+      requesterEmail,
       requestType,
       locationName,
+      result,
     });
 
     const requestTypeText = requestType === "MODIFY" ? "수정" : "삭제";
+    const resultText = result === "approved" ? "승인" : "거절";
+    const resultColor = result === "approved" ? "#22c55e" : "#ef4444";
     
     const emailResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -40,36 +42,36 @@ const handler = async (req: Request): Promise<Response> => {
       },
       body: JSON.stringify({
         from: "Wheelchair Route App <onboarding@resend.dev>",
-        to: ["songachon@gachon.ac.kr"],
-        subject: `[휠체어 경로 앱] 새로운 ${requestTypeText} 요청이 접수되었습니다`,
+        to: [requesterEmail],
+        subject: `[휠체어 경로 앱] ${requestTypeText} 요청이 ${resultText}되었습니다`,
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: #333; border-bottom: 2px solid #4F46E5; padding-bottom: 10px;">
-              새로운 ${requestTypeText} 요청
+            <h1 style="color: #333; border-bottom: 2px solid ${resultColor}; padding-bottom: 10px;">
+              ${requestTypeText} 요청 ${resultText}
             </h1>
             
-            <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <p style="margin: 0 0 10px 0;"><strong>요청자:</strong> ${requesterNickname}</p>
-              <p style="margin: 0 0 10px 0;"><strong>요청 유형:</strong> ${requestTypeText} 요청</p>
-              <p style="margin: 0 0 10px 0;"><strong>위치:</strong> ${locationName}</p>
-            </div>
-            
-            <h3 style="color: #333;">요청 사유</h3>
-            <p style="background: #fff; padding: 15px; border: 1px solid #e5e7eb; border-radius: 8px;">
-              ${reason}
+            <p style="font-size: 16px; color: #333;">
+              안녕하세요, ${requesterNickname}님!
             </p>
             
-            ${proposedDetails ? `
-              <h3 style="color: #333;">제안된 수정 내용</h3>
-              <p style="background: #fff; padding: 15px; border: 1px solid #e5e7eb; border-radius: 8px;">
-                ${proposedDetails}
+            <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <p style="margin: 0 0 10px 0;"><strong>요청 유형:</strong> ${requestTypeText} 요청</p>
+              <p style="margin: 0 0 10px 0;"><strong>위치:</strong> ${locationName}</p>
+              <p style="margin: 0;">
+                <strong>처리 결과:</strong> 
+                <span style="color: ${resultColor}; font-weight: bold;">${resultText}</span>
               </p>
-            ` : ''}
+            </div>
+            
+            ${result === "approved" 
+              ? `<p style="color: #22c55e;">✅ 요청하신 ${requestTypeText}이(가) 성공적으로 처리되었습니다.</p>`
+              : `<p style="color: #ef4444;">❌ 요청하신 ${requestTypeText}이(가) 관리자에 의해 거절되었습니다.</p>`
+            }
             
             <div style="margin-top: 30px; padding: 15px; background: #4F46E5; border-radius: 8px; text-align: center;">
-              <a href="https://qewzkjoyygyiygpymejj.lovable.app/admin" 
+              <a href="https://qewzkjoyygyiygpymejj.lovable.app/my-requests" 
                  style="color: white; text-decoration: none; font-weight: bold;">
-                관리자 페이지에서 확인하기
+                내 요청 내역 확인하기
               </a>
             </div>
             
@@ -82,14 +84,14 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     const data = await emailResponse.json();
-    console.log("Email sent successfully:", data);
+    console.log("Result notification email sent:", data);
 
     return new Response(JSON.stringify({ success: true, data }), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   } catch (error: any) {
-    console.error("Error sending notification email:", error);
+    console.error("Error sending result notification:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       {
