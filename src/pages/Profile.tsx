@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { User, MapPin, Clock, ArrowLeft, Loader2, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { User, MapPin, Clock, ArrowLeft, Loader2, CheckCircle, XCircle, AlertCircle, LogOut } from "lucide-react";
 
 interface AccessibilityReport {
   id: string;
@@ -203,10 +203,25 @@ const Profile = () => {
         {/* User Info */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              사용자 정보
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                사용자 정보
+              </CardTitle>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  toast.success("로그아웃 되었습니다.");
+                  navigate("/");
+                }}
+                className="text-destructive hover:text-destructive"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                로그아웃
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">이메일: {user?.email}</p>
