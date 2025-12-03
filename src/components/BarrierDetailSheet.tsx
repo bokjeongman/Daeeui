@@ -1,13 +1,16 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, AlertTriangle, Calendar, ShieldCheck, User, Edit, X } from "lucide-react";
+import { MapPin, AlertTriangle, ShieldCheck, User, Edit, X } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { useEffect, useState } from "react";
 import { reverseGeocode } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import ModificationRequestModal from "./ModificationRequestModal";
+import { useIsMobile } from "@/hooks/use-mobile";
+
 interface ReportData {
   id: string;
   name: string;
@@ -48,6 +51,7 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
   const [modificationModalOpen, setModificationModalOpen] = useState(false);
   const [selectedReportForModification, setSelectedReportForModification] = useState<ReportData | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -185,153 +189,202 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
 
   const hasMultipleReports = reportsWithNicknames.length > 1;
 
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[85vh] overflow-hidden flex flex-col">
-        <SheetHeader className="mb-4 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <SheetTitle className="flex items-center gap-2 text-xl">
-              <MapPin className="h-6 w-6 text-primary" />
-              {barrier.name}
-              {hasMultipleReports && (
-                <Badge variant="secondary" className="ml-2">
-                  {reportsWithNicknames.length}개 제보
-                </Badge>
-              )}
-            </SheetTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => onOpenChange(false)}
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
-        </SheetHeader>
-
-        <ScrollArea className="flex-1 pr-4">
-          <div className="space-y-4">
-            {/* 제보 목록 */}
-            {reportsWithNicknames.map((report, index) => (
-              <div 
-                key={report.id || index} 
-                className={`rounded-lg border bg-card p-4 space-y-4 ${
-                  hasMultipleReports ? 'shadow-sm' : ''
-                }`}
-              >
-                {/* 작성자 정보 및 수정 요청 버튼 */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">{report.nickname}</span>
-                    {report.accessibility_level === "verified" && (
-                      <ShieldCheck className="h-4 w-4 text-blue-500" />
-                    )}
-                  </div>
-                  {/* 수정 요청 버튼: 공공데이터가 아닌 모든 제보에 표시 (본인 제보 포함) */}
-                  {currentUserId && report.accessibility_level !== "verified" && report.reportId && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs"
-                      onClick={() => {
-                        setSelectedReportForModification({
-                          ...report,
-                          id: report.reportId!,
-                        });
-                        setModificationModalOpen(true);
-                      }}
-                    >
-                      <Edit className="h-3 w-3 mr-1" />
-                      수정 요청
-                    </Button>
-                  )}
-                </div>
-
-                {/* 상세 정보 (상단, 크게) + 등록 시각 */}
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    {report.details ? (
-                      <p className="text-base leading-relaxed">
-                        {report.details}
-                      </p>
-                    ) : (
-                      <p className="text-base text-muted-foreground italic">
-                        상세 정보가 없습니다
-                      </p>
-                    )}
-                  </div>
-                  {report.created_at && (
-                    <div className="flex-shrink-0 text-right">
-                      <p className="text-xs text-muted-foreground">
-                        {formatDate(report.created_at)}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* 접근성 정보 및 분류 */}
-                <div className="flex gap-3 flex-wrap">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">접근성:</span>
-                    {getSeverityBadge(report.severity)}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm">분류:</span>
-                    <Badge variant="outline">{getCategoryText(report.type)}</Badge>
-                  </div>
-                </div>
-
-                {/* 사진 갤러리 */}
-                {report.photo_urls && report.photo_urls.length > 0 && (
-                  <div>
-                    <Carousel className="w-full">
-                      <CarouselContent>
-                        {report.photo_urls.map((url, photoIndex) => (
-                          <CarouselItem key={photoIndex}>
-                            <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-muted">
-                              <img
-                                src={url}
-                                alt={`${report.name} 사진 ${photoIndex + 1}`}
-                                className="object-cover w-full h-full"
-                                onError={(e) => {
-                                  e.currentTarget.src = "/placeholder.svg";
-                                }}
-                              />
-                            </div>
-                          </CarouselItem>
-                        ))}
-                      </CarouselContent>
-                      {report.photo_urls.length > 1 && (
-                        <>
-                          <CarouselPrevious className="left-2" />
-                          <CarouselNext className="right-2" />
-                        </>
-                      )}
-                    </Carousel>
-                    {report.photo_urls.length > 1 && (
-                      <p className="text-xs text-muted-foreground text-center mt-2">
-                        {report.photo_urls.length}개의 사진
-                      </p>
-                    )}
-                  </div>
+  // 공통 컨텐츠
+  const ContentBody = () => (
+    <ScrollArea className="flex-1 pr-4">
+      <div className="space-y-4">
+        {/* 제보 목록 */}
+        {reportsWithNicknames.map((report, index) => (
+          <div 
+            key={report.id || index} 
+            className={`rounded-lg border bg-card p-4 space-y-4 ${
+              hasMultipleReports ? 'shadow-sm' : ''
+            }`}
+          >
+            {/* 작성자 정보 및 수정 요청 버튼 */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium">{report.nickname}</span>
+                {report.accessibility_level === "verified" && (
+                  <ShieldCheck className="h-4 w-4 text-blue-500" />
                 )}
               </div>
-            ))}
-
-            {/* 위치 정보 (맨 아래) */}
-            <div className="bg-muted p-4 rounded-lg mt-4">
-              <p className="text-sm text-muted-foreground mb-1">위치</p>
-              <p className="text-sm font-medium">{barrier.name}</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                {address || "주소를 가져오는 중..."}
-              </p>
+              {/* 수정 요청 버튼: 공공데이터가 아닌 모든 제보에 표시 (본인 제보 포함) */}
+              {currentUserId && report.accessibility_level !== "verified" && report.reportId && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => {
+                    setSelectedReportForModification({
+                      ...report,
+                      id: report.reportId!,
+                    });
+                    setModificationModalOpen(true);
+                  }}
+                >
+                  <Edit className="h-3 w-3 mr-1" />
+                  수정 요청
+                </Button>
+              )}
             </div>
+
+            {/* 상세 정보 (상단, 크게) + 등록 시각 */}
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                {report.details ? (
+                  <p className="text-base leading-relaxed">
+                    {report.details}
+                  </p>
+                ) : (
+                  <p className="text-base text-muted-foreground italic">
+                    상세 정보가 없습니다
+                  </p>
+                )}
+              </div>
+              {report.created_at && (
+                <div className="flex-shrink-0 text-right">
+                  <p className="text-xs text-muted-foreground">
+                    {formatDate(report.created_at)}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* 접근성 정보 및 분류 */}
+            <div className="flex gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm">접근성:</span>
+                {getSeverityBadge(report.severity)}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm">분류:</span>
+                <Badge variant="outline">{getCategoryText(report.type)}</Badge>
+              </div>
+            </div>
+
+            {/* 사진 갤러리 */}
+            {report.photo_urls && report.photo_urls.length > 0 && (
+              <div>
+                <Carousel className="w-full">
+                  <CarouselContent>
+                    {report.photo_urls.map((url, photoIndex) => (
+                      <CarouselItem key={photoIndex}>
+                        <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-muted">
+                          <img
+                            src={url}
+                            alt={`${report.name} 사진 ${photoIndex + 1}`}
+                            className="object-cover w-full h-full"
+                            onError={(e) => {
+                              e.currentTarget.src = "/placeholder.svg";
+                            }}
+                          />
+                        </div>
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                  {report.photo_urls.length > 1 && (
+                    <>
+                      <CarouselPrevious className="left-2" />
+                      <CarouselNext className="right-2" />
+                    </>
+                  )}
+                </Carousel>
+                {report.photo_urls.length > 1 && (
+                  <p className="text-xs text-muted-foreground text-center mt-2">
+                    {report.photo_urls.length}개의 사진
+                  </p>
+                )}
+              </div>
+            )}
           </div>
-        </ScrollArea>
-      </SheetContent>
+        ))}
+
+        {/* 위치 정보 (맨 아래) */}
+        <div className="bg-muted p-4 rounded-lg mt-4">
+          <p className="text-sm text-muted-foreground mb-1">위치</p>
+          <p className="text-sm font-medium">{barrier.name}</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            {address || "주소를 가져오는 중..."}
+          </p>
+        </div>
+      </div>
+    </ScrollArea>
+  );
+
+  // 헤더 컴포넌트
+  const HeaderContent = () => (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2 text-xl font-semibold">
+        <MapPin className="h-6 w-6 text-primary" />
+        {barrier.name}
+        {hasMultipleReports && (
+          <Badge variant="secondary" className="ml-2">
+            {reportsWithNicknames.length}개 제보
+          </Badge>
+        )}
+      </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8"
+        onClick={() => onOpenChange(false)}
+      >
+        <X className="h-5 w-5" />
+      </Button>
+    </div>
+  );
+
+  // 모바일: Drawer (스와이프로 닫기 가능)
+  if (isMobile) {
+    return (
+      <>
+        <Drawer open={open} onOpenChange={onOpenChange}>
+          <DrawerContent className="h-[85vh] flex flex-col">
+            <DrawerHeader className="mb-2 flex-shrink-0">
+              <HeaderContent />
+            </DrawerHeader>
+            <div className="flex-1 overflow-hidden px-4 pb-4">
+              <ContentBody />
+            </div>
+          </DrawerContent>
+        </Drawer>
+
+        {/* 수정 요청 모달 */}
+        {selectedReportForModification && (
+          <ModificationRequestModal
+            open={modificationModalOpen}
+            onClose={() => {
+              setModificationModalOpen(false);
+              setSelectedReportForModification(null);
+            }}
+            report={{
+              id: selectedReportForModification.id,
+              details: selectedReportForModification.details,
+              photo_urls: selectedReportForModification.photo_urls,
+              location_name: selectedReportForModification.name,
+            }}
+          />
+        )}
+      </>
+    );
+  }
+
+  // 데스크톱: Sheet
+  return (
+    <>
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent side="bottom" className="h-[85vh] overflow-hidden flex flex-col">
+          <SheetHeader className="mb-4 flex-shrink-0">
+            <SheetTitle asChild>
+              <HeaderContent />
+            </SheetTitle>
+          </SheetHeader>
+          <ContentBody />
+        </SheetContent>
+      </Sheet>
 
       {/* 수정 요청 모달 */}
       {selectedReportForModification && (
@@ -349,7 +402,7 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
           }}
         />
       )}
-    </Sheet>
+    </>
   );
 };
 
