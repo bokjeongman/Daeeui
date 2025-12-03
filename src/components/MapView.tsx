@@ -1071,21 +1071,15 @@ const MapView = ({
     });
   }, [map, favorites]);
 
-  // 여러 교통수단으로 경로 탐색
+  // userLocation을 ref로 저장하여 의존성 배열에서 제거 (API 중복 호출 방지)
+  const userLocationRef = useRef(userLocation);
   useEffect(() => {
-    console.log("🗺️ 경로 계산 useEffect 실행", { 
-      hasMap: !!map, 
-      hasTmapv2: !!window.Tmapv2,
-      endPoint: endPoint ? { lat: endPoint.lat, lon: endPoint.lon, name: endPoint.name } : null,
-      selectedRouteType,
-      startPoint: startPoint ? { lat: startPoint.lat, lon: startPoint.lon } : null,
-      userLocation: userLocation ? { lat: userLocation.lat, lon: userLocation.lon } : null
-    });
+    userLocationRef.current = userLocation;
+  }, [userLocation]);
 
-    if (!map || !window.Tmapv2) {
-      console.log("❌ 지도 또는 Tmapv2가 없음");
-      return;
-    }
+  // 여러 교통수단으로 경로 탐색 (도보 경로 1회만 호출)
+  useEffect(() => {
+    if (!map || !window.Tmapv2) return;
 
     // clearKey가 변경되면 무조건 경로/마커 제거 (취소 버튼 전용)
     if (clearKey !== undefined && clearKey > 0) {
@@ -1104,7 +1098,6 @@ const MapView = ({
 
     // endPoint가 없거나 selectedRouteType이 없으면 기존 경로 제거하고 종료
     if (!endPoint || !selectedRouteType) {
-      console.log("❌ endPoint 또는 selectedRouteType이 없음", { endPoint: !!endPoint, selectedRouteType });
       if (routeLayerRef.current && routeLayerRef.current.length) {
         routeLayerRef.current.forEach((layer: any) => layer.setMap(null));
         routeLayerRef.current = [];
@@ -1116,14 +1109,14 @@ const MapView = ({
       return;
     }
 
-    // 출발지가 없으면 현재 위치 사용 - 둘 다 없으면 대기
-    const start = startPoint || userLocation;
+    // 출발지가 없으면 현재 위치(ref) 사용 - 둘 다 없으면 에러
+    const start = startPoint || userLocationRef.current;
     if (!start) {
-      console.log("⏳ 현재 위치 대기 중...");
+      toast.error("출발지를 설정해주세요.");
       return;
     }
 
-    console.log("✅ 경로 계산 시작", { 
+    console.log("✅ 도보 경로 API 호출 (1회)", { 
       start: { lat: start.lat, lon: start.lon },
       end: { lat: endPoint.lat, lon: endPoint.lon }
     });
@@ -1460,7 +1453,7 @@ const MapView = ({
       }
     };
     calculateAllRoutes();
-  }, [map, startPoint, endPoint, userLocation, barrierData, onRoutesCalculated, selectedRouteType, routeUpdateTrigger]);
+  }, [map, startPoint, endPoint, barrierData, onRoutesCalculated, selectedRouteType, routeUpdateTrigger, clearKey]);
 
   // 실시간 교통 정보 자동 업데이트 (자동차 경로가 선택되었을 때만)
   useEffect(() => {
