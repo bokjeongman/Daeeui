@@ -1177,7 +1177,15 @@ const MapView = ({
 
         if (data.error) {
           console.warn("API 에러:", data.error);
-          toast.error("도보 경로를 찾을 수 없습니다.");
+          // 429 할당량 초과 에러 처리
+          if (data.error.code === "QUOTA_EXCEEDED" || response.status === 429) {
+            toast.error("API 일일 할당량을 초과했습니다. 잠시 후 다시 시도해주세요.", {
+              description: "TMap API 사용량이 한도에 도달했습니다.",
+              duration: 5000,
+            });
+          } else {
+            toast.error("도보 경로를 찾을 수 없습니다.");
+          }
           return;
         }
 
