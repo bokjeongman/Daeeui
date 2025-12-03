@@ -252,7 +252,9 @@ const MapView = ({
         // 제보 데이터를 barrierData 형식으로 변환
         const barriers = (data || []).map((report) => {
           let severity = "safe";
-          if (report.accessibility_level === "difficult") {
+          if (report.accessibility_level === "verified") {
+            severity = "verified";
+          } else if (report.accessibility_level === "difficult") {
             severity = "danger";
           } else if (report.accessibility_level === "moderate") {
             severity = "warning";
@@ -269,6 +271,7 @@ const MapView = ({
             details: report.details,
             photo_urls: report.photo_urls || [],
             created_at: report.created_at,
+            accessibility_level: report.accessibility_level,
           };
         });
         setBarrierData(barriers);
@@ -604,10 +607,35 @@ const MapView = ({
     const getCategoryIcon = (category: string, severity: string, uniqueId: string) => {
       // 접근성 레벨에 따른 색상
       let fillColor = "#22c55e"; // 양호 (초록)
-      if (severity === "warning") {
+      if (severity === "verified") {
+        fillColor = "#3b82f6"; // 공공데이터 인증 (파랑)
+      } else if (severity === "warning") {
         fillColor = "#eab308"; // 보통 (노랑)
       } else if (severity === "danger") {
         fillColor = "#ef4444"; // 어려움 (빨강)
+      }
+
+      // verified인 경우 체크 아이콘 표시
+      if (severity === "verified") {
+        return `
+          <svg width="40" height="40" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <filter id="barrier-shadow-${uniqueId}" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+                <feOffset dx="0" dy="2" result="offsetblur"/>
+                <feComponentTransfer>
+                  <feFuncA type="linear" slope="0.5"/>
+                </feComponentTransfer>
+                <feMerge>
+                  <feMergeNode/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
+            <rect x="4" y="4" width="24" height="24" rx="2" fill="${fillColor}" stroke="white" stroke-width="2" filter="url(#barrier-shadow-${uniqueId})"/>
+            <path d="M10 16 L14 20 L22 12" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        `;
       }
 
       let iconPath = "";

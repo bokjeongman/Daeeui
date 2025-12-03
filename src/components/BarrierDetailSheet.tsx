@@ -1,6 +1,6 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, AlertTriangle, Calendar } from "lucide-react";
+import { MapPin, AlertTriangle, Calendar, ShieldCheck } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { useEffect, useState } from "react";
 import { reverseGeocode } from "@/lib/utils";
@@ -17,6 +17,7 @@ interface BarrierDetailSheetProps {
     latitude: number;
     longitude: number;
     created_at?: string;
+    accessibility_level?: string;
   } | null;
 }
 
@@ -33,12 +34,14 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
 
   const getSeverityBadge = () => {
     switch (barrier.severity) {
+      case "verified":
+        return <Badge className="bg-blue-500 text-white">공공데이터 인증</Badge>;
       case "safe":
-        return <Badge className="bg-green-500">양호</Badge>;
+        return <Badge className="bg-green-500 text-white">양호</Badge>;
       case "warning":
-        return <Badge className="bg-yellow-500">보통</Badge>;
+        return <Badge className="bg-yellow-500 text-white">보통</Badge>;
       case "danger":
-        return <Badge className="bg-red-500">어려움</Badge>;
+        return <Badge className="bg-red-500 text-white">어려움</Badge>;
       default:
         return <Badge>알 수 없음</Badge>;
     }
@@ -76,8 +79,16 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
         </SheetHeader>
 
         <div className="space-y-6">
+          {/* 공공데이터 인증 뱃지 */}
+          {barrier.accessibility_level === "verified" && (
+            <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+              <ShieldCheck className="h-5 w-5 text-blue-500" />
+              <span className="text-sm font-medium text-blue-700 dark:text-blue-300">[공공데이터 인증] 정부 공공데이터로 검증된 정보입니다</span>
+            </div>
+          )}
+
           {/* 접근성 정보 */}
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-muted-foreground" />
               <span className="text-sm font-medium">접근성:</span>
