@@ -241,12 +241,12 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-md max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="text-xl font-bold">휠체어 접근성 정보 제보</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto overscroll-contain space-y-6 pr-1">
           {/* 장소 검색 */}
           <div className="space-y-2">
             <Label htmlFor="search">장소 검색 *</Label>
@@ -433,22 +433,28 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
               </div>
             )}
           </div>
-
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              className="flex-1"
-              disabled={isSubmitting}
-            >
-              취소
-            </Button>
-            <Button type="submit" className="flex-1" disabled={isSubmitting}>
-              {isSubmitting ? "제출 중..." : "제출하기"}
-            </Button>
-          </div>
         </form>
+
+        <div className="flex gap-2 flex-shrink-0 pt-4 border-t">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="flex-1 h-12 touch-manipulation active:scale-[0.98]"
+            disabled={isSubmitting}
+          >
+            취소
+          </Button>
+          <Button 
+            type="submit" 
+            form="review-form"
+            className="flex-1 h-12 touch-manipulation active:scale-[0.98]" 
+            disabled={isSubmitting}
+            onClick={handleSubmit}
+          >
+            {isSubmitting ? "제출 중..." : "제출하기"}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

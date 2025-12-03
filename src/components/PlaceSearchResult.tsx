@@ -126,14 +126,14 @@ const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace, onClearP
 
   if (selectedPlace) {
     return (
-      <div className="fixed bottom-0 left-0 right-0 z-20 bg-background border-t shadow-lg">
+      <div className="fixed bottom-0 left-0 right-0 z-20 bg-background border-t shadow-lg pb-safe">
         <Card className="m-0 p-4 rounded-none border-0 border-t relative">
           {/* 우상단 버튼들 */}
           <div className="absolute top-3 right-3 flex gap-2">
             <Button
               variant="outline"
               size="icon"
-              className={`h-10 w-10 rounded-full shadow-md ${
+              className={`h-11 w-11 rounded-full shadow-md touch-manipulation active:scale-95 ${
                 isFavorited 
                   ? 'bg-green-500 hover:bg-green-600 border-green-500' 
                   : 'bg-background'
@@ -146,7 +146,7 @@ const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace, onClearP
             <Button
               variant="outline"
               size="icon"
-              className="h-10 w-10 rounded-full bg-background shadow-md"
+              className="h-11 w-11 rounded-full bg-background shadow-md touch-manipulation active:scale-95"
               onClick={() => {
                 setSelectedPlace(null);
                 onClose();
@@ -214,33 +214,35 @@ const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace, onClearP
   }
 
   return (
-    <div className="absolute top-full left-0 right-0 z-20 bg-background border-t shadow-lg max-h-96 overflow-y-auto relative">
+    <div className="absolute top-full left-0 right-0 z-20 bg-background border-t shadow-lg max-h-[60vh] overflow-y-auto overscroll-contain relative">
       <button
         onClick={onClose}
-        className="absolute top-2 right-2 z-10 w-8 h-8 flex items-center justify-center bg-background border rounded-full shadow-md hover:bg-muted text-lg font-bold"
+        className="absolute top-2 right-2 z-10 w-10 h-10 flex items-center justify-center bg-background border rounded-full shadow-md hover:bg-muted active:scale-95 touch-manipulation text-lg font-bold"
       >
         ✕
       </button>
-      {results.map((place) => (
-        <Card
-          key={place.id}
-          className="m-2 p-3 hover:bg-muted/50 active:bg-muted active:scale-[0.98] transition-all cursor-pointer touch-manipulation"
-          onClick={() => {
-            if (onMoveToPlace) {
-              onMoveToPlace({ lat: place.lat, lon: place.lon, name: place.name });
-            }
-            setSelectedPlace(place);
-          }}
-        >
-          <div className="flex items-start gap-3">
-            <MapPin className="h-5 w-5 text-primary mt-1 shrink-0" />
-            <div className="flex-1 min-w-0">
-              <h3 className="font-medium text-base truncate">{place.name}</h3>
-              <p className="text-sm text-muted-foreground truncate">{place.address}</p>
+      <div className="pt-2 pb-safe">
+        {results.map((place) => (
+          <Card
+            key={place.id}
+            className="mx-2 mb-2 p-4 hover:bg-muted/50 active:bg-muted active:scale-[0.98] transition-all cursor-pointer touch-manipulation"
+            onClick={() => {
+              if (onMoveToPlace) {
+                onMoveToPlace({ lat: place.lat, lon: place.lon, name: place.name });
+              }
+              setSelectedPlace(place);
+            }}
+          >
+            <div className="flex items-start gap-3">
+              <MapPin className="h-5 w-5 text-primary mt-1 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <h3 className="font-medium text-base">{place.name}</h3>
+                <p className="text-sm text-muted-foreground truncate">{place.address}</p>
+              </div>
             </div>
-          </div>
-        </Card>
-      ))}
+          </Card>
+        ))}
+      </div>
     </div>
   );
 };
