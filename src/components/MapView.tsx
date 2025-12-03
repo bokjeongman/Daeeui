@@ -1103,6 +1103,14 @@ const MapView = ({
       return;
     }
 
+    // 출발지가 없으면 현재 위치 사용 - 둘 다 없으면 대기
+    const start = startPoint || userLocation;
+    if (!start) {
+      // 현재 위치를 아직 받지 못한 경우 - 위치 업데이트 시 다시 시도됨
+      if (import.meta.env.DEV) console.log("⏳ 현재 위치 대기 중...");
+      return;
+    }
+
     const calculateAllRoutes = async () => {
       try {
         // 기존 경로 및 마커 제거
@@ -1114,13 +1122,6 @@ const MapView = ({
         markersRef.current = [];
         arrowMarkersRef.current.forEach((marker) => marker.setMap(null));
         arrowMarkersRef.current = [];
-
-        // 출발지가 없으면 현재 위치 사용
-        const start = startPoint || userLocation;
-        if (!start) {
-          toast.error("현재 위치를 찾을 수 없습니다.");
-          return;
-        }
 
         // 도보 경로만 계산
         const routesToCalculate = ["walk"];
