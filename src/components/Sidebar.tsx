@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { MapPin, FileText, MessageSquare, User, Star } from "lucide-react";
+import { MapPin, FileText, MessageSquare, User, Star, LogOut } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface SidebarProps {
   open: boolean;
@@ -41,11 +42,30 @@ const Sidebar = ({ open, onOpenChange }: SidebarProps) => {
     onOpenChange(false);
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    toast.success("로그아웃 되었습니다.");
+    onOpenChange(false);
+    navigate("/");
+  };
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="left" className="w-72 p-0">
         <SheetHeader className="p-6 pb-4 border-b">
-          <SheetTitle className="flex items-center gap-2">🦽 {nickname || "휠체어 경로 안내"}</SheetTitle>
+          <div className="flex items-center justify-between">
+            <SheetTitle className="flex items-center gap-2">🦽 {nickname || "휠체어 경로 안내"}</SheetTitle>
+            {nickname && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleLogout}
+                className="text-destructive hover:text-destructive"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </SheetHeader>
 
         <div className="py-4">
