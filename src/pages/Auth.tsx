@@ -8,7 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { z } from "zod";
 import NicknameSetupModal from "@/components/NicknameSetupModal";
-import { MessageCircle } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const emailSchema = z.string().email("올바른 이메일 주소를 입력해주세요.");
 const passwordSchema = z.string().min(6, "비밀번호는 최소 6자 이상이어야 합니다.");
@@ -42,6 +48,11 @@ const Auth = () => {
   const [showNicknameModal, setShowNicknameModal] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [recentMethod, setRecentMethod] = useState<LoginMethod>(null);
+  const [showFindIdModal, setShowFindIdModal] = useState(false);
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+  const [findNickname, setFindNickname] = useState("");
+  const [foundEmail, setFoundEmail] = useState<string | null>(null);
+  const [resetEmail, setResetEmail] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -74,6 +85,65 @@ const Auth = () => {
   const handleNicknameComplete = () => {
     setShowNicknameModal(false);
     navigate("/");
+  };
+
+  const handleFindId = async () => {
+    if (!findNickname.trim()) {
+      toast.error("닉네임을 입력해주세요.");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("email")
+        .eq("nickname", findNickname.trim())
+        .single();
+
+      if (error || !data?.email) {
+        toast.error("해당 닉네임으로 등록된 계정을 찾을 수 없습니다.");
+        setFoundEmail(null);
+      } else {
+        // 이메일 일부 마스킹 처리
+        const emailParts = data.email.split("@");
+        const masked = emailParts[0].slice(0, 3) + "***@" + emailParts[1];
+        setFoundEmail(masked);
+        toast.success("아이디를 찾았습니다!");
+      }
+    } catch (error) {
+      toast.error("오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    try {
+      emailSchema.parse(resetEmail);
+    } catch (error: any) {
+      toast.error(error.errors[0].message);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo: `${window.location.origin}/auth`,
+      });
+
+      if (error) {
+        toast.error("비밀번호 재설정 이메일 발송에 실패했습니다.");
+      } else {
+        toast.success("비밀번호 재설정 링크가 이메일로 발송되었습니다.");
+        setShowResetPasswordModal(false);
+        setResetEmail("");
+      }
+    } catch (error) {
+      toast.error("오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -189,10 +259,7 @@ const Auth = () => {
   const RecentBadge = () => (
     <div className="absolute -top-8 left-1/2 -translate-x-1/2 z-10">
       <div className="relative bg-primary text-primary-foreground text-xs px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap">
-        <span className="flex items-center gap-1">
-          <MessageCircle className="w-3 h-3" />
-          최근 로그인
-        </span>
+        <span>최근 로그인</span>
         {/* 말풍선 꼬리 */}
         <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-primary rotate-45" />
       </div>
@@ -311,8 +378,87 @@ const Auth = () => {
               {isLogin ? "계정이 없으신가요? 회원가입" : "이미 계정이 있으신가요? 로그인"}
             </button>
           </div>
+
+          {isLogin && (
+            <div className="flex justify-center gap-4 text-sm text-muted-foreground">
+              <button
+                type="button"
+                onClick={() => setShowFindIdModal(true)}
+                className="hover:text-primary hover:underline"
+              >
+                아이디 찾기
+              </button>
+              <span>|</span>
+              <button
+                type="button"
+                onClick={() => setShowResetPasswordModal(true)}
+                className="hover:text-primary hover:underline"
+              >
+                비밀번호 찾기
+              </button>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* 아이디 찾기 모달 */}
+      <Dialog open={showFindIdModal} onOpenChange={setShowFindIdModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>아이디 찾기</DialogTitle>
+            <DialogDescription>
+              회원가입 시 등록한 닉네임을 입력해주세요.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label htmlFor="find-nickname">닉네임</Label>
+              <Input
+                id="find-nickname"
+                placeholder="닉네임 입력"
+                value={findNickname}
+                onChange={(e) => setFindNickname(e.target.value)}
+              />
+            </div>
+            {foundEmail && (
+              <div className="p-3 bg-muted rounded-lg text-center">
+                <p className="text-sm text-muted-foreground">찾은 이메일</p>
+                <p className="font-medium">{foundEmail}</p>
+              </div>
+            )}
+            <Button onClick={handleFindId} className="w-full" disabled={isLoading}>
+              {isLoading ? "검색 중..." : "아이디 찾기"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 비밀번호 찾기 모달 */}
+      <Dialog open={showResetPasswordModal} onOpenChange={setShowResetPasswordModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>비밀번호 찾기</DialogTitle>
+            <DialogDescription>
+              가입한 이메일 주소를 입력하시면 비밀번호 재설정 링크를 보내드립니다.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label htmlFor="reset-email">이메일</Label>
+              <Input
+                id="reset-email"
+                type="email"
+                placeholder="example@email.com"
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
+              />
+            </div>
+            <Button onClick={handleResetPassword} className="w-full" disabled={isLoading}>
+              {isLoading ? "발송 중..." : "재설정 링크 발송"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {currentUserId && (
         <NicknameSetupModal
