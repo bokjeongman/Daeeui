@@ -54,18 +54,30 @@ const Sidebar = ({ open, onOpenChange }: SidebarProps) => {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="left" className="w-72 p-0">
         <SheetHeader className="p-6 pb-4 border-b">
-          <div className="flex items-center justify-between">
-            <SheetTitle className="flex items-center gap-2">🦽 {nickname || "휠체어 경로 안내"}</SheetTitle>
-            {nickname && (
+          <div className="flex items-center justify-between gap-2">
+            <SheetTitle className="flex items-center gap-2 flex-1 min-w-0">
+              <span className="truncate">🦽 {nickname || "휠체어 경로 안내"}</span>
+            </SheetTitle>
+            <div className="flex items-center gap-1 shrink-0">
+              {nickname && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleLogout}
+                  className="text-destructive hover:text-destructive active:scale-95 touch-manipulation"
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={handleLogout}
-                className="text-destructive hover:text-destructive"
+                onClick={() => onOpenChange(false)}
+                className="active:scale-95 touch-manipulation"
               >
-                <LogOut className="h-4 w-4" />
+                <span className="text-lg font-medium">✕</span>
               </Button>
-            )}
+            </div>
           </div>
         </SheetHeader>
 
@@ -76,7 +88,7 @@ const Sidebar = ({ open, onOpenChange }: SidebarProps) => {
               <Button 
                 key={item.label} 
                 variant="ghost" 
-                className="w-full justify-start gap-3"
+                className="w-full justify-start gap-3 active:scale-[0.98] touch-manipulation"
                 disabled={item.disabled}
                 onClick={() => handleNavigation(item.path)}
               >
