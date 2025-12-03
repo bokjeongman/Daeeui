@@ -404,13 +404,13 @@ const MapView = ({
         hasInitializedPositionRef.current = true;
       });
 
-      // 클러스터링을 위한 이벤트 리스너 (debounce 적용)
+      // 클러스터링을 위한 이벤트 리스너 (debounce 적용 - 300ms로 증가)
       let updateTimeout: NodeJS.Timeout | null = null;
       const debouncedUpdate = () => {
         if (updateTimeout) clearTimeout(updateTimeout);
         updateTimeout = setTimeout(() => {
           updateMapBoundsAndZoom(tmapInstance);
-        }, 100);
+        }, 300);
       };
       
       tmapInstance.addListener("zoom_changed", debouncedUpdate);
@@ -835,9 +835,30 @@ const MapView = ({
     `;
   }, []);
 
+  // 클러스터 키 생성 함수 (변경 감지용)
+  const getClusterKey = useCallback((clusters: ClusterFeature[]) => {
+    return clusters.map(f => {
+      const [lon, lat] = f.geometry.coordinates;
+      if (f.properties.cluster) {
+        return `c:${lat.toFixed(4)},${lon.toFixed(4)},${f.properties.point_count}`;
+      }
+      return `b:${f.properties.barrier?.id}`;
+    }).join('|');
+  }, []);
+
+  // 이전 클러스터 키 저장
+  const prevClusterKeyRef = useRef<string>("");
+
   // 클러스터 및 개별 마커 표시
   useEffect(() => {
     if (!map || !window.Tmapv2) return;
+
+    // 클러스터 키 비교로 실제 변경 여부 확인
+    const currentKey = getClusterKey(clusters);
+    if (currentKey === prevClusterKeyRef.current && clusters.length > 0) {
+      return; // 변경 없으면 스킵
+    }
+    prevClusterKeyRef.current = currentKey;
 
     // 기존 마커 제거
     barrierMarkersRef.current.forEach((marker) => marker.setMap(null));
@@ -888,7 +909,7 @@ const MapView = ({
         const barrier = feature.properties.barrier;
         if (!barrier) return;
 
-        const uniqueId = `${barrier.type}-${index}`;
+        const uniqueId = `${barrier.type}-${barrier.id}`;
         const iconSvg = getCategoryIcon(barrier.type, barrier.severity, uniqueId);
         const iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg)}`;
         const markerSize = isMobile ? 64 : 40;
@@ -913,7 +934,7 @@ const MapView = ({
         barrierMarkersRef.current.push(marker);
       }
     });
-  }, [map, clusters, getClusterIcon, getCategoryIcon, getClusterExpansionZoom, onBarrierClick, isMobile]);
+  }, [map, clusters, getClusterKey, getClusterIcon, getCategoryIcon, getClusterExpansionZoom, onBarrierClick, isMobile]);
 
   // 즐겨찾기 마커 표시
   useEffect(() => {
