@@ -213,7 +213,7 @@ const Auth = () => {
         <CardContent className="space-y-4">
           {/* SSO Buttons */}
           <div className="space-y-3">
-            <div className="relative">
+            <div className={`relative ${recentMethod === "google" ? "mt-8" : ""}`}>
               <Button
                 type="button"
                 variant="outline"
@@ -244,7 +244,7 @@ const Auth = () => {
               {recentMethod === "google" && <RecentBadge />}
             </div>
 
-            <div className="relative">
+            <div className={`relative ${recentMethod === "kakao" ? "mt-8" : ""}`}>
               <Button
                 type="button"
                 variant="outline"
