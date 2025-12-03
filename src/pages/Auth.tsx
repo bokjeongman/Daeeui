@@ -21,23 +21,28 @@ const passwordSchema = z.string().min(6, "비밀번호는 최소 6자 이상이�
 
 type LoginMethod = "email" | "google" | "kakao" | null;
 
-const RECENT_LOGIN_COOKIE = "recent_login_method";
+const RECENT_LOGIN_KEY = "recent_login_method";
 
 const getRecentLoginMethod = (): LoginMethod => {
-  const cookies = document.cookie.split(";");
-  for (const cookie of cookies) {
-    const [name, value] = cookie.trim().split("=");
-    if (name === RECENT_LOGIN_COOKIE) {
-      return value as LoginMethod;
+  try {
+    const method = localStorage.getItem(RECENT_LOGIN_KEY);
+    if (method === "email" || method === "google" || method === "kakao") {
+      return method;
     }
+    return null;
+  } catch {
+    return null;
   }
-  return null;
 };
 
 const setRecentLoginMethod = (method: LoginMethod) => {
-  const expires = new Date();
-  expires.setFullYear(expires.getFullYear() + 1);
-  document.cookie = `${RECENT_LOGIN_COOKIE}=${method};expires=${expires.toUTCString()};path=/`;
+  try {
+    if (method) {
+      localStorage.setItem(RECENT_LOGIN_KEY, method);
+    }
+  } catch {
+    // localStorage 접근 실패 무시
+  }
 };
 
 const Auth = () => {
@@ -61,10 +66,43 @@ const Auth = () => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
+        // OAuth 로그인 후 provider 감지하여 최근 로그인 방법 저장
+        const provider = session.user.app_metadata?.provider;
+        if (provider === "google") {
+          setRecentLoginMethod("google");
+          setRecentMethod("google");
+        } else if (provider === "kakao") {
+          setRecentLoginMethod("kakao");
+          setRecentMethod("kakao");
+        } else if (provider === "email") {
+          setRecentLoginMethod("email");
+          setRecentMethod("email");
+        }
+        
         await checkNicknameAndRedirect(session.user.id);
       }
     };
     checkUser();
+
+    // Auth 상태 변경 리스너
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session) {
+        const provider = session.user.app_metadata?.provider;
+        if (provider === "google") {
+          setRecentLoginMethod("google");
+          setRecentMethod("google");
+        } else if (provider === "kakao") {
+          setRecentLoginMethod("kakao");
+          setRecentMethod("kakao");
+        }
+        // 닉네임 체크는 setTimeout으로 지연 (Supabase 권장)
+        setTimeout(() => {
+          checkNicknameAndRedirect(session.user.id);
+        }, 0);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
   const checkNicknameAndRedirect = async (userId: string) => {
