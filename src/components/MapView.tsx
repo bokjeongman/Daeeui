@@ -983,9 +983,9 @@ const MapView = ({
         const reportCount = barrier.reportCount || 1;
         const iconSvg = getCategoryIcon(barrier.type, barrier.severity, uniqueId, reportCount);
         const iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg)}`;
-        // 뱃지가 있으면 마커 크기 증가
+        // 뱃지가 있으면 마커 크기 증가 (모바일은 1/4 크기)
         const hasExtraReports = reportCount > 1;
-        const markerSize = isMobile ? (hasExtraReports ? 72 : 64) : (hasExtraReports ? 48 : 40);
+        const markerSize = isMobile ? (hasExtraReports ? 18 : 16) : (hasExtraReports ? 48 : 40);
 
         const marker = new window.Tmapv2.Marker({
           position: position,
