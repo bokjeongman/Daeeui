@@ -219,8 +219,8 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
                       <ShieldCheck className="h-4 w-4 text-blue-500" />
                     )}
                   </div>
-                  {/* 수정 요청 버튼: 본인 제보가 아니고, 공공데이터가 아닌 경우만 표시 */}
-                  {currentUserId && report.user_id !== currentUserId && report.accessibility_level !== "verified" && report.reportId && (
+                  {/* 수정 요청 버튼: 공공데이터가 아닌 모든 제보에 표시 (본인 제보 포함) */}
+                  {currentUserId && report.accessibility_level !== "verified" && report.reportId && (
                     <Button
                       variant="ghost"
                       size="sm"

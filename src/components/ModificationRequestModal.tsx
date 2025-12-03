@@ -100,6 +100,30 @@ const ModificationRequestModal = ({ open, onClose, report }: ModificationRequest
 
       if (error) throw error;
 
+      // 관리자에게 이메일 알림 발송
+      try {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("nickname, email")
+          .eq("id", session.user.id)
+          .single();
+        
+        const requesterNickname = profile?.nickname || profile?.email?.split('@')[0] || "사용자";
+        
+        await supabase.functions.invoke("send-modification-notification", {
+          body: {
+            requesterNickname,
+            requestType,
+            locationName: report.location_name,
+            reason: reason.trim(),
+            proposedDetails: requestType === "MODIFY" ? proposedDetails.trim() : undefined,
+          },
+        });
+      } catch (emailError) {
+        console.error("이메일 알림 발송 실패:", emailError);
+        // 이메일 실패해도 요청은 성공으로 처리
+      }
+
       toast.success("수정 요청이 제출되었습니다. 관리자 검토 후 처리됩니다.");
       onClose();
       resetForm();
