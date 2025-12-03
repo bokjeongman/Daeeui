@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { MapPin, FileText, MessageSquare, User, Star, LogOut } from "lucide-react";
+import { MapPin, FileText, MessageSquare, User, LogOut, ClipboardList } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
@@ -34,6 +34,7 @@ const Sidebar = ({ open, onOpenChange }: SidebarProps) => {
     { icon: MapPin, label: "내 경로", disabled: false, path: "/my-routes" },
     { icon: MessageSquare, label: "즐겨찾기", disabled: false, path: "/favorites" },
     { icon: FileText, label: "내 후기", disabled: false, path: "/my-reviews" },
+    { icon: ClipboardList, label: "내 수정 요청", disabled: false, path: "/my-requests" },
     { icon: User, label: "내 프로필", disabled: false, path: "/profile" },
   ];
 
