@@ -61,6 +61,7 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
           longitude: barrier.longitude,
           created_at: barrier.created_at,
           accessibility_level: barrier.accessibility_level,
+          user_id: (barrier as any).user_id,
         }];
         
         // user_id가 있는 제보들의 닉네임 가져오기
@@ -69,16 +70,29 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
         if (userIds.length > 0) {
           const { data: profiles } = await supabase
             .from("profiles")
-            .select("id, nickname")
+            .select("id, nickname, email")
             .in("id", userIds);
           
-          const nicknameMap = new Map(profiles?.map(p => [p.id, p.nickname]) || []);
+          // 닉네임이 없으면 이메일 앞부분 사용
+          const nicknameMap = new Map(profiles?.map(p => {
+            let displayName = p.nickname;
+            if (!displayName && p.email) {
+              // 이메일 앞부분 사용 (@ 앞)
+              displayName = p.email.split('@')[0];
+            }
+            return [p.id, displayName || "사용자"];
+          }) || []);
           
-          const reportsWithNames = reports.map(r => ({
-            ...r,
-            nickname: r.user_id ? (nicknameMap.get(r.user_id) || "익명 사용자") : 
-                      (r.accessibility_level === "verified" ? "공공데이터" : "익명 사용자")
-          }));
+          const reportsWithNames = reports.map(r => {
+            if (r.accessibility_level === "verified") {
+              return { ...r, nickname: "공공데이터" };
+            }
+            if (r.user_id) {
+              const nickname = nicknameMap.get(r.user_id);
+              return { ...r, nickname: nickname || "사용자" };
+            }
+            return { ...r, nickname: "사용자" };
+          });
           
           // 최신순 정렬
           reportsWithNames.sort((a, b) => {
@@ -91,7 +105,7 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
         } else {
           const reportsWithNames = reports.map(r => ({
             ...r,
-            nickname: r.accessibility_level === "verified" ? "공공데이터" : "익명 사용자"
+            nickname: r.accessibility_level === "verified" ? "공공데이터" : "사용자"
           }));
           reportsWithNames.sort((a, b) => {
             const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
