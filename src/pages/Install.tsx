@@ -49,12 +49,7 @@ const Install = () => {
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
         <div className="flex items-center gap-3 px-4 h-14">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate(-1)}
-            className="shrink-0"
-          >
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="shrink-0">
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="font-semibold truncate">앱 설치 안내</h1>
@@ -81,9 +76,7 @@ const Install = () => {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">앱처럼 사용하기</CardTitle>
-            <CardDescription>
-              휠체어 경로 안내를 홈 화면에 추가하면 앱처럼 빠르게 실행할 수 있습니다.
-            </CardDescription>
+            <CardDescription>휠체어 경로 안내를 홈 화면에 추가하면 앱처럼 빠르게 실행할 수 있습니다.</CardDescription>
           </CardHeader>
           <CardContent>
             {deferredPrompt && (
@@ -112,9 +105,7 @@ const Install = () => {
               </div>
               <div>
                 <p className="font-medium">Safari에서 열기</p>
-                <p className="text-sm text-muted-foreground">
-                  이 페이지를 Safari 브라우저에서 열어주세요.
-                </p>
+                <p className="text-sm text-muted-foreground">이 페이지를 Safari 브라우저에서 열어주세요.</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -126,9 +117,7 @@ const Install = () => {
                   공유 버튼 탭
                   <Share className="h-4 w-4" />
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  화면 하단의 공유 버튼을 탭하세요.
-                </p>
+                <p className="text-sm text-muted-foreground">화면 하단의 공유 버튼을 탭하세요.</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -140,9 +129,7 @@ const Install = () => {
                   "홈 화면에 추가" 선택
                   <Plus className="h-4 w-4" />
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  스크롤하여 "홈 화면에 추가"를 찾아 탭하세요.
-                </p>
+                <p className="text-sm text-muted-foreground">스크롤하여 "홈 화면에 추가"를 찾아 탭하세요.</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -151,9 +138,7 @@ const Install = () => {
               </div>
               <div>
                 <p className="font-medium">"추가" 탭</p>
-                <p className="text-sm text-muted-foreground">
-                  오른쪽 상단의 "추가" 버튼을 탭하면 완료!
-                </p>
+                <p className="text-sm text-muted-foreground">오른쪽 상단의 "추가" 버튼을 탭하면 완료!</p>
               </div>
             </div>
           </CardContent>
@@ -173,9 +158,7 @@ const Install = () => {
               </div>
               <div>
                 <p className="font-medium">Chrome에서 열기</p>
-                <p className="text-sm text-muted-foreground">
-                  이 페이지를 Chrome 브라우저에서 열어주세요.
-                </p>
+                <p className="text-sm text-muted-foreground">이 페이지를 Chrome 브라우저에서 열어주세요.</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -187,9 +170,7 @@ const Install = () => {
                   메뉴 버튼 탭
                   <MoreVertical className="h-4 w-4" />
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  오른쪽 상단의 점 3개 메뉴를 탭하세요.
-                </p>
+                <p className="text-sm text-muted-foreground">오른쪽 상단의 점 3개 메뉴를 탭하세요.</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -198,9 +179,7 @@ const Install = () => {
               </div>
               <div>
                 <p className="font-medium">"앱 설치" 또는 "홈 화면에 추가" 선택</p>
-                <p className="text-sm text-muted-foreground">
-                  메뉴에서 해당 옵션을 찾아 탭하세요.
-                </p>
+                <p className="text-sm text-muted-foreground">메뉴에서 해당 옵션을 찾아 탭하세요.</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -209,9 +188,7 @@ const Install = () => {
               </div>
               <div>
                 <p className="font-medium">"설치" 탭</p>
-                <p className="text-sm text-muted-foreground">
-                  확인 창에서 "설치"를 탭하면 완료!
-                </p>
+                <p className="text-sm text-muted-foreground">확인 창에서 "설치"를 탭하면 완료!</p>
               </div>
             </div>
           </CardContent>
@@ -231,9 +208,7 @@ const Install = () => {
               </div>
               <div>
                 <p className="font-medium">Chrome 또는 Edge에서 열기</p>
-                <p className="text-sm text-muted-foreground">
-                  이 페이지를 지원되는 브라우저에서 열어주세요.
-                </p>
+                <p className="text-sm text-muted-foreground">이 페이지를 지원되는 브라우저에서 열어주세요.</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -242,9 +217,7 @@ const Install = () => {
               </div>
               <div>
                 <p className="font-medium">주소창의 설치 아이콘 클릭</p>
-                <p className="text-sm text-muted-foreground">
-                  주소창 오른쪽에 있는 설치 아이콘을 클릭하세요.
-                </p>
+                <p className="text-sm text-muted-foreground">주소창 오른쪽에 있는 설치 아이콘을 클릭하세요.</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -253,9 +226,7 @@ const Install = () => {
               </div>
               <div>
                 <p className="font-medium">"설치" 클릭</p>
-                <p className="text-sm text-muted-foreground">
-                  확인 창에서 "설치"를 클릭하면 완료!
-                </p>
+                <p className="text-sm text-muted-foreground">확인 창에서 "설치"를 클릭하면 완료!</p>
               </div>
             </div>
           </CardContent>
@@ -268,20 +239,14 @@ const Install = () => {
           <CardContent>
             <ul className="space-y-2 text-sm">
               <li className="flex items-center gap-2">
-                <span className="text-primary">✓</span>
-                홈 화면에서 바로 실행
+                <span className="text-primary">✓</span>홈 화면에서 바로 실행
               </li>
               <li className="flex items-center gap-2">
                 <span className="text-primary">✓</span>
                 전체 화면으로 사용
               </li>
               <li className="flex items-center gap-2">
-                <span className="text-primary">✓</span>
-                더 빠른 로딩 속도
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="text-primary">✓</span>
-                오프라인에서도 일부 기능 사용 가능
+                <span className="text-primary">✓</span>더 빠른 로딩 속도
               </li>
             </ul>
           </CardContent>
