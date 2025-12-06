@@ -15,7 +15,7 @@ export interface AccessibilityReport {
   photo_urls?: string[];
   created_at?: string;
   accessibility_level?: string;
-  user_id?: string;
+  // user_id intentionally excluded from public data for privacy
   reports?: AccessibilityReport[];
   reportCount?: number;
 }

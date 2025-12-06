@@ -256,8 +256,9 @@ const MapView = ({
         const pageSize = 1000;
         let hasMore = true;
         while (hasMore) {
+          // Use public view that excludes user_id for privacy
           const { data, error } = await supabase
-            .from("accessibility_reports")
+            .from("public_accessibility_reports")
             .select("*")
             .range(from, from + pageSize - 1);
           if (error) throw error;
@@ -271,7 +272,7 @@ const MapView = ({
         }
         console.log("🔍 가져온 제보 데이터:", allData.length, "개");
 
-        // 새로운 AccessibilityReport 형식으로 변환
+        // 새로운 AccessibilityReport 형식으로 변환 (user_id excluded for privacy)
         const rawReports: AccessibilityReport[] = allData.map(report => ({
           id: report.id,
           lat: Number(report.latitude),
@@ -285,8 +286,7 @@ const MapView = ({
           details: report.details,
           photo_urls: report.photo_urls || [],
           created_at: report.created_at,
-          accessibility_level: report.accessibility_level,
-          user_id: report.user_id
+          accessibility_level: report.accessibility_level
         }));
 
         // 같은 위치의 제보들을 그룹화
