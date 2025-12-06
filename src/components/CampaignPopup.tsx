@@ -5,7 +5,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { X } from "lucide-react";
+
 import wheelchairRampIcon from "@/assets/wheelchair-ramp-icon.png";
 
 interface CampaignPopupProps {
@@ -67,14 +67,6 @@ const CampaignPopup = ({ onAgree }: CampaignPopupProps) => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-[380px] p-0 gap-0 overflow-hidden rounded-lg border border-l-4 border-l-green-400 border-gray-200 shadow-lg bg-white">
-        {/* 닫기 버튼 */}
-        <button
-          onClick={handleClose}
-          className="absolute right-3 top-3 z-10 text-gray-400 hover:text-gray-600 transition-colors"
-        >
-          <X className="h-5 w-5" />
-          <span className="sr-only">Close</span>
-        </button>
 
         {/* 콘텐츠 */}
         <div className="flex flex-col items-center px-8 pt-8 pb-6">
