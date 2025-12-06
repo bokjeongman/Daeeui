@@ -106,7 +106,7 @@ export function useAccessibilityMarkerCluster(
     // Filter reports based on filter state
     const filteredReports = reports.filter((report) => {
       // 공공데이터 필터
-      if (report.accessibility_level === "verified") {
+      if (report.accessibility_level === "public") {
         return filter.publicData;
       }
       
