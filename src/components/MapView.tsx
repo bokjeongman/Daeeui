@@ -1642,11 +1642,6 @@ const MapView = ({
 
       {/* 하단 버튼 그룹 컨테이너 - 필터, 현위치 버튼 */}
       <div className={`absolute right-4 md:right-6 z-50 pointer-events-auto flex flex-col items-center gap-3 transition-all duration-300 ${isMobile ? isRouteSelecting ? "bottom-6" : "bottom-6" : isRouteSelecting ? "bottom-6" : "bottom-6"}`}>
-        {/* 현재 위치 버튼 */}
-        <Button onClick={getCurrentLocation} size="lg" className="h-12 w-12 md:h-14 md:w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground border-4 border-background touch-target" title="현재 위치" disabled={loading}>
-          {loading && userLocation === null ? <Loader2 className="h-5 w-5 md:h-6 md:w-6 animate-spin" /> : <Navigation className="h-5 w-5 md:h-6 md:w-6" />}
-        </Button>
-
         {/* 필터 버튼 - 장소 검색 중이 아닐 때만 표시 */}
         {!hideFilterButton && <div className="relative">
             <Button onClick={() => setShowFilter(!showFilter)} size="lg" title="필터" className="h-12 w-12 md:h-14 md:w-14 rounded-full shadow-xl bg-background hover:bg-muted text-foreground border-2 border-border touch-target">
@@ -1693,6 +1688,11 @@ const MapView = ({
                 </button>
               </div>}
           </div>}
+
+        {/* 현재 위치 버튼 */}
+        <Button onClick={getCurrentLocation} size="lg" className="h-12 w-12 md:h-14 md:w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground border-4 border-background touch-target" title="현재 위치" disabled={loading}>
+          {loading && userLocation === null ? <Loader2 className="h-5 w-5 md:h-6 md:w-6 animate-spin" /> : <Navigation className="h-5 w-5 md:h-6 md:w-6" />}
+        </Button>
       </div>
     </div>;
 };
