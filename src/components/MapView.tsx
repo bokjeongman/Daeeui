@@ -709,13 +709,13 @@ const MapView = ({
     verified: number;
   }) => {
     // 클러스터 크기에 따른 기본 크기
-    let size = 48;
+    let size = 24;
     if (count >= 100) {
-      size = 64;
+      size = 32;
     } else if (count >= 30) {
-      size = 56;
+      size = 28;
     } else if (count >= 10) {
-      size = 52;
+      size = 26;
     }
 
     // 접근성 레벨에 따른 색상
@@ -834,14 +834,14 @@ const MapView = ({
     // 추가 제보 뱃지 (+N)
     const extraCount = (reportCount || 1) - 1;
     const badgeSvg = extraCount > 0 ? `
-      <circle cx="34" cy="8" r="10" fill="#ef4444" stroke="white" stroke-width="2"/>
-      <text x="34" y="12" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="white" text-anchor="middle">+${extraCount > 9 ? '9+' : extraCount}</text>
+      <circle cx="17" cy="4" r="5" fill="#ef4444" stroke="white" stroke-width="1"/>
+      <text x="17" y="6.5" font-family="Arial, sans-serif" font-size="5" font-weight="bold" fill="white" text-anchor="middle">+${extraCount > 9 ? '9+' : extraCount}</text>
     ` : '';
-    const viewBox = extraCount > 0 ? "0 0 48 48" : "0 0 40 40";
-    const width = extraCount > 0 ? 52 : 44;
-    const height = extraCount > 0 ? 52 : 44;
-    const cx = extraCount > 0 ? 20 : 20;
-    const cy = extraCount > 0 ? 24 : 20;
+    const viewBox = extraCount > 0 ? "0 0 24 24" : "0 0 20 20";
+    const width = extraCount > 0 ? 26 : 22;
+    const height = extraCount > 0 ? 26 : 22;
+    const cx = extraCount > 0 ? 10 : 10;
+    const cy = extraCount > 0 ? 12 : 10;
 
     // 인증된 장소 - 체크 마크
     if (severity === "verified") {
@@ -859,9 +859,9 @@ const MapView = ({
               <stop offset="100%" style="stop-color:#2563eb"/>
             </linearGradient>
           </defs>
-          <circle cx="${cx}" cy="${cy}" r="16" fill="url(#verified-grad-${safeId})" stroke="white" stroke-width="3" filter="url(#barrier-shadow-${safeId})"/>
+          <circle cx="${cx}" cy="${cy}" r="8" fill="url(#verified-grad-${safeId})" stroke="white" stroke-width="1.5" filter="url(#barrier-shadow-${safeId})"/>
           <!-- 체크 마크 -->
-          <path d="M${cx - 6} ${cy} L${cx - 1} ${cy + 5} L${cx + 8} ${cy - 6}" stroke="white" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M${cx - 3} ${cy} L${cx - 0.5} ${cy + 2.5} L${cx + 4} ${cy - 3}" stroke="white" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
           ${badgeSvg}
         </svg>
       `;
@@ -872,90 +872,76 @@ const MapView = ({
         // 경사로 - 깔끔한 경사면 표현
         iconContent = `
           <!-- 경사면 바닥 -->
-          <polygon points="${cx - 10},${cy + 8} ${cx + 10},${cy + 8} ${cx + 10},${cy - 6}" fill="white" opacity="0.25"/>
+          <polygon points="${cx - 5},${cy + 4} ${cx + 5},${cy + 4} ${cx + 5},${cy - 3}" fill="white" opacity="0.25"/>
           <!-- 경사면 선 -->
-          <path d="M${cx - 10} ${cy + 8} L${cx + 10} ${cy - 6}" stroke="white" stroke-width="3" stroke-linecap="round"/>
+          <path d="M${cx - 5} ${cy + 4} L${cx + 5} ${cy - 3}" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
           <!-- 바닥선 -->
-          <path d="M${cx - 10} ${cy + 8} L${cx + 10} ${cy + 8}" stroke="white" stroke-width="2" stroke-linecap="round"/>
-          <!-- 각도 표시 -->
-          <path d="M${cx + 6} ${cy + 8} L${cx + 6} ${cy + 2}" stroke="white" stroke-width="1.5" opacity="0.7"/>
+          <path d="M${cx - 5} ${cy + 4} L${cx + 5} ${cy + 4}" stroke="white" stroke-width="1" stroke-linecap="round"/>
         `;
         break;
       case "elevator":
         // 엘리베이터 - 박스 + 상하 화살표
         iconContent = `
           <!-- 엘리베이터 박스 -->
-          <rect x="${cx - 8}" y="${cy - 10}" width="16" height="20" rx="2" fill="none" stroke="white" stroke-width="2.5"/>
-          <!-- 중앙 분리선 -->
-          <line x1="${cx}" y1="${cy - 8}" x2="${cx}" y2="${cy + 8}" stroke="white" stroke-width="1.5" opacity="0.5"/>
+          <rect x="${cx - 4}" y="${cy - 5}" width="8" height="10" rx="1" fill="none" stroke="white" stroke-width="1.2"/>
           <!-- 위 화살표 -->
-          <path d="M${cx - 4} ${cy + 2} L${cx - 4} ${cy - 5}" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
-          <path d="M${cx - 6.5} ${cy - 2} L${cx - 4} ${cy - 5} L${cx - 1.5} ${cy - 2}" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M${cx - 2} ${cy + 1} L${cx - 2} ${cy - 2.5}" stroke="white" stroke-width="1.2" stroke-linecap="round"/>
+          <path d="M${cx - 3.2} ${cy - 1} L${cx - 2} ${cy - 2.5} L${cx - 0.8} ${cy - 1}" stroke="white" stroke-width="1" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
           <!-- 아래 화살표 -->
-          <path d="M${cx + 4} ${cy - 2} L${cx + 4} ${cy + 5}" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
-          <path d="M${cx + 1.5} ${cy + 2} L${cx + 4} ${cy + 5} L${cx + 6.5} ${cy + 2}" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M${cx + 2} ${cy - 1} L${cx + 2} ${cy + 2.5}" stroke="white" stroke-width="1.2" stroke-linecap="round"/>
+          <path d="M${cx + 0.8} ${cy + 1} L${cx + 2} ${cy + 2.5} L${cx + 3.2} ${cy + 1}" stroke="white" stroke-width="1" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
         `;
         break;
       case "curb":
         // 턱/단차 - 명확한 단차 표현
         iconContent = `
           <!-- 단차 형태 -->
-          <path d="M${cx - 10} ${cy + 6} L${cx - 2} ${cy + 6} L${cx - 2} ${cy - 4} L${cx + 10} ${cy - 4}" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-          <!-- 높이 표시 -->
-          <path d="M${cx + 4} ${cy - 4} L${cx + 4} ${cy + 6}" stroke="white" stroke-width="1.5" stroke-dasharray="2,2" opacity="0.7"/>
-          <!-- 위아래 화살표 -->
-          <path d="M${cx + 2} ${cy - 1} L${cx + 4} ${cy - 4} L${cx + 6} ${cy - 1}" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-          <path d="M${cx + 2} ${cy + 3} L${cx + 4} ${cy + 6} L${cx + 6} ${cy + 3}" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          <path d="M${cx - 5} ${cy + 3} L${cx - 1} ${cy + 3} L${cx - 1} ${cy - 2} L${cx + 5} ${cy - 2}" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
         `;
         break;
       case "stairs":
         // 계단 - 명확한 계단 형태
         iconContent = `
-          <!-- 계단 4단 -->
-          <path d="M${cx - 9} ${cy + 9} L${cx - 9} ${cy + 4} L${cx - 4} ${cy + 4} L${cx - 4} ${cy - 1} L${cx + 1} ${cy - 1} L${cx + 1} ${cy - 6} L${cx + 6} ${cy - 6} L${cx + 6} ${cy - 11} L${cx + 11} ${cy - 11}" 
-                stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <!-- 계단 3단 -->
+          <path d="M${cx - 4} ${cy + 4} L${cx - 4} ${cy + 1} L${cx} ${cy + 1} L${cx} ${cy - 2} L${cx + 4} ${cy - 2} L${cx + 4} ${cy - 5}" 
+                stroke="white" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
         `;
         break;
       case "parking":
         // 주차장 - P 마크
         iconContent = `
           <!-- P 텍스트 -->
-          <text x="${cx}" y="${cy + 7}" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="white" text-anchor="middle">P</text>
+          <text x="${cx}" y="${cy + 3.5}" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="white" text-anchor="middle">P</text>
         `;
         break;
       case "restroom":
         // 화장실 - 남녀 심볼
         iconContent = `
           <!-- 남자 (왼쪽) -->
-          <circle cx="${cx - 5}" cy="${cy - 7}" r="3" fill="white"/>
-          <path d="M${cx - 5} ${cy - 4} L${cx - 5} ${cy + 3}" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
-          <path d="M${cx - 9} ${cy - 1} L${cx - 1} ${cy - 1}" stroke="white" stroke-width="2" stroke-linecap="round"/>
-          <path d="M${cx - 5} ${cy + 3} L${cx - 8} ${cy + 9} M${cx - 5} ${cy + 3} L${cx - 2} ${cy + 9}" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="${cx - 2.5}" cy="${cy - 3.5}" r="1.5" fill="white"/>
+          <path d="M${cx - 2.5} ${cy - 2} L${cx - 2.5} ${cy + 1.5}" stroke="white" stroke-width="1.2" stroke-linecap="round"/>
+          <path d="M${cx - 4.5} ${cy - 0.5} L${cx - 0.5} ${cy - 0.5}" stroke="white" stroke-width="1" stroke-linecap="round"/>
+          <path d="M${cx - 2.5} ${cy + 1.5} L${cx - 4} ${cy + 4.5} M${cx - 2.5} ${cy + 1.5} L${cx - 1} ${cy + 4.5}" stroke="white" stroke-width="1" stroke-linecap="round"/>
           <!-- 여자 (오른쪽) -->
-          <circle cx="${cx + 5}" cy="${cy - 7}" r="3" fill="white"/>
-          <path d="M${cx + 5} ${cy - 4} L${cx + 5} ${cy}" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
-          <path d="M${cx + 1} ${cy} L${cx + 9} ${cy} L${cx + 7} ${cy + 9} M${cx + 3} ${cy + 9} L${cx + 5} ${cy}" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="${cx + 2.5}" cy="${cy - 3.5}" r="1.5" fill="white"/>
+          <path d="M${cx + 2.5} ${cy - 2} L${cx + 2.5} ${cy}" stroke="white" stroke-width="1.2" stroke-linecap="round"/>
+          <path d="M${cx + 0.5} ${cy} L${cx + 4.5} ${cy} L${cx + 3.5} ${cy + 4.5} M${cx + 1.5} ${cy + 4.5} L${cx + 2.5} ${cy}" stroke="white" stroke-width="1" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
         `;
         break;
       case "entrance":
         // 출입구 - 문과 화살표
         iconContent = `
           <!-- 문 프레임 -->
-          <rect x="${cx - 7}" y="${cy - 10}" width="14" height="20" rx="1" fill="none" stroke="white" stroke-width="2.5"/>
+          <rect x="${cx - 3.5}" y="${cy - 5}" width="7" height="10" rx="0.5" fill="none" stroke="white" stroke-width="1.2"/>
           <!-- 문 손잡이 -->
-          <circle cx="${cx + 3}" cy="${cy + 2}" r="2" fill="white"/>
-          <!-- 진입 화살표 -->
-          <path d="M${cx - 12} ${cy} L${cx - 4} ${cy}" stroke="white" stroke-width="2" stroke-linecap="round"/>
-          <path d="M${cx - 7} ${cy - 3} L${cx - 4} ${cy} L${cx - 7} ${cy + 3}" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="${cx + 1.5}" cy="${cy + 1}" r="1" fill="white"/>
         `;
         break;
       default:
         // 기본 - 위치 핀 (초록색으로 표시)
         iconContent = `
           <!-- 위치 핀 -->
-          <circle cx="${cx}" cy="${cy - 2}" r="5" fill="white"/>
-          <path d="M${cx} ${cy + 10} L${cx - 4} ${cy + 2} Q${cx - 8} ${cy - 6} ${cx} ${cy - 10} Q${cx + 8} ${cy - 6} ${cx + 4} ${cy + 2} Z" 
-                fill="none" stroke="white" stroke-width="2" opacity="0.5"/>
+          <circle cx="${cx}" cy="${cy - 1}" r="2.5" fill="white"/>
         `;
         break;
     }
@@ -978,7 +964,7 @@ const MapView = ({
             <stop offset="100%" style="stop-color:${borderColor}"/>
           </linearGradient>
         </defs>
-        <circle cx="${cx}" cy="${cy}" r="16" fill="url(#marker-grad-${safeId})" stroke="white" stroke-width="3" filter="url(#barrier-shadow-${safeId})"/>
+        <circle cx="${cx}" cy="${cy}" r="8" fill="url(#marker-grad-${safeId})" stroke="white" stroke-width="1.5" filter="url(#barrier-shadow-${safeId})"/>
         ${iconContent}
         ${badgeSvg}
       </svg>

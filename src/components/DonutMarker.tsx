@@ -11,7 +11,7 @@ interface DonutMarkerProps {
 }
 
 // 초록색 체크마크 마커 SVG 생성 함수 (공공데이터용)
-export function createCheckMarkerSvg(size: number = 40): string {
+export function createCheckMarkerSvg(size: number = 20): string {
   const uniqueId = `check-${Date.now()}-${Math.random()}`.replace(/\./g, '_');
   const cx = size / 2;
   const cy = size / 2;
@@ -44,7 +44,7 @@ export function createCheckMarkerSvg(size: number = 40): string {
 }
 
 // 공공데이터 마커 SVG URL 반환
-export function getPublicDataMarkerUrl(size: number = 40): string {
+export function getPublicDataMarkerUrl(size: number = 20): string {
   const svg = createCheckMarkerSvg(size);
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
@@ -52,7 +52,7 @@ export function getPublicDataMarkerUrl(size: number = 40): string {
 export function createDonutMarkerSvg({
   yesCount,
   noCount,
-  size = 44,
+  size = 22,
   isCluster = false,
   pointCount = 1,
   isPublicData = false,
@@ -193,13 +193,13 @@ export function createClusterDonutMarker(
   noCount: number,
   pointCount: number
 ): string {
-  let size = 48;
+  let size = 24;
   if (pointCount >= 100) {
-    size = 64;
+    size = 32;
   } else if (pointCount >= 30) {
-    size = 56;
+    size = 28;
   } else if (pointCount >= 10) {
-    size = 52;
+    size = 26;
   }
   
   return createDonutMarkerSvg({
