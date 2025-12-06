@@ -130,19 +130,15 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
       const userIds = [...new Set((data || []).filter(r => r.user_id).map(r => r.user_id))];
       let nicknameMap = new Map<string, string>();
       
+      // Use get_public_nickname RPC function to bypass RLS restrictions
       if (userIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("id, nickname, email")
-          .in("id", userIds);
+        const nicknamePromises = userIds.map(async (userId) => {
+          const { data: nickname } = await supabase.rpc("get_public_nickname", { profile_id: userId });
+          return { id: userId, nickname };
+        });
         
-        nicknameMap = new Map(profiles?.map(p => {
-          let displayName = p.nickname;
-          if (!displayName && p.email) {
-            displayName = p.email.split('@')[0];
-          }
-          return [p.id, displayName || "사용자"];
-        }) || []);
+        const nicknameResults = await Promise.all(nicknamePromises);
+        nicknameMap = new Map(nicknameResults.map(p => [p.id, p.nickname || "사용자"]));
       }
       
       const reviewsWithNicknames = (data || []).map(r => ({
