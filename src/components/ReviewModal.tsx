@@ -234,7 +234,7 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
   };
 
   const ContentBody = () => (
-    <div className="overflow-y-auto" style={{ maxHeight: 'calc(90vh - 180px)' }}>
+    <div className="h-full overflow-y-auto overscroll-contain">
       <div className="space-y-6 pr-2 pb-6">
         {/* 장소 검색 */}
         <div className="space-y-2">
@@ -436,10 +436,10 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
               접근성 정보 제보
             </DrawerTitle>
           </DrawerHeader>
-          <div className="flex-1 min-h-0 px-4">
+          <div className="flex-1 min-h-0 overflow-hidden px-4">
             <ContentBody />
           </div>
-          <div className="px-4 pb-4">
+          <div className="flex-shrink-0 px-4 pb-4">
             <SubmitButtons />
           </div>
         </DrawerContent>
@@ -449,17 +449,17 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col p-0">
+      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col p-0 overflow-hidden">
         <DialogHeader className="flex-shrink-0 p-6 pb-4">
           <DialogTitle className="flex items-center gap-2">
             <MapPin className="h-5 w-5 text-green-600" />
             접근성 정보 제보
           </DialogTitle>
         </DialogHeader>
-        <div className="flex-1 min-h-0 px-6">
+        <div className="flex-1 min-h-0 overflow-hidden px-6">
           <ContentBody />
         </div>
-        <div className="p-6 pt-0">
+        <div className="flex-shrink-0 p-6 pt-0">
           <SubmitButtons />
         </div>
       </DialogContent>
