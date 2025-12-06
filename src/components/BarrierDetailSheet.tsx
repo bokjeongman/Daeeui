@@ -55,13 +55,16 @@ interface BarrierDetailSheetProps {
 }
 
 // 접근성 항목 컴포넌트
-const AccessibilityItem = ({ label, value }: { label: string; value: boolean | null | undefined }) => {
+const AccessibilityItem = ({ label, value, inverted = false }: { label: string; value: boolean | null | undefined; inverted?: boolean }) => {
   if (value === null || value === undefined) return null;
+  
+  // inverted가 true면 값을 반전시킴 (턱의 경우: false=좋음, true=나쁨)
+  const displayValue = inverted ? !value : value;
   
   return (
     <div className="flex items-center gap-2">
-      <div className={`w-5 h-5 rounded-full flex items-center justify-center ${value ? 'bg-green-500' : 'bg-red-500'}`}>
-        {value ? (
+      <div className={`w-5 h-5 rounded-full flex items-center justify-center ${displayValue ? 'bg-green-500' : 'bg-red-500'}`}>
+        {displayValue ? (
           <Check className="h-3 w-3 text-white" />
         ) : (
           <XIcon className="h-3 w-3 text-white" />
@@ -208,7 +211,7 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
                 <AccessibilityItem label="경사로" value={report.has_ramp} />
                 <AccessibilityItem label="엘리베이터" value={report.has_elevator} />
                 <AccessibilityItem label="장애인 화장실" value={report.has_accessible_restroom} />
-                <AccessibilityItem label="턱 없음" value={report.has_low_threshold} />
+                <AccessibilityItem label="턱" value={report.has_low_threshold} inverted />
                 <AccessibilityItem label="넓은 출입문" value={report.has_wide_door} />
               </div>
             )}
