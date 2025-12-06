@@ -461,7 +461,7 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
                           key={idx}
                           src={url}
                           alt={`제보 사진 ${idx + 1}`}
-                          className="h-20 w-20 object-cover rounded-lg border flex-shrink-0"
+                          className="h-16 w-16 object-cover rounded-lg border flex-shrink-0"
                           onError={(e) => {
                             e.currentTarget.src = "/placeholder.svg";
                           }}

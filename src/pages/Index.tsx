@@ -10,7 +10,7 @@ import RouteOptions from "@/components/RouteOptions";
 import ReviewButton from "@/components/ReviewButton";
 import Sidebar from "@/components/Sidebar";
 import ReviewModal from "@/components/ReviewModal";
-import PlaceReviewModal from "@/components/PlaceReviewModal";
+import PlaceAccessibilityModal from "@/components/PlaceAccessibilityModal";
 import WheelchairBadge from "@/components/WheelchairBadge";
 import BarrierDetailSheet from "@/components/BarrierDetailSheet";
 import RouteSelector from "@/components/RouteSelector";
@@ -441,8 +441,8 @@ const Index = () => {
         onPlaceSelect={(lat, lon) => setMapCenter({ lat, lon })}
       />
       
-      {/* 장소 후기 모달 */}
-      <PlaceReviewModal 
+      {/* 장소 접근성 모달 */}
+      <PlaceAccessibilityModal 
         open={placeReviewModalOpen} 
         onClose={() => {
           setPlaceReviewModalOpen(false);
