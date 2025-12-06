@@ -66,55 +66,55 @@ const CampaignPopup = ({ onAgree }: CampaignPopupProps) => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-[340px] p-0 gap-0 overflow-hidden rounded-2xl border-0 shadow-xl">
+      <DialogContent className="sm:max-w-[380px] p-0 gap-0 overflow-hidden rounded-lg border border-l-4 border-l-green-400 border-gray-200 shadow-lg bg-white">
         {/* 닫기 버튼 */}
         <button
           onClick={handleClose}
-          className="absolute right-4 top-4 z-10 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none"
+          className="absolute right-3 top-3 z-10 text-gray-400 hover:text-gray-600 transition-colors"
         >
-          <X className="h-5 w-5 text-muted-foreground" />
+          <X className="h-5 w-5" />
           <span className="sr-only">Close</span>
         </button>
 
         {/* 콘텐츠 */}
-        <div className="flex flex-col items-center px-8 pt-10 pb-8 bg-background">
+        <div className="flex flex-col items-center px-8 pt-8 pb-6">
           {/* 제목 */}
-          <h2 className="text-xl font-bold text-foreground mb-8">접근성 정보 공유</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-6">접근성 정보 공유</h2>
 
           {/* 아이콘 */}
-          <div className="w-28 h-28 rounded-full overflow-hidden mb-8">
+          <div className="w-24 h-24 rounded-full overflow-hidden mb-6 bg-[#d4edda] flex items-center justify-center">
             <img 
               src={wheelchairRampIcon} 
               alt="휠체어 경사로" 
-              className="w-full h-full object-cover"
+              className="w-20 h-20 object-contain"
             />
           </div>
 
           {/* 설명 */}
-          <p className="text-center text-muted-foreground mb-8 text-base leading-relaxed">
+          <p className="text-center text-gray-600 mb-6 text-base leading-relaxed">
             자주 가는 장소의 접근성 정보를<br />공유해주세요
           </p>
 
           {/* 버튼 */}
           <Button
             onClick={handleAgree}
-            className="w-full h-14 text-lg font-semibold bg-green-500 hover:bg-green-600 text-white rounded-2xl shadow-lg"
+            className="w-full h-12 text-base font-medium bg-[#22c55e] hover:bg-[#16a34a] text-white rounded-full shadow-md"
           >
             지금 공유하기
           </Button>
         </div>
 
         {/* 하단 체크박스 */}
-        <div className="flex items-center justify-center gap-2 py-4 bg-background border-t border-border/50">
+        <div className="flex items-center justify-center gap-2 py-4 border-t border-gray-100">
           <Checkbox
             id="hideForToday"
             checked={hideForToday}
             onCheckedChange={(checked) => setHideForToday(checked === true)}
-            className="border-muted-foreground/50 data-[state=checked]:bg-muted-foreground data-[state=checked]:border-muted-foreground"
+            className="border-gray-400 data-[state=checked]:bg-gray-500 data-[state=checked]:border-gray-500 h-4 w-4"
           />
           <label
             htmlFor="hideForToday"
-            className="text-sm text-muted-foreground cursor-pointer select-none"
+            className="text-sm text-gray-500 cursor-pointer select-none"
           >
             오늘 하루동안 이 창을 보지 않음
           </label>
