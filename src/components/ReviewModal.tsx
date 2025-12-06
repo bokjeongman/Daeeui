@@ -16,6 +16,7 @@ interface ReviewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onPlaceSelect?: (lat: number, lon: number) => void;
+  onSuccess?: () => void;
 }
 
 interface AccessibilityItem {
@@ -34,7 +35,7 @@ const accessibilityItems: AccessibilityItem[] = [
   { key: 'has_wide_door', label: '넓은 출입문', description: '휠체어 통과 가능한 출입문', icon: '🚪' },
 ];
 
-const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) => {
+const ReviewModal = ({ open, onOpenChange, onPlaceSelect, onSuccess }: ReviewModalProps) => {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   
@@ -225,6 +226,11 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
       toast.success("제보가 성공적으로 등록되었습니다!");
       onOpenChange(false);
       resetForm();
+      
+      // 성공 콜백 호출하여 마커 즉시 새로고침
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (error: any) {
       if (import.meta.env.DEV) console.error("제보 등록 실패:", error);
       toast.error("제보 등록에 실패했습니다. 다시 시도해주세요.");

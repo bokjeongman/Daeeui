@@ -74,6 +74,7 @@ interface MapViewProps {
     name: string;
   } | null;
   hideFilterButton?: boolean;
+  refreshKey?: number;
 }
 const MapView = ({
   startPoint,
@@ -88,7 +89,8 @@ const MapView = ({
   clearKey,
   selectedSearchPlace,
   hideFilterButton = false,
-  isRouteSelecting = false
+  isRouteSelecting = false,
+  refreshKey
 }: MapViewProps & {
   isRouteSelecting?: boolean;
 }) => {
@@ -330,7 +332,7 @@ const MapView = ({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [refreshKey]);
 
   // 즐겨찾기 데이터 가져오기
   useEffect(() => {
