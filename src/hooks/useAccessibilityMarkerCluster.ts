@@ -64,29 +64,42 @@ export interface AccessibilityFilter {
   publicData: boolean;
 }
 
-// 5가지 항목에 대한 Yes/No 통계 계산
+// 5가지 항목에 대한 다수결 투표 방식 통계 계산
 function calculateAccessibilityStats(reports: AccessibilityReport[]) {
-  let yesCount = 0;
-  let noCount = 0;
-  
   const keys: (keyof Pick<AccessibilityReport, 'has_ramp' | 'has_elevator' | 'has_accessible_restroom' | 'has_low_threshold' | 'has_wide_door'>)[] = [
     'has_ramp', 'has_elevator', 'has_accessible_restroom', 'has_low_threshold', 'has_wide_door'
   ];
   
-  reports.forEach(report => {
-    keys.forEach(key => {
+  let yesCount = 0; // 양호 판정된 항목 수
+  let noCount = 0;  // 불량 판정된 항목 수
+  
+  keys.forEach(key => {
+    let positiveVotes = 0; // 긍정적 응답 수
+    let negativeVotes = 0; // 부정적 응답 수
+    
+    reports.forEach(report => {
       const value = report[key];
       if (value !== null && value !== undefined) {
-        // 턱(has_low_threshold)은 값을 반전시킴 - 턱이 없으면(false) 좋음(yesCount++)
+        // 턱(has_low_threshold)은 값을 반전시킴 - 턱이 없으면(false) 좋음
         if (key === 'has_low_threshold') {
-          if (value === false) yesCount++;
-          else if (value === true) noCount++;
+          if (value === false) positiveVotes++; // 턱 없음 = 좋음
+          else if (value === true) negativeVotes++; // 턱 있음 = 나쁨
         } else {
-          if (value === true) yesCount++;
-          else if (value === false) noCount++;
+          if (value === true) positiveVotes++; // 있음 = 좋음
+          else if (value === false) negativeVotes++; // 없음 = 나쁨
         }
       }
     });
+    
+    // 해당 항목에 응답이 있는 경우만 판정
+    if (positiveVotes > 0 || negativeVotes > 0) {
+      // 다수결 판정: 긍정이 더 많으면 양호, 동점이거나 부정이 많으면 불량
+      if (positiveVotes > negativeVotes) {
+        yesCount++;
+      } else {
+        noCount++;
+      }
+    }
   });
   
   return {
