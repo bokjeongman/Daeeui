@@ -12,10 +12,14 @@ const ReviewButton = ({ onClick }: ReviewButtonProps) => {
   return (
     <Button
       onClick={onClick}
-      className={`fixed h-14 px-6 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg z-50 font-semibold flex items-center gap-2 ${isMobile ? 'bottom-4 left-4' : 'bottom-24 right-4'}`}
+      className={`fixed h-12 md:h-14 px-5 md:px-6 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg z-50 font-semibold flex items-center gap-2 touch-target ${
+        isMobile 
+          ? 'bottom-6 left-4' 
+          : 'bottom-6 left-6'
+      }`}
     >
       <MessageSquarePlus className="h-5 w-5" />
-      <span>제보</span>
+      <span className="text-sm md:text-base">제보</span>
     </Button>
   );
 };
