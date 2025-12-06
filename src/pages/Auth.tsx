@@ -413,8 +413,9 @@ const Auth = () => {
   }, [initKakao, processKakaoCallback]);
 
   const handleKakaoLogin = () => {
-    // iframe 환경에서는 Kakao SDK가 작동하지 않으므로 직접 URL 리다이렉트 사용
-    const redirectUri = encodeURIComponent(`${window.location.origin}/auth`);
+    // 배포 주소를 사용하여 Kakao 로그인 리다이렉트
+    const deployedUrl = "https://safedd.lovable.app";
+    const redirectUri = encodeURIComponent(`${deployedUrl}/auth`);
     const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_JS_KEY}&redirect_uri=${redirectUri}&response_type=code&scope=profile_nickname,account_email`;
     
     window.location.href = kakaoAuthUrl;
