@@ -86,16 +86,15 @@ export function createDonutMarkerSvg({
     `;
   }
   
-  const uniqueId = `donut-${Date.now()}-${Math.random()}`.replace(/\./g, '_');
+  const uniqueId = `pie-${Date.now()}-${Math.random()}`.replace(/\./g, '_');
   const cx = size / 2;
   const cy = size / 2;
-  const outerRadius = size / 2 - 3;
-  const innerRadius = isCluster ? size / 3 : size / 3;
+  const radius = size / 2 - 3;
   
   const yesPercent = yesCount / total;
   const noPercent = noCount / total;
   
-  // 도넛 차트 세그먼트 생성
+  // 파이 차트 세그먼트 생성 (중앙 구멍 없음)
   let segments = "";
   let startAngle = -90; // 12시 방향에서 시작
   
@@ -106,18 +105,15 @@ export function createDonutMarkerSvg({
     const startRad = (startAngle * Math.PI) / 180;
     const endRad = (endAngle * Math.PI) / 180;
     
-    const x1Outer = cx + outerRadius * Math.cos(startRad);
-    const y1Outer = cy + outerRadius * Math.sin(startRad);
-    const x2Outer = cx + outerRadius * Math.cos(endRad);
-    const y2Outer = cy + outerRadius * Math.sin(endRad);
-    const x1Inner = cx + innerRadius * Math.cos(startRad);
-    const y1Inner = cy + innerRadius * Math.sin(startRad);
-    const x2Inner = cx + innerRadius * Math.cos(endRad);
-    const y2Inner = cy + innerRadius * Math.sin(endRad);
+    const x1 = cx + radius * Math.cos(startRad);
+    const y1 = cy + radius * Math.sin(startRad);
+    const x2 = cx + radius * Math.cos(endRad);
+    const y2 = cy + radius * Math.sin(endRad);
     
     const largeArc = angle > 180 ? 1 : 0;
     
-    segments += `<path d="M${x1Outer},${y1Outer} A${outerRadius},${outerRadius} 0 ${largeArc},1 ${x2Outer},${y2Outer} L${x2Inner},${y2Inner} A${innerRadius},${innerRadius} 0 ${largeArc},0 ${x1Inner},${y1Inner} Z" fill="#22c55e"/>`;
+    // 파이 슬라이스: 중심에서 시작해서 호를 그리고 다시 중심으로
+    segments += `<path d="M${cx},${cy} L${x1},${y1} A${radius},${radius} 0 ${largeArc},1 ${x2},${y2} Z" fill="#22c55e"/>`;
     
     startAngle = endAngle;
   }
@@ -129,43 +125,30 @@ export function createDonutMarkerSvg({
     const startRad = (startAngle * Math.PI) / 180;
     const endRad = (endAngle * Math.PI) / 180;
     
-    const x1Outer = cx + outerRadius * Math.cos(startRad);
-    const y1Outer = cy + outerRadius * Math.sin(startRad);
-    const x2Outer = cx + outerRadius * Math.cos(endRad);
-    const y2Outer = cy + outerRadius * Math.sin(endRad);
-    const x1Inner = cx + innerRadius * Math.cos(startRad);
-    const y1Inner = cy + innerRadius * Math.sin(startRad);
-    const x2Inner = cx + innerRadius * Math.cos(endRad);
-    const y2Inner = cy + innerRadius * Math.sin(endRad);
+    const x1 = cx + radius * Math.cos(startRad);
+    const y1 = cy + radius * Math.sin(startRad);
+    const x2 = cx + radius * Math.cos(endRad);
+    const y2 = cy + radius * Math.sin(endRad);
     
     const largeArc = angle > 180 ? 1 : 0;
     
-    segments += `<path d="M${x1Outer},${y1Outer} A${outerRadius},${outerRadius} 0 ${largeArc},1 ${x2Outer},${y2Outer} L${x2Inner},${y2Inner} A${innerRadius},${innerRadius} 0 ${largeArc},0 ${x1Inner},${y1Inner} Z" fill="#ef4444"/>`;
+    segments += `<path d="M${cx},${cy} L${x1},${y1} A${radius},${radius} 0 ${largeArc},1 ${x2},${y2} Z" fill="#ef4444"/>`;
   }
-  
-  // 중앙 텍스트 (클러스터일 경우 개수, 아니면 비율)
-  const fontSize = isCluster ? (pointCount >= 100 ? 12 : 14) : 10;
-  const displayText = isCluster ? pointCount.toString() : `${Math.round(yesPercent * 100)}%`;
-  const textColor = yesPercent >= 0.5 ? "#16a34a" : "#dc2626";
   
   return `
     <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <filter id="shadow-${uniqueId}" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+          <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
           <feOffset dx="0" dy="2" result="offsetblur"/>
-          <feComponentTransfer><feFuncA type="linear" slope="0.35"/></feComponentTransfer>
+          <feComponentTransfer><feFuncA type="linear" slope="0.3"/></feComponentTransfer>
           <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
       </defs>
-      <!-- 외곽 원 (그림자용) -->
-      <circle cx="${cx}" cy="${cy}" r="${outerRadius}" fill="white" stroke="white" stroke-width="3" filter="url(#shadow-${uniqueId})"/>
-      <!-- 도넛 차트 세그먼트 -->
+      <!-- 외곽 원 (그림자용 + 흰색 테두리) -->
+      <circle cx="${cx}" cy="${cy}" r="${radius}" fill="white" stroke="white" stroke-width="3" filter="url(#shadow-${uniqueId})"/>
+      <!-- 파이 차트 세그먼트 -->
       ${segments}
-      <!-- 중앙 흰색 원 -->
-      <circle cx="${cx}" cy="${cy}" r="${innerRadius}" fill="white"/>
-      <!-- 중앙 텍스트 -->
-      <text x="${cx}" y="${cy + fontSize/3}" font-family="Arial, sans-serif" font-size="${fontSize}" font-weight="bold" fill="${textColor}" text-anchor="middle">${displayText}</text>
     </svg>
   `;
 }
