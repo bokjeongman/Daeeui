@@ -203,6 +203,7 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
         }
       }
 
+      // 자동 승인으로 변경 (status: approved)
       const { error } = await supabase.from("accessibility_reports").insert({
         user_id: user.id,
         location_name: location.trim(),
@@ -217,7 +218,7 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
         photo_urls: photoUrls.length > 0 ? photoUrls : null,
         accessibility_level: "good",
         category: "facility",
-        status: "pending",
+        status: "approved", // 자동 승인
       });
 
       if (error) throw error;
@@ -233,169 +234,167 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
     }
   };
 
-  const ContentBody = () => (
-    <div className="h-full overflow-y-auto overscroll-contain">
-      <div className="space-y-6 pr-2 pb-6">
-        {/* 장소 검색 */}
-        <div className="space-y-2">
-          <Label htmlFor="search" className="font-semibold">장소 검색 *</Label>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="search"
-              placeholder="장소명을 검색하세요"
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="pl-10 pr-10"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchQuery("");
-                  setShowResults(false);
-                }}
-                className="absolute right-3 top-1/2 -translate-y-1/2"
-              >
-                <X className="h-4 w-4 text-muted-foreground" />
-              </button>
-            )}
-          </div>
-
-          {showResults && searchResults.length > 0 && (
-            <div className="border rounded-lg max-h-48 overflow-y-auto">
-              {searchResults.map((result) => (
-                <button
-                  key={result.id}
-                  type="button"
-                  onClick={() => handleSelectPlace(result)}
-                  className="w-full p-3 text-left hover:bg-accent transition-colors border-b last:border-b-0"
-                >
-                  <div className="font-medium">{result.name}</div>
-                  <div className="text-sm text-muted-foreground">{result.address}</div>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {location && (
-            <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
-              <MapPin className="h-4 w-4 text-green-600" />
-              <span className="font-medium text-green-700 dark:text-green-300">{location}</span>
-            </div>
-          )}
-        </div>
-
-        {/* 5개 접근성 항목 */}
-        <div className="space-y-3">
-          <Label className="font-semibold">접근성 정보 *</Label>
-          <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-            <p className="text-sm text-blue-700 dark:text-blue-300">
-              💡 알고 계신 정보만 선택해주세요. 모든 항목을 작성할 필요는 없습니다!
-            </p>
-          </div>
-          
-          {accessibilityItems.map((item) => (
-            <div key={item.key} className="border rounded-lg p-4 bg-card">
-              <div className="flex items-center gap-3 mb-3">
-                <span className="text-xl">{item.icon}</span>
-                <div>
-                  <p className="font-medium">{item.label}</p>
-                  <p className="text-xs text-muted-foreground">{item.description}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  type="button"
-                  variant={accessibilityValues[item.key] === true ? "default" : "outline"}
-                  className={`h-10 ${accessibilityValues[item.key] === true ? "bg-green-500 hover:bg-green-600 text-white" : ""}`}
-                  onClick={() => handleToggle(item.key, true)}
-                >
-                  <Check className="h-4 w-4 mr-2" />
-                  있어요
-                </Button>
-                <Button
-                  type="button"
-                  variant={accessibilityValues[item.key] === false ? "default" : "outline"}
-                  className={`h-10 ${accessibilityValues[item.key] === false ? "bg-red-500 hover:bg-red-600 text-white" : ""}`}
-                  onClick={() => handleToggle(item.key, false)}
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  없어요
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* 추가 후기 */}
-        <div className="space-y-2">
-          <Label htmlFor="details" className="font-semibold">추가 후기 (선택)</Label>
-          <Textarea
-            id="details"
-            placeholder="더 자세한 정보가 있다면 공유해주세요"
-            value={details}
-            onChange={(e) => setDetails(e.target.value)}
-            rows={3}
-            className="resize-none"
-            maxLength={500}
+  const formContent = (
+    <div className="space-y-6 pb-6">
+      {/* 장소 검색 */}
+      <div className="space-y-2">
+        <Label htmlFor="search" className="font-semibold">장소 검색 *</Label>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            id="search"
+            placeholder="장소명을 검색하세요"
+            value={searchQuery}
+            onChange={(e) => handleSearch(e.target.value)}
+            className="pl-10 pr-10"
           />
-          <div className="text-right text-xs text-muted-foreground">{details.length} / 500</div>
-        </div>
-
-        {/* 사진 첨부 */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label className="font-semibold">📸 사진 첨부 (최대 5장)</Label>
-            <span className="text-sm text-green-600">정확한 정보 제공을 위해 추천</span>
-          </div>
-          <div className="border-2 border-dashed border-green-200 dark:border-green-800 rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer bg-green-50/30 dark:bg-green-950/20">
-            <input
-              id="photo-upload-review"
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handlePhotoChange}
-              className="hidden"
-              disabled={photos.length >= 5}
-            />
-            <label htmlFor="photo-upload-review" className="cursor-pointer flex flex-col items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
-                <Upload className="h-6 w-6 text-green-600 dark:text-green-400" />
-              </div>
-              <span className="text-sm text-muted-foreground">
-                클릭하여 사진 선택 (최대 5MB, {photos.length}/5장)
-              </span>
-            </label>
-          </div>
-          {photoPreviews.length > 0 && (
-            <div className="grid grid-cols-3 gap-2 mt-2">
-              {photoPreviews.map((preview, index) => (
-                <div key={index} className="relative aspect-square">
-                  <img
-                    src={preview}
-                    alt={`미리보기 ${index + 1}`}
-                    className="w-full h-full object-cover rounded-lg border"
-                  />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-1 right-1 h-6 w-6"
-                    onClick={() => handleRemovePhoto(index)}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
-              ))}
-            </div>
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery("");
+                setShowResults(false);
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2"
+            >
+              <X className="h-4 w-4 text-muted-foreground" />
+            </button>
           )}
         </div>
+
+        {showResults && searchResults.length > 0 && (
+          <div className="border rounded-lg max-h-48 overflow-y-auto">
+            {searchResults.map((result) => (
+              <button
+                key={result.id}
+                type="button"
+                onClick={() => handleSelectPlace(result)}
+                className="w-full p-3 text-left hover:bg-accent transition-colors border-b last:border-b-0"
+              >
+                <div className="font-medium">{result.name}</div>
+                <div className="text-sm text-muted-foreground">{result.address}</div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {location && (
+          <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+            <MapPin className="h-4 w-4 text-green-600" />
+            <span className="font-medium text-green-700 dark:text-green-300">{location}</span>
+          </div>
+        )}
+      </div>
+
+      {/* 5개 접근성 항목 */}
+      <div className="space-y-3">
+        <Label className="font-semibold">접근성 정보 *</Label>
+        <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+          <p className="text-sm text-blue-700 dark:text-blue-300">
+            💡 알고 계신 정보만 선택해주세요. 모든 항목을 작성할 필요는 없습니다!
+          </p>
+        </div>
+        
+        {accessibilityItems.map((item) => (
+          <div key={item.key} className="border rounded-lg p-4 bg-card">
+            <div className="flex items-center gap-3 mb-3">
+              <span className="text-xl">{item.icon}</span>
+              <div>
+                <p className="font-medium">{item.label}</p>
+                <p className="text-xs text-muted-foreground">{item.description}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant={accessibilityValues[item.key] === true ? "default" : "outline"}
+                className={`h-10 ${accessibilityValues[item.key] === true ? "bg-green-500 hover:bg-green-600 text-white" : ""}`}
+                onClick={() => handleToggle(item.key, true)}
+              >
+                <Check className="h-4 w-4 mr-2" />
+                있어요
+              </Button>
+              <Button
+                type="button"
+                variant={accessibilityValues[item.key] === false ? "default" : "outline"}
+                className={`h-10 ${accessibilityValues[item.key] === false ? "bg-red-500 hover:bg-red-600 text-white" : ""}`}
+                onClick={() => handleToggle(item.key, false)}
+              >
+                <X className="h-4 w-4 mr-2" />
+                없어요
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* 추가 후기 */}
+      <div className="space-y-2">
+        <Label htmlFor="details" className="font-semibold">추가 후기 (선택)</Label>
+        <Textarea
+          id="details"
+          placeholder="더 자세한 정보가 있다면 공유해주세요"
+          value={details}
+          onChange={(e) => setDetails(e.target.value)}
+          rows={3}
+          className="resize-none"
+          maxLength={500}
+        />
+        <div className="text-right text-xs text-muted-foreground">{details.length} / 500</div>
+      </div>
+
+      {/* 사진 첨부 */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="font-semibold">📸 사진 첨부 (최대 5장)</Label>
+          <span className="text-sm text-green-600">정확한 정보 제공을 위해 추천</span>
+        </div>
+        <div className="border-2 border-dashed border-green-200 dark:border-green-800 rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer bg-green-50/30 dark:bg-green-950/20">
+          <input
+            id="photo-upload-review"
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handlePhotoChange}
+            className="hidden"
+            disabled={photos.length >= 5}
+          />
+          <label htmlFor="photo-upload-review" className="cursor-pointer flex flex-col items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
+              <Upload className="h-6 w-6 text-green-600 dark:text-green-400" />
+            </div>
+            <span className="text-sm text-muted-foreground">
+              클릭하여 사진 선택 (최대 5MB, {photos.length}/5장)
+            </span>
+          </label>
+        </div>
+        {photoPreviews.length > 0 && (
+          <div className="grid grid-cols-3 gap-2 mt-2">
+            {photoPreviews.map((preview, index) => (
+              <div key={index} className="relative aspect-square">
+                <img
+                  src={preview}
+                  alt={`미리보기 ${index + 1}`}
+                  className="w-full h-full object-cover rounded-lg border"
+                />
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  className="absolute top-1 right-1 h-6 w-6"
+                  onClick={() => handleRemovePhoto(index)}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 
-  const SubmitButtons = () => (
+  const submitButtons = (
     <div className="flex gap-2 flex-shrink-0 pt-4 border-t bg-background">
       <Button
         type="button"
@@ -429,18 +428,18 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="h-[90vh] flex flex-col">
+        <DrawerContent className="max-h-[90vh] flex flex-col">
           <DrawerHeader className="flex-shrink-0">
             <DrawerTitle className="flex items-center gap-2">
               <MapPin className="h-5 w-5 text-green-600" />
               접근성 정보 제보
             </DrawerTitle>
           </DrawerHeader>
-          <div className="flex-1 min-h-0 overflow-hidden px-4">
-            <ContentBody />
-          </div>
+          <ScrollArea className="flex-1 px-4">
+            {formContent}
+          </ScrollArea>
           <div className="flex-shrink-0 px-4 pb-4">
-            <SubmitButtons />
+            {submitButtons}
           </div>
         </DrawerContent>
       </Drawer>
@@ -449,18 +448,18 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col p-0 overflow-hidden">
+      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col p-0">
         <DialogHeader className="flex-shrink-0 p-6 pb-4">
           <DialogTitle className="flex items-center gap-2">
             <MapPin className="h-5 w-5 text-green-600" />
             접근성 정보 제보
           </DialogTitle>
         </DialogHeader>
-        <div className="flex-1 min-h-0 overflow-hidden px-6">
-          <ContentBody />
-        </div>
+        <ScrollArea className="flex-1 px-6">
+          {formContent}
+        </ScrollArea>
         <div className="flex-shrink-0 p-6 pt-0">
-          <SubmitButtons />
+          {submitButtons}
         </div>
       </DialogContent>
     </Dialog>
