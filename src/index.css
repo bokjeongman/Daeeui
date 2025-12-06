@@ -137,6 +137,7 @@ All colors MUST be HSL.
   .touch-target {
     min-height: 44px;
     min-width: 44px;
+    -webkit-tap-highlight-color: transparent;
   }
   
   /* Better scrolling for mobile */
@@ -152,5 +153,20 @@ All colors MUST be HSL.
   /* Ensure buttons are always visible on small screens */
   .btn-responsive {
     @apply h-11 w-11 sm:h-12 sm:w-12 md:h-14 md:w-14;
+  }
+  
+  /* Mobile touch optimization */
+  @media (hover: none) and (pointer: coarse) {
+    button, 
+    [role="button"],
+    .touch-target {
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    
+    /* Faster click response on mobile */
+    * {
+      touch-action: manipulation;
+    }
   }
 }
