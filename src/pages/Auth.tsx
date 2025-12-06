@@ -22,10 +22,9 @@ declare global {
       init: (key: string) => void;
       isInitialized: () => boolean;
       Auth: {
-        login: (options: {
-          success: (authObj: { access_token: string }) => void;
-          fail: (err: any) => void;
-        }) => void;
+        authorize: (options: { redirectUri: string; scope?: string }) => void;
+        setAccessToken: (token: string) => void;
+        getAccessToken: () => string | null;
       };
       API: {
         request: (options: {
@@ -129,7 +128,7 @@ const Auth = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  const checkNicknameAndRedirect = async (userId: string) => {
+  const checkNicknameAndRedirect = useCallback(async (userId: string) => {
     const { data: profile } = await supabase
       .from("profiles")
       .select("nickname")
@@ -142,7 +141,7 @@ const Auth = () => {
     } else {
       navigate("/");
     }
-  };
+  }, [navigate]);
 
   const handleNicknameComplete = () => {
     setShowNicknameModal(false);
@@ -294,112 +293,138 @@ const Auth = () => {
     }
   }, []);
 
-  useEffect(() => {
-    initKakao();
-  }, [initKakao]);
-
-  const handleKakaoLogin = async () => {
+  // 카카오 로그인 콜백 처리
+  const processKakaoCallback = useCallback(async () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get("code");
+    
+    if (!code) return;
+    
+    // URL에서 code 파라미터 제거
+    const newUrl = window.location.pathname;
+    window.history.replaceState({}, "", newUrl);
+    
     setIsLoading(true);
     
     try {
-      initKakao();
+      // 인가 코드로 토큰 요청
+      const tokenResponse = await fetch("https://kauth.kakao.com/oauth/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          client_id: KAKAO_JS_KEY,
+          redirect_uri: `${window.location.origin}/auth`,
+          code: code,
+        }),
+      });
       
-      if (!window.Kakao || !window.Kakao.isInitialized()) {
-        toast.error("카카오 SDK 로드에 실패했습니다. 페이지를 새로고침해주세요.");
+      const tokenData = await tokenResponse.json();
+      
+      if (tokenData.error) {
+        toast.error("카카오 인증에 실패했습니다.");
+        setIsLoading(false);
+        return;
+      }
+      
+      // 토큰으로 사용자 정보 요청
+      const userResponse = await fetch("https://kapi.kakao.com/v2/user/me", {
+        headers: {
+          Authorization: `Bearer ${tokenData.access_token}`,
+        },
+      });
+      
+      const userData = await userResponse.json();
+      
+      const kakaoEmail = userData.kakao_account?.email;
+      const kakaoId = userData.id;
+      const kakaoNickname = userData.properties?.nickname || userData.kakao_account?.profile?.nickname;
+
+      if (!kakaoEmail) {
+        toast.error("카카오 계정에 이메일이 없습니다. 이메일 제공에 동의해주세요.");
         setIsLoading(false);
         return;
       }
 
-      window.Kakao.Auth.login({
-        success: async (authObj) => {
-          // 카카오 사용자 정보 가져오기
-          window.Kakao.API.request({
-            url: "/v2/user/me",
-            success: async (res) => {
-              const kakaoEmail = res.kakao_account?.email;
-              const kakaoId = res.id;
-              const kakaoNickname = res.properties?.nickname || res.kakao_account?.profile?.nickname;
+      // 카카오 ID를 사용한 고유 비밀번호 생성
+      const kakaoPassword = `kakao_${kakaoId}_secure_password_${KAKAO_JS_KEY.slice(0, 8)}`;
 
-              if (!kakaoEmail) {
-                toast.error("카카오 계정에 이메일이 없습니다. 이메일 제공에 동의해주세요.");
-                setIsLoading(false);
-                return;
-              }
-
-              // 카카오 ID를 사용한 고유 비밀번호 생성
-              const kakaoPassword = `kakao_${kakaoId}_secure_password_${KAKAO_JS_KEY.slice(0, 8)}`;
-
-              // 먼저 로그인 시도
-              const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-                email: kakaoEmail,
-                password: kakaoPassword,
-              });
-
-              if (signInData?.user) {
-                // 기존 사용자 로그인 성공
-                setRecentLoginMethod("kakao");
-                toast.success("카카오 로그인 성공!");
-                await checkNicknameAndRedirect(signInData.user.id);
-              } else {
-                // 신규 사용자 - 회원가입 진행
-                const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-                  email: kakaoEmail,
-                  password: kakaoPassword,
-                  options: {
-                    emailRedirectTo: `${window.location.origin}/`,
-                    data: {
-                      provider: "kakao",
-                      kakao_id: kakaoId,
-                    },
-                  },
-                });
-
-                if (signUpError) {
-                  if (signUpError.message.includes("already registered")) {
-                    toast.error("이미 다른 방법으로 가입된 이메일입니다.");
-                  } else {
-                    toast.error("회원가입에 실패했습니다.");
-                    if (import.meta.env.DEV) console.error("회원가입 오류:", signUpError);
-                  }
-                  setIsLoading(false);
-                  return;
-                }
-
-                if (signUpData?.user) {
-                  setRecentLoginMethod("kakao");
-                  
-                  // 카카오 닉네임이 있으면 프로필에 저장
-                  if (kakaoNickname) {
-                    await supabase
-                      .from("profiles")
-                      .update({ nickname: kakaoNickname })
-                      .eq("id", signUpData.user.id);
-                  }
-
-                  toast.success("카카오 계정으로 회원가입되었습니다!");
-                  await checkNicknameAndRedirect(signUpData.user.id);
-                }
-              }
-              setIsLoading(false);
-            },
-            fail: (err) => {
-              if (import.meta.env.DEV) console.error("카카오 사용자 정보 조회 실패:", err);
-              toast.error("카카오 사용자 정보를 가져오는데 실패했습니다.");
-              setIsLoading(false);
-            },
-          });
-        },
-        fail: (err) => {
-          if (import.meta.env.DEV) console.error("카카오 로그인 실패:", err);
-          toast.error("카카오 로그인에 실패했습니다.");
-          setIsLoading(false);
-        },
+      // 먼저 로그인 시도
+      const { data: signInData } = await supabase.auth.signInWithPassword({
+        email: kakaoEmail,
+        password: kakaoPassword,
       });
+
+      if (signInData?.user) {
+        setRecentLoginMethod("kakao");
+        toast.success("카카오 로그인 성공!");
+        await checkNicknameAndRedirect(signInData.user.id);
+      } else {
+        // 신규 사용자 - 회원가입 진행
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: kakaoEmail,
+          password: kakaoPassword,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+            data: {
+              provider: "kakao",
+              kakao_id: kakaoId,
+            },
+          },
+        });
+
+        if (signUpError) {
+          if (signUpError.message.includes("already registered")) {
+            toast.error("이미 다른 방법으로 가입된 이메일입니다.");
+          } else {
+            toast.error("회원가입에 실패했습니다.");
+          }
+          setIsLoading(false);
+          return;
+        }
+
+        if (signUpData?.user) {
+          setRecentLoginMethod("kakao");
+          
+          if (kakaoNickname) {
+            await supabase
+              .from("profiles")
+              .update({ nickname: kakaoNickname })
+              .eq("id", signUpData.user.id);
+          }
+
+          toast.success("카카오 계정으로 회원가입되었습니다!");
+          await checkNicknameAndRedirect(signUpData.user.id);
+        }
+      }
     } catch (error) {
-      if (import.meta.env.DEV) console.error("카카오 로그인 오류:", error);
-      toast.error("오류가 발생했습니다.");
+      if (import.meta.env.DEV) console.error("카카오 로그인 처리 오류:", error);
+      toast.error("카카오 로그인 처리 중 오류가 발생했습니다.");
+    } finally {
       setIsLoading(false);
     }
+  }, [checkNicknameAndRedirect]);
+
+  useEffect(() => {
+    initKakao();
+    processKakaoCallback();
+  }, [initKakao, processKakaoCallback]);
+
+  const handleKakaoLogin = () => {
+    initKakao();
+    
+    if (!window.Kakao || !window.Kakao.isInitialized()) {
+      toast.error("카카오 SDK 로드에 실패했습니다. 페이지를 새로고침해주세요.");
+      return;
+    }
+
+    // 카카오 로그인 페이지로 리다이렉트
+    window.Kakao.Auth.authorize({
+      redirectUri: `${window.location.origin}/auth`,
+      scope: "profile_nickname,account_email",
+    });
   };
 
   const RecentBadge = () => (
