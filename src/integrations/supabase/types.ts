@@ -230,10 +230,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_nickname_exists: {
+        Args: { check_nickname: string }
+        Returns: boolean
+      }
       find_email_by_nickname: {
         Args: { search_nickname: string }
         Returns: string
       }
+      get_public_nickname: { Args: { profile_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
