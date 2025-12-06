@@ -313,19 +313,27 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect, onSuccess }: ReviewMod
               <Button
                 type="button"
                 variant={accessibilityValues[item.key] === true ? "default" : "outline"}
-                className={`h-10 ${accessibilityValues[item.key] === true ? "bg-green-500 hover:bg-green-600 text-white" : ""}`}
+                className={`h-10 ${accessibilityValues[item.key] === true 
+                  ? item.inverted 
+                    ? "bg-red-500 hover:bg-red-600 text-white" 
+                    : "bg-green-500 hover:bg-green-600 text-white" 
+                  : ""}`}
                 onClick={() => handleToggle(item.key, true)}
               >
-                <Check className="h-4 w-4 mr-2" />
+                {item.inverted ? <X className="h-4 w-4 mr-2" /> : <Check className="h-4 w-4 mr-2" />}
                 있어요
               </Button>
               <Button
                 type="button"
                 variant={accessibilityValues[item.key] === false ? "default" : "outline"}
-                className={`h-10 ${accessibilityValues[item.key] === false ? "bg-red-500 hover:bg-red-600 text-white" : ""}`}
+                className={`h-10 ${accessibilityValues[item.key] === false 
+                  ? item.inverted 
+                    ? "bg-green-500 hover:bg-green-600 text-white" 
+                    : "bg-red-500 hover:bg-red-600 text-white" 
+                  : ""}`}
                 onClick={() => handleToggle(item.key, false)}
               >
-                <X className="h-4 w-4 mr-2" />
+                {item.inverted ? <Check className="h-4 w-4 mr-2" /> : <X className="h-4 w-4 mr-2" />}
                 없어요
               </Button>
             </div>
