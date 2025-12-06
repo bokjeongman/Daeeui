@@ -1177,6 +1177,7 @@ const MapView = ({
 
   // 마지막으로 요청한 경로 정보 저장 (중복 호출 방지)
   const lastRouteRequestRef = useRef<string>("");
+  const lastClearKeyRef = useRef<number | undefined>(undefined);
 
   // 도보 경로 탐색 (TMap API 1회만 호출)
   useEffect(() => {
@@ -1193,6 +1194,12 @@ const MapView = ({
       arrowMarkersRef.current.forEach(marker => marker.setMap(null));
       arrowMarkersRef.current = [];
     };
+
+    // clearKey가 변경되면 경로 캐시 초기화 (출발지/도착지 교체 시)
+    if (clearKey !== lastClearKeyRef.current) {
+      lastClearKeyRef.current = clearKey;
+      lastRouteRequestRef.current = "";
+    }
 
     // endPoint가 없거나 selectedRouteType이 없으면 경로 제거
     if (!endPoint || !selectedRouteType) {
