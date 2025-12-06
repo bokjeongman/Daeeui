@@ -81,34 +81,54 @@ serve(async (req: Request) => {
 
     console.log(`Tmap API response status: ${response.status}`);
     
-    // 응답 텍스트를 먼저 가져와서 안전하게 파싱
-    const responseText = await response.text();
-    
-    // 빈 응답 처리
-    if (!responseText || responseText.trim() === "") {
-      console.error("Tmap API returned empty response");
-      return new Response(
-        JSON.stringify({ error: "Empty response from Tmap API", searchPoiInfo: { pois: { poi: [] } } }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    // JSON 파싱 시도
-    let data;
+    // 응답을 JSON으로 직접 파싱 시도
     try {
-      data = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error("Failed to parse Tmap response:", responseText.substring(0, 200));
-      return new Response(
-        JSON.stringify({ error: "Invalid JSON from Tmap API", rawResponse: responseText.substring(0, 100) }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      const data = await response.json();
+      return new Response(JSON.stringify(data), {
+        status: response.status,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    } catch (jsonError) {
+      // JSON 파싱 실패 시 텍스트로 읽어서 다시 시도
+      console.error("Direct JSON parse failed, trying text approach");
+      
+      // 새로운 요청으로 다시 시도 (response body는 한 번만 읽을 수 있음)
+      const retryResponse = await fetch(url, {
+        method,
+        headers,
+        body: requestBody,
+      });
+      
+      const responseText = await retryResponse.text();
+      
+      if (!responseText || responseText.trim() === "") {
+        return new Response(
+          JSON.stringify({ error: "Empty response from Tmap API" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      // 텍스트를 정리하고 파싱
+      const cleanedText = responseText.trim();
+      try {
+        const data = JSON.parse(cleanedText);
+        return new Response(JSON.stringify(data), {
+          status: retryResponse.status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      } catch (parseError) {
+        console.error("Failed to parse cleaned response, length:", cleanedText.length);
+        // 그래도 실패하면 빈 결과 반환
+        return new Response(
+          JSON.stringify({ 
+            error: "JSON parse error", 
+            searchPoiInfo: { pois: { poi: [] } },
+            features: []
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
-
-    return new Response(JSON.stringify(data), {
-      status: response.status,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.error("Tmap proxy error:", errorMessage);
