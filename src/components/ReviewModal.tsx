@@ -1,15 +1,16 @@
 import { useState, useEffect } from "react";
-import { MapPin, Upload, X, Search } from "lucide-react";
+import { MapPin, Upload, X, Search, Check, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { z } from "zod";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ReviewModalProps {
   open: boolean;
@@ -17,86 +18,112 @@ interface ReviewModalProps {
   onPlaceSelect?: (lat: number, lon: number) => void;
 }
 
-const reportSchema = z.object({
-  location_name: z.string().trim().min(1, "장소명을 입력해주세요.").max(200, "장소명은 200자 이하여야 합니다."),
-  latitude: z.number().min(-90, "위도는 -90에서 90 사이여야 합니다.").max(90, "위도는 -90에서 90 사이여야 합니다."),
-  longitude: z
-    .number()
-    .min(-180, "경도는 -180에서 180 사이여야 합니다.")
-    .max(180, "경도는 -180에서 180 사이여야 합니다."),
-  accessibility_level: z.enum(["good", "moderate", "difficult"], {
-    errorMap: () => ({ message: "접근성 수준을 선택해주세요." }),
-  }),
-  category: z.string().trim().min(1, "카테고리를 선택해주세요.").max(50, "카테고리는 50자 이하여야 합니다."),
-  details: z.string().trim().min(1, "상세 내용을 입력해주세요.").max(2000, "상세 내용은 2000자 이하여야 합니다."),
-});
+interface AccessibilityItem {
+  key: string;
+  label: string;
+  description: string;
+  icon: string;
+}
+
+const accessibilityItems: AccessibilityItem[] = [
+  { key: 'has_ramp', label: '경사로', description: '휠체어 접근 가능한 경사로', icon: '♿' },
+  { key: 'has_elevator', label: '엘리베이터', description: '층간 이동을 위한 승강기', icon: '🛗' },
+  { key: 'has_accessible_restroom', label: '장애인 화장실', description: '장애인 전용 화장실 시설', icon: '🚻' },
+  { key: 'has_low_threshold', label: '턱 (없음이 좋음)', description: '출입구나 내부의 단차', icon: '⚠️' },
+  { key: 'has_wide_door', label: '넓은 출입문', description: '휠체어 통과 가능한 출입문', icon: '🚪' },
+];
 
 const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) => {
+  const isMobile = useIsMobile();
+  const navigate = useNavigate();
+  
   const [location, setLocation] = useState("");
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
-  const [accessibility, setAccessibility] = useState("");
-  const [category, setCategory] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showResults, setShowResults] = useState(false);
+  
+  const [accessibilityValues, setAccessibilityValues] = useState<Record<string, boolean | null>>({
+    has_ramp: null,
+    has_elevator: null,
+    has_accessible_restroom: null,
+    has_low_threshold: null,
+    has_wide_door: null,
+  });
   const [details, setDetails] = useState("");
   const [photos, setPhotos] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [showResults, setShowResults] = useState(false);
-  const navigate = useNavigate();
 
   useEffect(() => {
     const checkUser = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user ?? null);
     };
     checkUser();
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       setUser(session?.user ?? null);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
+  const resetForm = () => {
+    setLocation("");
+    setLatitude("");
+    setLongitude("");
+    setSearchQuery("");
+    setSearchResults([]);
+    setShowResults(false);
+    setAccessibilityValues({
+      has_ramp: null,
+      has_elevator: null,
+      has_accessible_restroom: null,
+      has_low_threshold: null,
+      has_wide_door: null,
+    });
+    setDetails("");
+    setPhotos([]);
+    photoPreviews.forEach(url => URL.revokeObjectURL(url));
+    setPhotoPreviews([]);
+  };
+
+  const handleToggle = (key: string, value: boolean) => {
+    setAccessibilityValues(prev => ({
+      ...prev,
+      [key]: prev[key] === value ? null : value
+    }));
+  };
+
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-
-    // 최대 5장까지만 허용
     if (photos.length + files.length > 5) {
       toast.error("사진은 최대 5장까지 업로드할 수 있습니다.");
       return;
     }
-
-    // 각 파일 크기 체크
     for (const file of files) {
       if (file.size > 5 * 1024 * 1024) {
         toast.error("각 사진의 크기는 5MB 이하여야 합니다.");
         return;
       }
     }
-
-    setPhotos((prev) => [...prev, ...files]);
-    setPhotoPreviews((prev) => [...prev, ...files.map((file) => URL.createObjectURL(file))]);
+    setPhotos(prev => [...prev, ...files]);
+    setPhotoPreviews(prev => [...prev, ...files.map(file => URL.createObjectURL(file))]);
   };
 
   const handleRemovePhoto = (index: number) => {
-    setPhotos((prev) => prev.filter((_, i) => i !== index));
+    setPhotos(prev => prev.filter((_, i) => i !== index));
     if (photoPreviews[index]) {
       URL.revokeObjectURL(photoPreviews[index]);
     }
-    setPhotoPreviews((prev) => prev.filter((_, i) => i !== index));
+    setPhotoPreviews(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSearch = async (query: string) => {
     setSearchQuery(query);
-
     if (!query.trim()) {
       setSearchResults([]);
       setShowResults(false);
@@ -114,7 +141,6 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
       );
 
       const data = await response.json();
-
       if (data.searchPoiInfo?.pois?.poi) {
         const results = data.searchPoiInfo.pois.poi.map((poi: any, index: number) => ({
           id: index,
@@ -138,65 +164,41 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
     setLongitude(place.lon.toString());
     setShowResults(false);
     setSearchQuery("");
-
-    // 지도를 선택한 장소로 이동
     if (onPlaceSelect) {
       onPlaceSelect(place.lat, place.lon);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const handleSubmit = async () => {
     if (!user) {
       toast.error("로그인이 필요합니다.");
       navigate("/auth");
       return;
     }
 
+    if (!location || !latitude || !longitude) {
+      toast.error("장소를 검색하여 선택해주세요.");
+      return;
+    }
+
+    const hasAnySelection = Object.values(accessibilityValues).some(v => v !== null);
+    if (!hasAnySelection && !details.trim()) {
+      toast.error("접근성 정보나 후기를 작성해주세요.");
+      return;
+    }
+
     try {
-      // Parse and validate coordinates
-      const lat = parseFloat(latitude);
-      const lon = parseFloat(longitude);
-
-      if (isNaN(lat) || isNaN(lon)) {
-        toast.error("올바른 좌표를 입력해주세요.");
-        return;
-      }
-
-      // Validate all input
-      const validationResult = reportSchema.safeParse({
-        location_name: location,
-        latitude: lat,
-        longitude: lon,
-        accessibility_level: accessibility,
-        category: category,
-        details: details,
-      });
-
-      if (!validationResult.success) {
-        const firstError = validationResult.error.errors[0];
-        toast.error(firstError.message);
-        return;
-      }
-
       setIsSubmitting(true);
 
-      // Upload photos if provided
+      // Upload photos
       const photoUrls: string[] = [];
       if (photos.length > 0) {
         for (const photo of photos) {
           const fileExt = photo.name.split(".").pop();
           const fileName = `${user.id}/${Date.now()}_${Math.random()}.${fileExt}`;
-
           const { error: uploadError } = await supabase.storage.from("accessibility-photos").upload(fileName, photo);
-
           if (uploadError) throw uploadError;
-
-          const {
-            data: { publicUrl },
-          } = supabase.storage.from("accessibility-photos").getPublicUrl(fileName);
-
+          const { data: { publicUrl } } = supabase.storage.from("accessibility-photos").getPublicUrl(fileName);
           photoUrls.push(publicUrl);
         }
       }
@@ -204,33 +206,25 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
       const { error } = await supabase.from("accessibility_reports").insert({
         user_id: user.id,
         location_name: location.trim(),
-        latitude: lat,
-        longitude: lon,
-        accessibility_level: accessibility,
-        category: category.trim(),
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude),
+        has_ramp: accessibilityValues.has_ramp,
+        has_elevator: accessibilityValues.has_elevator,
+        has_accessible_restroom: accessibilityValues.has_accessible_restroom,
+        has_low_threshold: accessibilityValues.has_low_threshold,
+        has_wide_door: accessibilityValues.has_wide_door,
         details: details.trim() || null,
-        photo_urls: photoUrls,
+        photo_urls: photoUrls.length > 0 ? photoUrls : null,
+        accessibility_level: "good",
+        category: "facility",
         status: "pending",
       });
 
       if (error) throw error;
 
-      toast.success("제보가 성공적으로 등록되었습니다. 관리자 승인 후 지도에 표시됩니다.");
+      toast.success("제보가 성공적으로 등록되었습니다!");
       onOpenChange(false);
-
-      // 폼 초기화
-      setLocation("");
-      setLatitude("");
-      setLongitude("");
-      setAccessibility("");
-      setCategory("");
-      setDetails("");
-      setSearchQuery("");
-      setSearchResults([]);
-      setShowResults(false);
-      setPhotos([]);
-      photoPreviews.forEach((url) => URL.revokeObjectURL(url));
-      setPhotoPreviews([]);
+      resetForm();
     } catch (error: any) {
       if (import.meta.env.DEV) console.error("제보 등록 실패:", error);
       toast.error("제보 등록에 실패했습니다. 다시 시도해주세요.");
@@ -239,221 +233,234 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
     }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader className="flex-shrink-0">
-          <DialogTitle className="text-xl font-bold">휠체어 접근성 정보 제보</DialogTitle>
-        </DialogHeader>
+  const ContentBody = () => (
+    <ScrollArea className="h-full">
+      <div className="space-y-6 pr-2 pb-6">
+        {/* 장소 검색 */}
+        <div className="space-y-2">
+          <Label htmlFor="search" className="font-semibold">장소 검색 *</Label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="search"
+              placeholder="장소명을 검색하세요"
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              className="pl-10 pr-10"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setShowResults(false);
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2"
+              >
+                <X className="h-4 w-4 text-muted-foreground" />
+              </button>
+            )}
+          </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto overscroll-contain space-y-6 pr-1">
-          {/* 장소 검색 */}
-          <div className="space-y-2">
-            <Label htmlFor="search">장소 검색 *</Label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="search"
-                placeholder="장소명을 검색하세요"
-                value={searchQuery}
-                onChange={(e) => handleSearch(e.target.value)}
-                className="pl-10 pr-10"
-              />
-              {searchQuery && (
+          {showResults && searchResults.length > 0 && (
+            <div className="border rounded-lg max-h-48 overflow-y-auto">
+              {searchResults.map((result) => (
                 <button
+                  key={result.id}
                   type="button"
-                  onClick={() => {
-                    setSearchQuery("");
-                    setShowResults(false);
-                  }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                  onClick={() => handleSelectPlace(result)}
+                  className="w-full p-3 text-left hover:bg-accent transition-colors border-b last:border-b-0"
                 >
-                  <X className="h-4 w-4 text-muted-foreground" />
+                  <div className="font-medium">{result.name}</div>
+                  <div className="text-sm text-muted-foreground">{result.address}</div>
                 </button>
-              )}
-            </div>
-
-            {/* 검색 결과 */}
-            {showResults && searchResults.length > 0 && (
-              <div className="border rounded-lg max-h-60 overflow-y-auto">
-                {searchResults.map((result) => (
-                  <button
-                    key={result.id}
-                    type="button"
-                    onClick={() => handleSelectPlace(result)}
-                    className="w-full p-3 text-left hover:bg-accent transition-colors border-b last:border-b-0"
-                  >
-                    <div className="font-medium">{result.name}</div>
-                    <div className="text-sm text-muted-foreground">{result.address}</div>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* 선택된 장소 표시 */}
-            {location && (
-              <div className="flex items-center gap-2 p-3 bg-accent rounded-lg">
-                <MapPin className="h-4 w-4 text-primary" />
-                <span className="font-medium">{location}</span>
-              </div>
-            )}
-          </div>
-
-          {/* 접근성 선택 */}
-          <div className="space-y-2">
-            <Label htmlFor="accessibility">접근성 선택 *</Label>
-            <Select value={accessibility} onValueChange={setAccessibility}>
-              <SelectTrigger id="accessibility">
-                <SelectValue placeholder="선택하세요" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="good" className="hover:!bg-green-100 dark:hover:!bg-green-900/30 data-[highlighted]:!bg-green-100 dark:data-[highlighted]:!bg-green-900/30">
-                  <span className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-green-500" />
-                    양호
-                  </span>
-                </SelectItem>
-                <SelectItem value="moderate" className="hover:!bg-yellow-100 dark:hover:!bg-yellow-900/30 data-[highlighted]:!bg-yellow-100 dark:data-[highlighted]:!bg-yellow-900/30">
-                  <span className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-yellow-500" />
-                    보통
-                  </span>
-                </SelectItem>
-                <SelectItem value="difficult" className="hover:!bg-red-100 dark:hover:!bg-red-900/30 data-[highlighted]:!bg-red-100 dark:data-[highlighted]:!bg-red-900/30">
-                  <span className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-red-500" />
-                    어려움
-                  </span>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* 분류 종류 */}
-          <div className="space-y-2">
-            <Label htmlFor="category">분류 종류 *</Label>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger id="category">
-                <SelectValue placeholder="선택하세요" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ramp">경사로</SelectItem>
-                <SelectItem value="elevator">엘리베이터</SelectItem>
-                <SelectItem value="curb">턱</SelectItem>
-                <SelectItem value="stairs">계단</SelectItem>
-                <SelectItem value="parking">주차장</SelectItem>
-                <SelectItem value="restroom">화장실</SelectItem>
-                <SelectItem value="entrance">출입구</SelectItem>
-                <SelectItem value="other">기타</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* 기타 선택 시 구체적 내용 입력 */}
-          {category === "other" && (
-            <div className="space-y-2">
-              <Label htmlFor="otherDetails">기타 분류 상세 내용 *</Label>
-              <Textarea
-                id="otherDetails"
-                placeholder="어떤 종류의 접근성 정보인지 구체적으로 입력해주세요"
-                value={details}
-                onChange={(e) => setDetails(e.target.value)}
-                rows={3}
-                className="border-primary/50"
-              />
+              ))}
             </div>
           )}
 
-          {/* 상세 설명 */}
-          <div className="space-y-2">
-            <Label htmlFor="details">{category === "other" ? "추가 설명 (선택)" : "상세 설명 (선택)"}</Label>
-            <Textarea
-              id="details"
-              placeholder="접근성에 대한 상세한 설명을 입력해주세요"
-              value={category === "other" ? "" : details}
-              onChange={(e) => {
-                if (category !== "other") {
-                  setDetails(e.target.value);
-                }
-              }}
-              rows={4}
-              disabled={category === "other"}
-              className={category === "other" ? "hidden" : ""}
-            />
-          </div>
-
-          {/* 사진 첨부 */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="photo" className="text-base font-semibold">
-                📸 사진 첨부 (최대 5장)
-              </Label>
-              <span className="text-sm text-green-600 font-medium">정확한 정보 제공을 위해 추천</span>
+          {location && (
+            <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+              <MapPin className="h-4 w-4 text-green-600" />
+              <span className="font-medium text-green-700 dark:text-green-300">{location}</span>
             </div>
-            <div className="border-2 border-dashed border-green-200 rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer bg-green-50/30">
-              <input
-                id="photo"
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handlePhotoChange}
-                className="hidden"
-                disabled={photos.length >= 5}
-              />
-              <label htmlFor="photo" className="cursor-pointer flex flex-col items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
-                  <Upload className="h-8 w-8 text-green-600" />
+          )}
+        </div>
+
+        {/* 5개 접근성 항목 */}
+        <div className="space-y-3">
+          <Label className="font-semibold">접근성 정보 *</Label>
+          <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              💡 알고 계신 정보만 선택해주세요. 모든 항목을 작성할 필요는 없습니다!
+            </p>
+          </div>
+          
+          {accessibilityItems.map((item) => (
+            <div key={item.key} className="border rounded-lg p-4 bg-card">
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-xl">{item.icon}</span>
+                <div>
+                  <p className="font-medium">{item.label}</p>
+                  <p className="text-xs text-muted-foreground">{item.description}</p>
                 </div>
-                <span className="text-sm text-muted-foreground">
-                  클릭하여 사진 선택 (최대 5MB, {photos.length}/5장)
-                </span>
-              </label>
-            </div>
-
-            {photoPreviews.length > 0 && (
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                {photoPreviews.map((preview, index) => (
-                  <div key={index} className="relative">
-                    <img
-                      src={preview}
-                      alt={`미리보기 ${index + 1}`}
-                      className="w-full h-32 object-cover rounded-lg border"
-                    />
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="icon"
-                      className="absolute top-1 right-1 h-6 w-6"
-                      onClick={() => handleRemovePhoto(index)}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ))}
               </div>
-            )}
-          </div>
-        </form>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={accessibilityValues[item.key] === true ? "default" : "outline"}
+                  className={`h-10 ${accessibilityValues[item.key] === true ? "bg-green-500 hover:bg-green-600 text-white" : ""}`}
+                  onClick={() => handleToggle(item.key, true)}
+                >
+                  <Check className="h-4 w-4 mr-2" />
+                  있어요
+                </Button>
+                <Button
+                  type="button"
+                  variant={accessibilityValues[item.key] === false ? "default" : "outline"}
+                  className={`h-10 ${accessibilityValues[item.key] === false ? "bg-red-500 hover:bg-red-600 text-white" : ""}`}
+                  onClick={() => handleToggle(item.key, false)}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  없어요
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
 
-        <div className="flex gap-2 flex-shrink-0 pt-4 border-t">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            className="flex-1 h-12 touch-manipulation active:scale-[0.98]"
-            disabled={isSubmitting}
-          >
-            취소
-          </Button>
-          <Button 
-            type="submit" 
-            form="review-form"
-            className="flex-1 h-12 touch-manipulation active:scale-[0.98]" 
-            disabled={isSubmitting}
-            onClick={handleSubmit}
-          >
-            {isSubmitting ? "제출 중..." : "제출하기"}
-          </Button>
+        {/* 추가 후기 */}
+        <div className="space-y-2">
+          <Label htmlFor="details" className="font-semibold">추가 후기 (선택)</Label>
+          <Textarea
+            id="details"
+            placeholder="더 자세한 정보가 있다면 공유해주세요"
+            value={details}
+            onChange={(e) => setDetails(e.target.value)}
+            rows={3}
+            className="resize-none"
+            maxLength={500}
+          />
+          <div className="text-right text-xs text-muted-foreground">{details.length} / 500</div>
+        </div>
+
+        {/* 사진 첨부 */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label className="font-semibold">📸 사진 첨부 (최대 5장)</Label>
+            <span className="text-sm text-green-600">정확한 정보 제공을 위해 추천</span>
+          </div>
+          <div className="border-2 border-dashed border-green-200 dark:border-green-800 rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer bg-green-50/30 dark:bg-green-950/20">
+            <input
+              id="photo-upload-review"
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handlePhotoChange}
+              className="hidden"
+              disabled={photos.length >= 5}
+            />
+            <label htmlFor="photo-upload-review" className="cursor-pointer flex flex-col items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                <Upload className="h-6 w-6 text-green-600 dark:text-green-400" />
+              </div>
+              <span className="text-sm text-muted-foreground">
+                클릭하여 사진 선택 (최대 5MB, {photos.length}/5장)
+              </span>
+            </label>
+          </div>
+          {photoPreviews.length > 0 && (
+            <div className="grid grid-cols-3 gap-2 mt-2">
+              {photoPreviews.map((preview, index) => (
+                <div key={index} className="relative aspect-square">
+                  <img
+                    src={preview}
+                    alt={`미리보기 ${index + 1}`}
+                    className="w-full h-full object-cover rounded-lg border"
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-1 right-1 h-6 w-6"
+                    onClick={() => handleRemovePhoto(index)}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </ScrollArea>
+  );
+
+  const SubmitButtons = () => (
+    <div className="flex gap-2 flex-shrink-0 pt-4 border-t bg-background">
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => onOpenChange(false)}
+        className="flex-1 h-12"
+        disabled={isSubmitting}
+      >
+        취소
+      </Button>
+      <Button
+        onClick={handleSubmit}
+        className="flex-1 h-12 bg-green-500 hover:bg-green-600 text-white"
+        disabled={isSubmitting}
+      >
+        {isSubmitting ? (
+          <>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            제출 중...
+          </>
+        ) : (
+          <>
+            <Check className="h-4 w-4 mr-2" />
+            제출하기
+          </>
+        )}
+      </Button>
+    </div>
+  );
+
+  if (isMobile) {
+    return (
+      <Drawer open={open} onOpenChange={onOpenChange}>
+        <DrawerContent className="h-[90vh] flex flex-col">
+          <DrawerHeader className="flex-shrink-0">
+            <DrawerTitle className="flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-green-600" />
+              접근성 정보 제보
+            </DrawerTitle>
+          </DrawerHeader>
+          <div className="flex-1 min-h-0 px-4">
+            <ContentBody />
+          </div>
+          <div className="px-4 pb-4">
+            <SubmitButtons />
+          </div>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col p-0">
+        <DialogHeader className="flex-shrink-0 p-6 pb-4">
+          <DialogTitle className="flex items-center gap-2">
+            <MapPin className="h-5 w-5 text-green-600" />
+            접근성 정보 제보
+          </DialogTitle>
+        </DialogHeader>
+        <div className="flex-1 min-h-0 px-6">
+          <ContentBody />
+        </div>
+        <div className="p-6 pt-0">
+          <SubmitButtons />
         </div>
       </DialogContent>
     </Dialog>

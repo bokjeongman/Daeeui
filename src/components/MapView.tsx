@@ -7,7 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import RoadView from "./RoadView";
 import { useGeolocationWatch } from "@/hooks/useGeolocationWatch";
 import { useAccessibilityMarkerCluster, AccessibilityReport, AccessibilityFilter, AccessibilityClusterFeature } from "@/hooks/useAccessibilityMarkerCluster";
-import { createDonutMarkerSvg, createClusterDonutMarker } from "./DonutMarker";
+import { createDonutMarkerSvg, createClusterDonutMarker, getPublicDataMarkerUrl } from "./DonutMarker";
+import publicDataMarkerImg from "@/assets/public-data-marker.png";
 // T Map 타입 선언
 declare global {
   interface Window {
@@ -1090,19 +1091,37 @@ const MapView = ({
         marker.addListener("touchend", handleClusterClick);
         clusterMarkersRef.current.push(marker);
       } else {
-        // 개별 마커 - 도넛 차트
+        // 개별 마커 - 도넛 차트 또는 공공데이터 이미지
         const report = feature.properties.report;
         if (!report) return;
         
         const isPublicData = report.accessibility_level === "verified";
-        const markerSize = isMobile ? 28 : 40;
-        const iconSvg = createDonutMarkerSvg({
-          yesCount: stats.yesCount,
-          noCount: stats.noCount,
-          size: markerSize,
-          isPublicData
-        });
-        const iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg)}`;
+        // 5개 항목 중 하나라도 데이터가 있는지 확인
+        const hasAccessibilityData = 
+          report.has_ramp !== null || 
+          report.has_elevator !== null || 
+          report.has_accessible_restroom !== null || 
+          report.has_low_threshold !== null || 
+          report.has_wide_door !== null;
+        
+        const markerSize = isMobile ? 32 : 44;
+        
+        let iconUrl: string;
+        
+        // 공공데이터이고 5개 항목 데이터가 없으면 이미지 마커 사용
+        if (isPublicData && !hasAccessibilityData) {
+          iconUrl = publicDataMarkerImg;
+        } else {
+          // 5개 항목 데이터가 있으면 도넛 차트 표시
+          const iconSvg = createDonutMarkerSvg({
+            yesCount: stats.yesCount,
+            noCount: stats.noCount,
+            size: markerSize,
+            isPublicData,
+            hasAccessibilityData
+          });
+          iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg)}`;
+        }
         
         const marker = new window.Tmapv2.Marker({
           position: position,

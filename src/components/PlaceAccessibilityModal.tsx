@@ -261,7 +261,7 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
   const displayedReviews = showAllReviews ? reviews : reviews.slice(0, 2);
 
   const ContentBody = () => (
-    <ScrollArea className="h-full w-full">
+    <ScrollArea className="h-[60vh] w-full">
       <div className="space-y-6 pr-2 pb-6">
         {/* 제보 입력 섹션 */}
         <div className="space-y-4">
