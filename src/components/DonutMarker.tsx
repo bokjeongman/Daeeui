@@ -1,4 +1,5 @@
 // 도넛 차트 마커 SVG 생성 함수
+import publicDataMarkerImg from "@/assets/public-data-marker.png";
 
 interface DonutMarkerProps {
   yesCount: number;
@@ -7,6 +8,12 @@ interface DonutMarkerProps {
   isCluster?: boolean;
   pointCount?: number;
   isPublicData?: boolean;
+  hasAccessibilityData?: boolean;
+}
+
+// 공공데이터 마커 이미지 URL을 반환하는 함수
+export function getPublicDataMarkerUrl(): string {
+  return publicDataMarkerImg;
 }
 
 export function createDonutMarkerSvg({
@@ -15,31 +22,16 @@ export function createDonutMarkerSvg({
   size = 44,
   isCluster = false,
   pointCount = 1,
-  isPublicData = false
+  isPublicData = false,
+  hasAccessibilityData = false
 }: DonutMarkerProps): string {
   const total = yesCount + noCount;
   
-  // 공공데이터는 파란색 원 마커
-  if (isPublicData && !isCluster) {
-    const uniqueId = `public-${Date.now()}-${Math.random()}`;
-    return `
-      <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <filter id="shadow-${uniqueId}" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
-            <feOffset dx="0" dy="2" result="offsetblur"/>
-            <feComponentTransfer><feFuncA type="linear" slope="0.3"/></feComponentTransfer>
-            <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-          </filter>
-          <linearGradient id="blue-grad-${uniqueId}" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:#60a5fa"/>
-            <stop offset="100%" style="stop-color:#3b82f6"/>
-          </linearGradient>
-        </defs>
-        <circle cx="${size/2}" cy="${size/2}" r="${size/2 - 3}" fill="url(#blue-grad-${uniqueId})" stroke="white" stroke-width="3" filter="url(#shadow-${uniqueId})"/>
-        <path d="M${size/2 - 6} ${size/2} L${size/2 - 2} ${size/2 + 4} L${size/2 + 7} ${size/2 - 5}" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    `;
+  // 공공데이터이고 5개 항목 데이터가 없으면 이미지 마커 사용 (별도 처리 필요)
+  // 이 함수에서는 SVG만 반환하므로, 이미지 마커는 MapView에서 별도 처리
+  if (isPublicData && !isCluster && !hasAccessibilityData) {
+    // 이미지 마커를 사용하기 위해 특별한 SVG 반환 (MapView에서 감지)
+    return "USE_IMAGE_MARKER";
   }
   
   // 데이터가 없으면 회색 마커
