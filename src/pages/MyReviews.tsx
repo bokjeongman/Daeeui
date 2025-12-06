@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { z } from "zod";
 import { reverseGeocode } from "@/lib/utils";
+import ImageViewer from "@/components/ImageViewer";
 
 interface Review {
   id: string;
@@ -70,6 +71,7 @@ const MyReviews = () => {
   const [deletingReviewId, setDeletingReviewId] = useState<string | null>(null);
   const [roadViewReview, setRoadViewReview] = useState<Review | null>(null);
   const [nickname, setNickname] = useState<string | null>(null);
+  const [viewingImages, setViewingImages] = useState<{ images: string[]; index: number } | null>(null);
 
   useEffect(() => {
     checkUserAndFetchReviews();
@@ -314,7 +316,8 @@ const MyReviews = () => {
                           key={idx}
                           src={url}
                           alt={`제보 사진 ${idx + 1}`}
-                          className="max-h-32 w-auto object-contain rounded-lg border flex-shrink-0"
+                          className="max-h-32 w-auto object-contain rounded-lg border flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => setViewingImages({ images: review.photo_urls!, index: idx })}
                           onError={(e) => {
                             e.currentTarget.src = "/placeholder.svg";
                           }}
@@ -443,6 +446,14 @@ const MyReviews = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* 이미지 확대 뷰어 */}
+      <ImageViewer
+        images={viewingImages?.images || []}
+        initialIndex={viewingImages?.index || 0}
+        open={!!viewingImages}
+        onClose={() => setViewingImages(null)}
+      />
     </div>
   );
 };
