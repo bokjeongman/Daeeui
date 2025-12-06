@@ -92,6 +92,41 @@ export function createDonutMarkerSvg({
   const radius = size / 2 - 3;
   
   const yesPercent = yesCount / total;
+  
+  // 100% 초록색인 경우 - 전체 원을 초록색으로
+  if (yesPercent === 1) {
+    return `
+      <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="shadow-${uniqueId}" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+            <feOffset dx="0" dy="2" result="offsetblur"/>
+            <feComponentTransfer><feFuncA type="linear" slope="0.3"/></feComponentTransfer>
+            <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <circle cx="${cx}" cy="${cy}" r="${radius}" fill="#22c55e" stroke="white" stroke-width="3" filter="url(#shadow-${uniqueId})"/>
+      </svg>
+    `;
+  }
+  
+  // 100% 빨간색인 경우 - 전체 원을 빨간색으로
+  if (yesPercent === 0) {
+    return `
+      <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="shadow-${uniqueId}" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+            <feOffset dx="0" dy="2" result="offsetblur"/>
+            <feComponentTransfer><feFuncA type="linear" slope="0.3"/></feComponentTransfer>
+            <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <circle cx="${cx}" cy="${cy}" r="${radius}" fill="#ef4444" stroke="white" stroke-width="3" filter="url(#shadow-${uniqueId})"/>
+      </svg>
+    `;
+  }
+  
   const noPercent = noCount / total;
   
   // 파이 차트 세그먼트 생성 (중앙 구멍 없음)
@@ -112,7 +147,6 @@ export function createDonutMarkerSvg({
     
     const largeArc = angle > 180 ? 1 : 0;
     
-    // 파이 슬라이스: 중심에서 시작해서 호를 그리고 다시 중심으로
     segments += `<path d="M${cx},${cy} L${x1},${y1} A${radius},${radius} 0 ${largeArc},1 ${x2},${y2} Z" fill="#22c55e"/>`;
     
     startAngle = endAngle;
