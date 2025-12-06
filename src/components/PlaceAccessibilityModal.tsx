@@ -8,7 +8,17 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { MapPin, Check, X, Upload, Info, User, ChevronRight, Loader2 } from "lucide-react";
+import { MapPin, Check, X, Upload, Info, User, ChevronRight, Loader2, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface PlaceAccessibilityModalProps {
   open: boolean;
@@ -54,6 +64,8 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showAllReviews, setShowAllReviews] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [deletingReviewId, setDeletingReviewId] = useState<string | null>(null);
   
   const [accessibilityValues, setAccessibilityValues] = useState<Record<string, boolean | null>>({
     has_ramp: null,
@@ -65,6 +77,15 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
   const [additionalDetails, setAdditionalDetails] = useState("");
   const [photos, setPhotos] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
+
+  // 현재 사용자 ID 가져오기
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || null);
+    };
+    fetchCurrentUser();
+  }, []);
 
   useEffect(() => {
     if (place && open) {
@@ -237,6 +258,40 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
     });
   };
 
+  const handleDeleteReview = async () => {
+    if (!deletingReviewId) return;
+
+    try {
+      const { error } = await supabase
+        .from("accessibility_reports")
+        .delete()
+        .eq("id", deletingReviewId);
+
+      if (error) throw error;
+
+      toast.success("후기가 삭제되었습니다.");
+      setDeletingReviewId(null);
+      fetchReviews();
+    } catch (error) {
+      if (import.meta.env.DEV) console.error("후기 삭제 실패:", error);
+      toast.error("후기 삭제에 실패했습니다.");
+    }
+  };
+
+  // 턱 항목은 inverted - 있음이면 빨간색(나쁨), 없음이면 초록색(좋음)
+  const getBadgeColor = (item: AccessibilityItem, value: boolean) => {
+    if (item.inverted) {
+      // 턱: 있음 = 빨간색(나쁨), 없음 = 초록색(좋음)
+      return value 
+        ? "bg-red-50 text-red-700 border-red-200" 
+        : "bg-green-50 text-green-700 border-green-200";
+    }
+    // 다른 항목: 있음 = 초록색(좋음), 없음 = 빨간색(나쁨)
+    return value 
+      ? "bg-green-50 text-green-700 border-green-200" 
+      : "bg-red-50 text-red-700 border-red-200";
+  };
+
   const displayedReviews = showAllReviews ? reviews : reviews.slice(0, 2);
 
   const formContent = (
@@ -394,9 +449,21 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
                     <User className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium text-sm">{review.nickname}</span>
                   </div>
-                  <span className="text-xs text-muted-foreground">
-                    {formatDate(review.created_at)}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {formatDate(review.created_at)}
+                    </span>
+                    {currentUserId && review.user_id === currentUserId && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => setDeletingReviewId(review.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 
                 {review.details && (
@@ -411,7 +478,7 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
                       <Badge
                         key={item.key}
                         variant="outline"
-                        className={value ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}
+                        className={getBadgeColor(item, value)}
                       >
                         {item.label}: {value ? "있음" : "없음"}
                       </Badge>
@@ -530,6 +597,24 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
           {submitButton}
         </div>
       </DialogContent>
+
+      {/* 삭제 확인 다이얼로그 */}
+      <AlertDialog open={!!deletingReviewId} onOpenChange={() => setDeletingReviewId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>후기를 삭제하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              이 작업은 되돌릴 수 없습니다. 후기가 영구적으로 삭제됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteReview} className="bg-destructive hover:bg-destructive/90">
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };
