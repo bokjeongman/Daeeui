@@ -413,18 +413,11 @@ const Auth = () => {
   }, [initKakao, processKakaoCallback]);
 
   const handleKakaoLogin = () => {
-    initKakao();
+    // iframe 환경에서는 Kakao SDK가 작동하지 않으므로 직접 URL 리다이렉트 사용
+    const redirectUri = encodeURIComponent(`${window.location.origin}/auth`);
+    const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_JS_KEY}&redirect_uri=${redirectUri}&response_type=code&scope=profile_nickname,account_email`;
     
-    if (!window.Kakao || !window.Kakao.isInitialized()) {
-      toast.error("카카오 SDK 로드에 실패했습니다. 페이지를 새로고침해주세요.");
-      return;
-    }
-
-    // 카카오 로그인 페이지로 리다이렉트
-    window.Kakao.Auth.authorize({
-      redirectUri: `${window.location.origin}/auth`,
-      scope: "profile_nickname,account_email",
-    });
+    window.location.href = kakaoAuthUrl;
   };
 
   const RecentBadge = () => (
