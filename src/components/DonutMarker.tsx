@@ -10,41 +10,37 @@ interface DonutMarkerProps {
   hasAccessibilityData?: boolean;
 }
 
-// 태극 문양 SVG 생성 함수 (공공데이터용)
+// 태극 문양 SVG 생성 함수 (공공데이터용) - 정부 심볼 스타일
 export function createTaegukMarkerSvg(size: number = 40): string {
   const uniqueId = `taeguk-${Date.now()}-${Math.random()}`.replace(/\./g, '_');
   const cx = size / 2;
   const cy = size / 2;
-  const radius = size / 2 - 3;
+  const radius = size / 2 - 2;
   
-  // 태극 문양 비율 계산
-  const r = radius * 0.9; // 메인 원 반지름
-  const smallR = r / 2; // 작은 원 반지름
+  // 스케일 계산 (원본 viewBox 기준으로 현재 size에 맞게 조정)
+  const scale = radius / 50;
   
   return `
     <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <filter id="shadow-${uniqueId}" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
-          <feOffset dx="0" dy="2" result="offsetblur"/>
-          <feComponentTransfer><feFuncA type="linear" slope="0.4"/></feComponentTransfer>
+          <feGaussianBlur in="SourceAlpha" stdDeviation="1.5"/>
+          <feOffset dx="0" dy="1" result="offsetblur"/>
+          <feComponentTransfer><feFuncA type="linear" slope="0.3"/></feComponentTransfer>
           <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
-        <clipPath id="circle-clip-${uniqueId}">
-          <circle cx="${cx}" cy="${cy}" r="${r}"/>
-        </clipPath>
       </defs>
       
       <!-- 배경 원 (흰색 + 그림자) -->
-      <circle cx="${cx}" cy="${cy}" r="${radius}" fill="white" stroke="white" stroke-width="2" filter="url(#shadow-${uniqueId})"/>
+      <circle cx="${cx}" cy="${cy}" r="${radius}" fill="white" filter="url(#shadow-${uniqueId})"/>
       
-      <!-- 태극 문양 그룹 -->
-      <g clip-path="url(#circle-clip-${uniqueId})">
-        <!-- 빨간색 반원 (오른쪽 위) -->
-        <path d="M${cx},${cy - r} A${r},${r} 0 0,1 ${cx},${cy + r} A${smallR},${smallR} 0 0,0 ${cx},${cy} A${smallR},${smallR} 0 0,1 ${cx},${cy - r}" fill="#c73634"/>
+      <!-- 태극 문양 (정부 심볼 스타일) -->
+      <g transform="translate(${cx}, ${cy}) scale(${scale})">
+        <!-- 빨간색 상단 곡선 -->
+        <path d="M0,-42 C23,-42 42,-23 42,0 C42,12 35,22 25,28 C18,8 8,-8 0,-8 C-12,-8 -21,3 -21,17 C-21,25 -16,32 -8,35 C-18,40 -30,42 -42,38 C-48,20 -42,-10 -25,-28 C-12,-42 0,-42 0,-42" fill="#E8383D"/>
         
-        <!-- 파란색 반원 (왼쪽 아래) -->
-        <path d="M${cx},${cy + r} A${r},${r} 0 0,1 ${cx},${cy - r} A${smallR},${smallR} 0 0,0 ${cx},${cy} A${smallR},${smallR} 0 0,1 ${cx},${cy + r}" fill="#0d4d90"/>
+        <!-- 파란색 하단 곡선 -->
+        <path d="M0,42 C-23,42 -42,23 -42,0 C-42,-12 -35,-22 -25,-28 C-18,-8 -8,8 0,8 C12,8 21,-3 21,-17 C21,-25 16,-32 8,-35 C18,-40 30,-42 42,-38 C48,-20 42,10 25,28 C12,42 0,42 0,42" fill="#0D4D90"/>
       </g>
     </svg>
   `;
