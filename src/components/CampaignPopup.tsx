@@ -6,6 +6,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { X } from "lucide-react";
+import wheelchairRampIcon from "@/assets/wheelchair-ramp-icon.png";
 
 interface CampaignPopupProps {
   onAgree: () => void;
@@ -65,61 +66,55 @@ const CampaignPopup = ({ onAgree }: CampaignPopupProps) => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-[360px] p-0 gap-0 overflow-hidden">
+      <DialogContent className="sm:max-w-[340px] p-0 gap-0 overflow-hidden rounded-2xl border-0 shadow-xl">
         {/* 닫기 버튼 */}
         <button
           onClick={handleClose}
-          className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          className="absolute right-4 top-4 z-10 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none"
         >
-          <X className="h-5 w-5" />
+          <X className="h-5 w-5 text-muted-foreground" />
           <span className="sr-only">Close</span>
         </button>
 
         {/* 콘텐츠 */}
-        <div className="flex flex-col items-center px-6 pt-8 pb-6">
+        <div className="flex flex-col items-center px-8 pt-10 pb-8 bg-background">
           {/* 제목 */}
-          <h2 className="text-xl font-bold text-foreground mb-6">접근성 정보 공유</h2>
+          <h2 className="text-xl font-bold text-foreground mb-8">접근성 정보 공유</h2>
 
           {/* 아이콘 */}
-          <div className="w-24 h-24 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-6">
-            <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
-              {/* 휠체어 사용자 */}
-              <circle cx="35" cy="14" r="5" fill="#5C4033"/>
-              <path d="M30 22C30 22 32 24 35 24C38 24 40 22 40 22" stroke="#5C4033" strokeWidth="2" strokeLinecap="round"/>
-              <rect x="31" y="24" width="8" height="12" rx="2" fill="#4CAF50"/>
-              <circle cx="28" cy="42" r="8" stroke="#5C4033" strokeWidth="3" fill="none"/>
-              <circle cx="28" cy="42" r="4" fill="#5C4033"/>
-              <path d="M35 30V38H42" stroke="#5C4033" strokeWidth="2" strokeLinecap="round"/>
-              {/* 경사로 */}
-              <path d="M8 48L24 32" stroke="#8B7355" strokeWidth="4" strokeLinecap="round"/>
-              <path d="M6 50L26 30" stroke="#A0522D" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
+          <div className="w-28 h-28 rounded-full overflow-hidden mb-8">
+            <img 
+              src={wheelchairRampIcon} 
+              alt="휠체어 경사로" 
+              className="w-full h-full object-cover"
+            />
           </div>
 
           {/* 설명 */}
-          <p className="text-center text-muted-foreground mb-6">
+          <p className="text-center text-muted-foreground mb-8 text-base leading-relaxed">
             자주 가는 장소의 접근성 정보를<br />공유해주세요
           </p>
 
           {/* 버튼 */}
           <Button
             onClick={handleAgree}
-            className="w-full h-14 text-lg font-medium bg-green-500 hover:bg-green-600 text-white rounded-xl shadow-lg"
+            className="w-full h-14 text-lg font-semibold bg-green-500 hover:bg-green-600 text-white rounded-2xl shadow-lg"
           >
             지금 공유하기
           </Button>
         </div>
 
         {/* 하단 체크박스 */}
-        <div className="flex items-center justify-center gap-2 py-4 border-t bg-muted/30">
+        <div className="flex items-center justify-center gap-2 py-4 bg-background border-t border-border/50">
           <Checkbox
             id="hideForToday"
             checked={hideForToday}
             onCheckedChange={(checked) => setHideForToday(checked === true)}
+            className="border-muted-foreground/50 data-[state=checked]:bg-muted-foreground data-[state=checked]:border-muted-foreground"
           />
           <label
             htmlFor="hideForToday"
-            className="text-sm text-muted-foreground cursor-pointer"
+            className="text-sm text-muted-foreground cursor-pointer select-none"
           >
             오늘 하루동안 이 창을 보지 않음
           </label>
