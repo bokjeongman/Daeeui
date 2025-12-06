@@ -8,6 +8,7 @@ import RoadView from "./RoadView";
 import { useGeolocationWatch } from "@/hooks/useGeolocationWatch";
 import { useAccessibilityMarkerCluster, AccessibilityReport, AccessibilityFilter, AccessibilityClusterFeature } from "@/hooks/useAccessibilityMarkerCluster";
 import { createDonutMarkerSvg, createClusterDonutMarker, getPublicDataMarkerUrl, createCheckMarkerSvg } from "./DonutMarker";
+import { searchPOIAround, getPedestrianRoute } from "@/lib/tmap";
 // T Map 타입 선언
 declare global {
   interface Window {
@@ -469,22 +470,14 @@ const MapView = ({
         // POI 검색 (장소 후기용)
         if (!onPlaceClick) return;
         try {
-          // 클릭한 위치 주변의 POI 검색
-          const response = await fetch(`https://apis.openapi.sk.com/tmap/pois/search/around?version=1&centerLon=${lon}&centerLat=${lat}&radius=50&resCoordType=WGS84GEO&reqCoordType=WGS84GEO&count=1`, {
-            headers: {
-              appKey: "KZDXJtx63R735Qktn8zkkaJv4tbaUqDc1lXzyjLT"
-            }
-          });
-          if (!response.ok) return;
-          const text = await response.text();
-          if (!text) return;
-          const data = JSON.parse(text);
-          if (data.searchPoiInfo?.pois?.poi && data.searchPoiInfo.pois.poi.length > 0) {
-            const poi = data.searchPoiInfo.pois.poi[0];
+          // 클릭한 위치 주변의 POI 검색 (via server-side proxy)
+          const results = await searchPOIAround(lat, lon, 50, 1);
+          if (results.length > 0) {
+            const poi = results[0];
             onPlaceClick({
               name: poi.name,
-              lat: parseFloat(poi.noorLat),
-              lon: parseFloat(poi.noorLon)
+              lat: poi.lat,
+              lon: poi.lon
             });
           }
         } catch (error) {
@@ -1235,29 +1228,20 @@ const MapView = ({
     const calculateRoute = async () => {
       try {
         clearRoutes();
-        const requestBody = {
-          startX: start.lon.toString(),
-          startY: start.lat.toString(),
-          endX: endPoint.lon.toString(),
-          endY: endPoint.lat.toString(),
-          reqCoordType: "WGS84GEO",
-          resCoordType: "WGS84GEO",
-          startName: startPoint?.name || "현재 위치",
-          endName: endPoint.name
-        };
-        const response = await fetch("https://apis.openapi.sk.com/tmap/routes/pedestrian?version=1", {
-          method: "POST",
-          headers: {
-            appKey: "KZDXJtx63R735Qktn8zkkaJv4tbaUqDc1lXzyjLT",
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(requestBody)
-        });
-        const data = await response.json();
+        
+        // Use server-side proxy for pedestrian route
+        const data = await getPedestrianRoute(
+          start.lat,
+          start.lon,
+          endPoint.lat,
+          endPoint.lon,
+          startPoint?.name || "현재 위치",
+          endPoint.name
+        );
         if (data.error) {
           console.warn("API 에러:", data.error);
           // 429 할당량 초과 에러 처리
-          if (data.error.code === "QUOTA_EXCEEDED" || response.status === 429) {
+          if (data.error.code === "QUOTA_EXCEEDED") {
             toast.error("API 일일 할당량을 초과했습니다. 잠시 후 다시 시도해주세요.", {
               description: "TMap API 사용량이 한도에 도달했습니다.",
               duration: 5000

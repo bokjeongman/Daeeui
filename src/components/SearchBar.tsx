@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import PlaceSearchResult from "./PlaceSearchResult";
+import { searchPOI } from "@/lib/tmap";
 
 interface SearchBarProps {
   placeholder?: string;
@@ -36,39 +37,9 @@ const SearchBar = ({
     }
 
     try {
-      // T Map POI 통합 검색 API
-      const response = await fetch(
-        `https://apis.openapi.sk.com/tmap/pois?version=1&searchKeyword=${encodeURIComponent(query)}&resCoordType=WGS84GEO&reqCoordType=WGS84GEO&count=10`,
-        {
-          headers: {
-            appKey: "KZDXJtx63R735Qktn8zkkaJv4tbaUqDc1lXzyjLT",
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`API 오류: ${response.status}`);
-      }
-
-      const text = await response.text();
-      if (!text) {
-        setSearchResults([]);
-        return;
-      }
-
-      const data = JSON.parse(text);
-      
-      if (data.searchPoiInfo?.pois?.poi) {
-        const results = data.searchPoiInfo.pois.poi.map((poi: any, index: number) => ({
-          id: index,
-          name: poi.name,
-          address: poi.upperAddrName + " " + poi.middleAddrName + " " + poi.lowerAddrName,
-          lat: parseFloat(poi.noorLat),
-          lon: parseFloat(poi.noorLon),
-        }));
-        setSearchResults(results);
-        setShowResults(true);
-      }
+      const results = await searchPOI(query, 10);
+      setSearchResults(results);
+      setShowResults(results.length > 0);
     } catch (error) {
       if (import.meta.env.DEV) console.error("POI 검색 실패:", error);
       setSearchResults([]);

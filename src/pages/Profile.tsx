@@ -69,26 +69,9 @@ const Profile = () => {
     }
   };
 
-  const reverseGeocode = async (lat: number, lon: number): Promise<string> => {
-    try {
-      const response = await fetch(
-        `https://apis.openapi.sk.com/tmap/geo/reversegeocoding?version=1&lat=${lat}&lon=${lon}&coordType=WGS84GEO&addressType=A10`,
-        {
-          method: "GET",
-          headers: {
-            appKey: "KZDXJtx63R735Qktn8zkkaJv4tbaUqDc1lXzyjLT",
-          },
-        }
-      );
-      const data = await response.json();
-      if (data.addressInfo) {
-        const fullAddress = data.addressInfo.fullAddress || "";
-        return fullAddress.replace(/^[^,]+,\s*/, "");
-      }
-      return `위도: ${lat.toFixed(6)}, 경도: ${lon.toFixed(6)}`;
-    } catch (error) {
-      return `위도: ${lat.toFixed(6)}, 경도: ${lon.toFixed(6)}`;
-    }
+  const reverseGeocodeLocal = async (lat: number, lon: number): Promise<string> => {
+    const { reverseGeocode } = await import("@/lib/tmap");
+    return reverseGeocode(lat, lon);
   };
 
   const fetchReports = async (userId: string) => {
@@ -130,7 +113,7 @@ const Profile = () => {
       const recentReports = allData.slice(0, 50);
       const reportsWithAddress = await Promise.all(
         recentReports.map(async (report) => {
-          const address = await reverseGeocode(report.latitude, report.longitude);
+          const address = await reverseGeocodeLocal(report.latitude, report.longitude);
           return { ...report, address };
         })
       );
