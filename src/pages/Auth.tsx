@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,30 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+
+declare global {
+  interface Window {
+    Kakao: {
+      init: (key: string) => void;
+      isInitialized: () => boolean;
+      Auth: {
+        login: (options: {
+          success: (authObj: { access_token: string }) => void;
+          fail: (err: any) => void;
+        }) => void;
+      };
+      API: {
+        request: (options: {
+          url: string;
+          success: (res: any) => void;
+          fail: (err: any) => void;
+        }) => void;
+      };
+    };
+  }
+}
+
+const KAKAO_JS_KEY = "dc0db09ad3ab9f29fed146728402f08a";
 
 const emailSchema = z.string().email("올바른 이메일 주소를 입력해주세요.");
 const passwordSchema = z.string().min(6, "비밀번호는 최소 6자 이상이어야 합니다.");
@@ -264,26 +288,116 @@ const Auth = () => {
     }
   };
 
+  const initKakao = useCallback(() => {
+    if (window.Kakao && !window.Kakao.isInitialized()) {
+      window.Kakao.init(KAKAO_JS_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    initKakao();
+  }, [initKakao]);
+
   const handleKakaoLogin = async () => {
     setIsLoading(true);
+    
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "kakao",
-        options: {
-          redirectTo: `${window.location.origin}/auth`,
+      initKakao();
+      
+      if (!window.Kakao || !window.Kakao.isInitialized()) {
+        toast.error("카카오 SDK 로드에 실패했습니다. 페이지를 새로고침해주세요.");
+        setIsLoading(false);
+        return;
+      }
+
+      window.Kakao.Auth.login({
+        success: async (authObj) => {
+          // 카카오 사용자 정보 가져오기
+          window.Kakao.API.request({
+            url: "/v2/user/me",
+            success: async (res) => {
+              const kakaoEmail = res.kakao_account?.email;
+              const kakaoId = res.id;
+              const kakaoNickname = res.properties?.nickname || res.kakao_account?.profile?.nickname;
+
+              if (!kakaoEmail) {
+                toast.error("카카오 계정에 이메일이 없습니다. 이메일 제공에 동의해주세요.");
+                setIsLoading(false);
+                return;
+              }
+
+              // 카카오 ID를 사용한 고유 비밀번호 생성
+              const kakaoPassword = `kakao_${kakaoId}_secure_password_${KAKAO_JS_KEY.slice(0, 8)}`;
+
+              // 먼저 로그인 시도
+              const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+                email: kakaoEmail,
+                password: kakaoPassword,
+              });
+
+              if (signInData?.user) {
+                // 기존 사용자 로그인 성공
+                setRecentLoginMethod("kakao");
+                toast.success("카카오 로그인 성공!");
+                await checkNicknameAndRedirect(signInData.user.id);
+              } else {
+                // 신규 사용자 - 회원가입 진행
+                const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+                  email: kakaoEmail,
+                  password: kakaoPassword,
+                  options: {
+                    emailRedirectTo: `${window.location.origin}/`,
+                    data: {
+                      provider: "kakao",
+                      kakao_id: kakaoId,
+                    },
+                  },
+                });
+
+                if (signUpError) {
+                  if (signUpError.message.includes("already registered")) {
+                    toast.error("이미 다른 방법으로 가입된 이메일입니다.");
+                  } else {
+                    toast.error("회원가입에 실패했습니다.");
+                    if (import.meta.env.DEV) console.error("회원가입 오류:", signUpError);
+                  }
+                  setIsLoading(false);
+                  return;
+                }
+
+                if (signUpData?.user) {
+                  setRecentLoginMethod("kakao");
+                  
+                  // 카카오 닉네임이 있으면 프로필에 저장
+                  if (kakaoNickname) {
+                    await supabase
+                      .from("profiles")
+                      .update({ nickname: kakaoNickname })
+                      .eq("id", signUpData.user.id);
+                  }
+
+                  toast.success("카카오 계정으로 회원가입되었습니다!");
+                  await checkNicknameAndRedirect(signUpData.user.id);
+                }
+              }
+              setIsLoading(false);
+            },
+            fail: (err) => {
+              if (import.meta.env.DEV) console.error("카카오 사용자 정보 조회 실패:", err);
+              toast.error("카카오 사용자 정보를 가져오는데 실패했습니다.");
+              setIsLoading(false);
+            },
+          });
+        },
+        fail: (err) => {
+          if (import.meta.env.DEV) console.error("카카오 로그인 실패:", err);
+          toast.error("카카오 로그인에 실패했습니다.");
+          setIsLoading(false);
         },
       });
-
-      if (error) {
-        toast.error("카카오 로그인에 실패했습니다.");
-        if (import.meta.env.DEV) console.error("카카오 로그인 오류:", error);
-      } else {
-        setRecentLoginMethod("kakao");
-      }
     } catch (error) {
       if (import.meta.env.DEV) console.error("카카오 로그인 오류:", error);
       toast.error("오류가 발생했습니다.");
-    } finally {
       setIsLoading(false);
     }
   };
