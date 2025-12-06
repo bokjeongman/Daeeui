@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import RoadView from "./RoadView";
 import { useGeolocationWatch } from "@/hooks/useGeolocationWatch";
 import { useAccessibilityMarkerCluster, AccessibilityReport, AccessibilityFilter, AccessibilityClusterFeature } from "@/hooks/useAccessibilityMarkerCluster";
-import { createDonutMarkerSvg, createClusterDonutMarker, getPublicDataMarkerUrl, createTaegukMarkerSvg } from "./DonutMarker";
+import { createDonutMarkerSvg, createClusterDonutMarker, getPublicDataMarkerUrl, createCheckMarkerSvg } from "./DonutMarker";
 // T Map 타입 선언
 declare global {
   interface Window {
@@ -1065,10 +1065,10 @@ const MapView = ({
         
         let iconUrl: string;
         
-        // 공공데이터이고 5개 항목 데이터가 없으면 태극 마커 사용
+        // 공공데이터이고 5개 항목 데이터가 없으면 체크 마커 사용
         if (isPublicData && !hasAccessibilityData) {
-          const taegukSvg = createTaegukMarkerSvg(markerSize);
-          iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(taegukSvg)}`;
+          const checkSvg = createCheckMarkerSvg(markerSize);
+          iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(checkSvg)}`;
         } else {
           // 5개 항목 데이터가 있으면 도넛 차트 표시
           const iconSvg = createDonutMarkerSvg({

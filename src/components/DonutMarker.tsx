@@ -10,13 +10,14 @@ interface DonutMarkerProps {
   hasAccessibilityData?: boolean;
 }
 
-// 태극 문양 SVG 생성 함수 (공공데이터용) - 정부 심볼 스타일
-export function createTaegukMarkerSvg(size: number = 40): string {
-  const uniqueId = `taeguk-${Date.now()}-${Math.random()}`.replace(/\./g, '_');
+// 초록색 체크마크 마커 SVG 생성 함수 (공공데이터용)
+export function createCheckMarkerSvg(size: number = 40): string {
+  const uniqueId = `check-${Date.now()}-${Math.random()}`.replace(/\./g, '_');
   const cx = size / 2;
   const cy = size / 2;
   const radius = size / 2 - 2;
-  const scale = radius / 50;
+  const ringWidth = size * 0.12;
+  const innerRadius = radius - ringWidth;
   
   return `
     <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
@@ -32,33 +33,19 @@ export function createTaegukMarkerSvg(size: number = 40): string {
       <!-- 배경 원 (흰색 + 그림자) -->
       <circle cx="${cx}" cy="${cy}" r="${radius}" fill="white" filter="url(#shadow-${uniqueId})"/>
       
-      <!-- 태극 문양 (정부 심볼 스타일 - 흰 공간 포함) -->
-      <g transform="translate(${cx}, ${cy}) scale(${scale})">
-        <!-- 빨간색 곡선 (상단 오른쪽) -->
-        <path d="M 8,-38 
-                 C 30,-32 42,-10 38,15 
-                 C 35,28 24,38 10,40
-                 C 0,36 -5,28 -5,18
-                 C -5,8 2,0 12,0
-                 C 22,0 28,-10 24,-22
-                 C 20,-32 12,-38 8,-38 Z" fill="#C8102E"/>
-        
-        <!-- 파란색 곡선 (하단 왼쪽) -->
-        <path d="M -8,38 
-                 C -30,32 -42,10 -38,-15 
-                 C -35,-28 -24,-38 -10,-40
-                 C 0,-36 5,-28 5,-18
-                 C 5,-8 -2,0 -12,0
-                 C -22,0 -28,10 -24,22
-                 C -20,32 -12,38 -8,38 Z" fill="#003366"/>
-      </g>
+      <!-- 초록색 링 -->
+      <circle cx="${cx}" cy="${cy}" r="${radius - ringWidth/2}" fill="none" stroke="#22c55e" stroke-width="${ringWidth}"/>
+      
+      <!-- 체크마크 -->
+      <path d="M ${cx - size*0.22} ${cy} L ${cx - size*0.05} ${cy + size*0.18} L ${cx + size*0.25} ${cy - size*0.15}" 
+            fill="none" stroke="#22c55e" stroke-width="${size * 0.1}" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
   `;
 }
 
 // 공공데이터 마커 SVG URL 반환
 export function getPublicDataMarkerUrl(size: number = 40): string {
-  const svg = createTaegukMarkerSvg(size);
+  const svg = createCheckMarkerSvg(size);
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
@@ -73,14 +60,16 @@ export function createDonutMarkerSvg({
 }: DonutMarkerProps): string {
   const total = yesCount + noCount;
   
-  // 공공데이터이고 5개 항목 데이터가 없으면 태극 마커 사용
+  // 공공데이터이고 5개 항목 데이터가 없으면 체크 마커 사용
   if (isPublicData && !isCluster && !hasAccessibilityData) {
-    return createTaegukMarkerSvg(size);
+    return createCheckMarkerSvg(size);
   }
   
-  // 데이터가 없으면 회색 마커
+  // 데이터가 없으면 회색 마커 (클러스터는 숫자 표시)
   if (total === 0) {
     const uniqueId = `empty-${Date.now()}-${Math.random()}`;
+    const displayText = isCluster ? pointCount.toString() : "0";
+    const fontSize = isCluster ? (pointCount >= 100 ? 12 : 14) : 12;
     return `
       <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
         <defs>
@@ -92,7 +81,7 @@ export function createDonutMarkerSvg({
           </filter>
         </defs>
         <circle cx="${size/2}" cy="${size/2}" r="${size/2 - 3}" fill="#9ca3af" stroke="white" stroke-width="3" filter="url(#shadow-${uniqueId})"/>
-        <text x="${size/2}" y="${size/2 + 4}" font-family="Arial, sans-serif" font-size="12" fill="white" text-anchor="middle">?</text>
+        <text x="${size/2}" y="${size/2 + fontSize/3}" font-family="Arial, sans-serif" font-size="${fontSize}" font-weight="bold" fill="white" text-anchor="middle">${displayText}</text>
       </svg>
     `;
   }
