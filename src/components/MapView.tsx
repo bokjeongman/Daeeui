@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { MapPin, Loader2, AlertCircle, Navigation, Filter, Star, Eye, EyeOff } from "lucide-react";
+import { MapPin, Loader2, AlertCircle, Navigation, Filter, Star, Eye, EyeOff, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import RoadView from "./RoadView";
 import { useGeolocationWatch } from "@/hooks/useGeolocationWatch";
-import { useMarkerCluster, BarrierPoint, ClusterFeature } from "@/hooks/useMarkerCluster";
-
+import { useAccessibilityMarkerCluster, AccessibilityReport, AccessibilityFilter, AccessibilityClusterFeature } from "@/hooks/useAccessibilityMarkerCluster";
+import { createDonutMarkerSvg, createClusterDonutMarker } from "./DonutMarker";
 // T Map 타입 선언
 declare global {
   interface Window {
@@ -101,12 +101,15 @@ const MapView = ({
     lon: number;
   } | null>(null);
   const [heading, setHeading] = useState<number | null>(null);
-  const [barrierData, setBarrierData] = useState<any[]>([]);
+  const [barrierData, setBarrierData] = useState<AccessibilityReport[]>([]);
   const [favorites, setFavorites] = useState<any[]>([]);
-  const [filter, setFilter] = useState({
-    safe: true,
-    warning: true,
-    danger: true
+  const [filter, setFilter] = useState<AccessibilityFilter>({
+    hasRamp: false,
+    hasElevator: false,
+    hasAccessibleRestroom: false,
+    hasLowThreshold: false,
+    hasWideDoor: false,
+    publicData: true,
   });
   const [showFilter, setShowFilter] = useState(false);
   const [previousDuration, setPreviousDuration] = useState<number | null>(null);
@@ -260,20 +263,19 @@ const MapView = ({
     };
   }, []);
 
-  // 제보된 배리어 데이터 가져오기 (모든 제보 표시 - 페이지네이션으로 1000개 제한 해제)
+  // 제보된 접근성 데이터 가져오기
   useEffect(() => {
     const fetchApprovedReports = async () => {
       try {
-        // Supabase 기본 1000개 제한 우회를 위한 페이지네이션
         let allData: any[] = [];
         let from = 0;
         const pageSize = 1000;
         let hasMore = true;
         while (hasMore) {
-          const {
-            data,
-            error
-          } = await supabase.from("accessibility_reports").select("*").range(from, from + pageSize - 1);
+          const { data, error } = await supabase
+            .from("accessibility_reports")
+            .select("*")
+            .range(from, from + pageSize - 1);
           if (error) throw error;
           if (data && data.length > 0) {
             allData = [...allData, ...data];
@@ -285,75 +287,62 @@ const MapView = ({
         }
         console.log("🔍 가져온 제보 데이터:", allData.length, "개");
 
-        // 제보 데이터를 barrierData 형식으로 변환
-        const rawBarriers = allData.map(report => {
-          let severity = "safe";
-          if (report.accessibility_level === "verified") {
-            severity = "verified";
-          } else if (report.accessibility_level === "difficult") {
-            severity = "danger";
-          } else if (report.accessibility_level === "moderate") {
-            severity = "warning";
-          }
-          return {
-            id: report.id,
-            lat: Number(report.latitude),
-            lon: Number(report.longitude),
-            latitude: Number(report.latitude),
-            longitude: Number(report.longitude),
-            type: report.category,
-            severity: severity,
-            name: report.location_name,
-            details: report.details,
-            photo_urls: report.photo_urls || [],
-            created_at: report.created_at,
-            accessibility_level: report.accessibility_level,
-            user_id: report.user_id
-          };
-        });
+        // 새로운 AccessibilityReport 형식으로 변환
+        const rawReports: AccessibilityReport[] = allData.map(report => ({
+          id: report.id,
+          lat: Number(report.latitude),
+          lon: Number(report.longitude),
+          location_name: report.location_name,
+          has_ramp: report.has_ramp,
+          has_elevator: report.has_elevator,
+          has_accessible_restroom: report.has_accessible_restroom,
+          has_low_threshold: report.has_low_threshold,
+          has_wide_door: report.has_wide_door,
+          details: report.details,
+          photo_urls: report.photo_urls || [],
+          created_at: report.created_at,
+          accessibility_level: report.accessibility_level,
+          user_id: report.user_id
+        }));
 
-        // 같은 위치의 제보들을 그룹화 (위도/경도 소수점 5자리까지 동일하면 같은 장소로 취급)
-        const locationMap = new Map<string, any[]>();
-        rawBarriers.forEach(barrier => {
-          const locationKey = `${barrier.lat.toFixed(5)},${barrier.lon.toFixed(5)}`;
+        // 같은 위치의 제보들을 그룹화
+        const locationMap = new Map<string, AccessibilityReport[]>();
+        rawReports.forEach(report => {
+          const locationKey = `${report.lat.toFixed(5)},${report.lon.toFixed(5)}`;
           if (!locationMap.has(locationKey)) {
             locationMap.set(locationKey, []);
           }
-          locationMap.get(locationKey)!.push(barrier);
+          locationMap.get(locationKey)!.push(report);
         });
 
-        // 그룹화된 데이터를 대표 마커로 변환 (가장 위험한 등급 우선)
-        const severityPriority: Record<string, number> = {
-          danger: 4,
-          warning: 3,
-          safe: 2,
-          verified: 1
-        };
-        const groupedBarriers = Array.from(locationMap.values()).map(reports => {
-          // 가장 위험한 등급 찾기
-          reports.sort((a, b) => (severityPriority[b.severity] || 0) - (severityPriority[a.severity] || 0));
+        // 그룹화된 데이터를 대표 마커로 변환
+        const groupedReports = Array.from(locationMap.values()).map(reports => {
+          // 최신순 정렬
+          reports.sort((a, b) => {
+            const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+            const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+            return dateB - dateA;
+          });
           const representative = reports[0];
           return {
             ...representative,
             reports: reports,
-            // 모든 제보 포함
             reportCount: reports.length
           };
         });
-        setBarrierData(groupedBarriers);
+        setBarrierData(groupedReports);
       } catch (error) {
         if (import.meta.env.DEV) console.error("제보 데이터 로딩 실패:", error);
       }
     };
     fetchApprovedReports();
 
-    // 실시간 변경 사항 구독 (모든 제보 포함)
+    // 실시간 변경 사항 구독
     const channel = supabase.channel("accessibility_reports_changes").on("postgres_changes", {
       event: "*",
       schema: "public",
       table: "accessibility_reports"
-    }, payload => {
-      console.log("배리어 데이터 변경 감지:", payload);
+    }, () => {
       fetchApprovedReports();
     }).subscribe();
     return () => {
@@ -746,11 +735,11 @@ const MapView = ({
     pathHistoryPolylineRef.current = polyline;
   }, [map, pathHistory]);
 
-  // 클러스터 훅 사용
+  // 새로운 접근성 마커 클러스터 훅 사용
   const {
     clusters,
     getClusterExpansionZoom
-  } = useMarkerCluster(barrierData as BarrierPoint[], mapBounds, mapZoom, filter);
+  } = useAccessibilityMarkerCluster(barrierData, mapBounds, mapZoom, filter);
 
   // 클러스터 마커용 SVG 생성 함수 (접근성 레벨별 색상)
   const getClusterIcon = useCallback((count: number, dominantSeverity?: string, severityCounts?: {
@@ -1037,13 +1026,13 @@ const MapView = ({
   }, []);
 
   // 클러스터 키 생성 함수 (변경 감지용)
-  const getClusterKey = useCallback((clusters: ClusterFeature[]) => {
+  const getClusterKey = useCallback((clusters: AccessibilityClusterFeature[]) => {
     return clusters.map(f => {
       const [lon, lat] = f.geometry.coordinates;
       if (f.properties.cluster) {
         return `c:${lat.toFixed(4)},${lon.toFixed(4)},${f.properties.point_count}`;
       }
-      return `b:${f.properties.barrier?.id}`;
+      return `b:${f.properties.report?.id}`;
     }).join('|');
   }, []);
 
@@ -1057,7 +1046,7 @@ const MapView = ({
     // 클러스터 키 비교로 실제 변경 여부 확인
     const currentKey = getClusterKey(clusters);
     if (currentKey === prevClusterKeyRef.current && clusters.length > 0) {
-      return; // 변경 없으면 스킵
+      return;
     }
     prevClusterKeyRef.current = currentKey;
 
@@ -1067,28 +1056,29 @@ const MapView = ({
     clusterMarkersRef.current.forEach(marker => marker.setMap(null));
     clusterMarkersRef.current = [];
     if (clusters.length === 0) return;
-    clusters.forEach((feature, index) => {
+    
+    clusters.forEach((feature) => {
       const [lon, lat] = feature.geometry.coordinates;
       const position = new window.Tmapv2.LatLng(lat, lon);
+      const stats = feature.properties.accessibilityStats || { yesCount: 0, noCount: 0, totalResponses: 0 };
+      
       if (feature.properties.cluster) {
-        // 클러스터 마커
+        // 클러스터 마커 - 도넛 차트
         const count = feature.properties.point_count || 0;
         const clusterId = feature.properties.cluster_id;
-        const dominantSeverity = feature.properties.dominantSeverity;
-        const severityCounts = feature.properties.severityCounts;
-        const iconSvg = getClusterIcon(count, dominantSeverity, severityCounts);
+        const iconSvg = createClusterDonutMarker(stats.yesCount, stats.noCount, count);
         const iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg)}`;
         const size = count >= 100 ? 64 : count >= 30 ? 56 : count >= 10 ? 52 : 48;
+        
         const marker = new window.Tmapv2.Marker({
           position: position,
           map: map,
           icon: iconUrl,
           iconSize: new window.Tmapv2.Size(size, size),
-          title: `${count}개 마커`,
+          title: `${count}개 제보`,
           zIndex: 150
         });
 
-        // 클러스터 클릭 시 확대
         const handleClusterClick = () => {
           if (clusterId !== undefined) {
             const expansionZoom = getClusterExpansionZoom(clusterId);
@@ -1100,27 +1090,39 @@ const MapView = ({
         marker.addListener("touchend", handleClusterClick);
         clusterMarkersRef.current.push(marker);
       } else {
-        // 개별 마커
-        const barrier = feature.properties.barrier;
-        if (!barrier) return;
-        const uniqueId = `${barrier.type}-${barrier.id}`;
-        const reportCount = barrier.reportCount || 1;
-        const iconSvg = getCategoryIcon(barrier.type, barrier.severity, uniqueId, reportCount);
+        // 개별 마커 - 도넛 차트
+        const report = feature.properties.report;
+        if (!report) return;
+        
+        const isPublicData = report.accessibility_level === "verified";
+        const markerSize = isMobile ? 28 : 40;
+        const iconSvg = createDonutMarkerSvg({
+          yesCount: stats.yesCount,
+          noCount: stats.noCount,
+          size: markerSize,
+          isPublicData
+        });
         const iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg)}`;
-        // 뱃지가 있으면 마커 크기 증가 (모바일은 축소)
-        const hasExtraReports = reportCount > 1;
-        const markerSize = isMobile ? hasExtraReports ? 28 : 24 : hasExtraReports ? 52 : 44;
+        
         const marker = new window.Tmapv2.Marker({
           position: position,
           map: map,
           icon: iconUrl,
           iconSize: new window.Tmapv2.Size(markerSize, markerSize),
-          title: barrier.name,
+          title: report.location_name,
           zIndex: 100
         });
+        
         const handleMarkerClick = () => {
           if (onBarrierClick) {
-            onBarrierClick(barrier);
+            onBarrierClick({
+              ...report,
+              name: report.location_name,
+              type: 'facility',
+              severity: 'safe',
+              latitude: report.lat,
+              longitude: report.lon
+            });
           }
         };
         marker.addListener("click", handleMarkerClick);
@@ -1128,7 +1130,7 @@ const MapView = ({
         barrierMarkersRef.current.push(marker);
       }
     });
-  }, [map, clusters, getClusterKey, getClusterIcon, getCategoryIcon, getClusterExpansionZoom, onBarrierClick, isMobile]);
+  }, [map, clusters, getClusterKey, getClusterExpansionZoom, onBarrierClick, isMobile]);
 
   // 즐겨찾기 마커 표시 - 지도에 표시하지 않음 (사용자 요청에 따라 비활성화)
   useEffect(() => {
@@ -1317,26 +1319,27 @@ const MapView = ({
           totalTime = firstFeature.properties.totalTime || totalTime;
         }
 
-        // 경로 근처의 배리어 찾기
+        // 경로 근처의 배리어 찾기 (새로운 형식에 맞게 수정)
         const nearbyBarriers = barrierData.filter(barrier => {
           return lineStrings.some(point => {
-            const distance = calculateDistance(point.lat(), point.lng(), barrier.latitude, barrier.longitude);
+            const distance = calculateDistance(point.lat(), point.lng(), barrier.lat, barrier.lon);
             return distance < 0.05;
           });
         });
 
-        // 안전도 계산
-        const dangerCount = nearbyBarriers.filter(b => b.severity === "danger").length;
-        const warningCount = nearbyBarriers.filter(b => b.severity === "warning").length;
-        const totalBarriers = dangerCount + warningCount;
-        let dangerPercentage = 0,
-          warningPercentage = 0,
-          safePercentage = 100;
-        if (totalBarriers > 0) {
-          dangerPercentage = dangerCount / totalBarriers * 100;
-          warningPercentage = warningCount / totalBarriers * 100;
-          safePercentage = 100 - dangerPercentage - warningPercentage;
-        }
+        // 안전도 계산 (새로운 boolean 기반)
+        let yesCount = 0, noCount = 0;
+        nearbyBarriers.forEach(b => {
+          if (b.has_ramp === true) yesCount++;
+          if (b.has_ramp === false) noCount++;
+          if (b.has_elevator === true) yesCount++;
+          if (b.has_elevator === false) noCount++;
+        });
+        const total = yesCount + noCount;
+        const safePercentage = total > 0 ? (yesCount / total) * 100 : 100;
+        const dangerPercentage = total > 0 ? (noCount / total) * 100 : 0;
+        const warningPercentage = 0;
+        
         const routeResult = {
           type: "walk" as const,
           distance: totalDistance,
@@ -1344,7 +1347,11 @@ const MapView = ({
           safePercentage,
           warningPercentage,
           dangerPercentage,
-          barriers: nearbyBarriers,
+          barriers: nearbyBarriers.map(b => ({
+            type: 'facility',
+            severity: 'safe',
+            name: b.location_name
+          })),
           lineStrings
         };
         console.log("✅ 경로 계산 완료:", {
@@ -1561,17 +1568,17 @@ const MapView = ({
     let currentColor = baseColor; // 선택된 교통수단 색상
 
     path.forEach((point, index) => {
-      // 배리어와의 거리 계산하여 색상 결정
+      // 배리어와의 거리 계산하여 색상 결정 (새로운 형식)
       const nearbyBarrier = barrierData.find(barrier => {
         const distance = calculateDistance(point.lat(), point.lng(), barrier.lat, barrier.lon);
-        return distance < 20; // 20m 이내
+        return distance < 20;
       });
-      let segmentColor = baseColor; // 선택된 교통수단 색상
+      let segmentColor = baseColor;
       if (nearbyBarrier) {
-        if (nearbyBarrier.severity === "warning") {
-          segmentColor = "#f59e0b"; // 경고 (주황색)
-        } else if (nearbyBarrier.severity === "danger") {
-          segmentColor = "#ef4444"; // 위험 (빨간색)
+        // 접근성 점수 기반 색상 결정
+        const hasNegative = nearbyBarrier.has_ramp === false || nearbyBarrier.has_elevator === false;
+        if (hasNegative) {
+          segmentColor = "#f59e0b"; // 경고
         }
       }
       if (segmentColor !== currentColor && currentSegment.length > 0) {
@@ -1669,40 +1676,44 @@ const MapView = ({
             <Button onClick={() => setShowFilter(!showFilter)} size="lg" title="필터" className="h-12 w-12 md:h-14 md:w-14 rounded-full shadow-xl bg-background hover:bg-muted text-foreground border-2 border-border touch-target">
               <Filter className="h-5 w-5 md:h-6 md:w-6" />
             </Button>
-            {showFilter && <div className="absolute bottom-full right-0 mb-2 bg-background border-2 border-border rounded-lg shadow-xl p-3 space-y-2 min-w-[160px]">
+            {showFilter && <div className="absolute bottom-full right-0 mb-2 bg-background border-2 border-border rounded-lg shadow-xl p-3 space-y-2 min-w-[180px] max-h-[300px] overflow-y-auto">
                 <div className="text-sm font-semibold mb-2 text-foreground">접근성 필터</div>
-                <button onClick={() => setFilter({
-            ...filter,
-            safe: !filter.safe
-          })} className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors touch-target">
-                  <div className={`w-4 h-4 rounded border-2 ${filter.safe ? "bg-green-500 border-green-500" : "border-muted-foreground"}`}>
-                    {filter.safe && <div className="text-white text-xs text-center leading-none">✓</div>}
+                <button onClick={() => setFilter({...filter, hasRamp: !filter.hasRamp})} className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors touch-target">
+                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${filter.hasRamp ? "bg-green-500 border-green-500" : "border-muted-foreground"}`}>
+                    {filter.hasRamp && <Check className="h-3 w-3 text-white" />}
                   </div>
-                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                    안심
-                  </Badge>
+                  <span className="text-sm">경사로</span>
                 </button>
-                <button onClick={() => setFilter({
-            ...filter,
-            warning: !filter.warning
-          })} className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors touch-target">
-                  <div className={`w-4 h-4 rounded border-2 ${filter.warning ? "bg-yellow-500 border-yellow-500" : "border-muted-foreground"}`}>
-                    {filter.warning && <div className="text-white text-xs text-center leading-none">✓</div>}
+                <button onClick={() => setFilter({...filter, hasElevator: !filter.hasElevator})} className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors touch-target">
+                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${filter.hasElevator ? "bg-green-500 border-green-500" : "border-muted-foreground"}`}>
+                    {filter.hasElevator && <Check className="h-3 w-3 text-white" />}
                   </div>
-                  <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-                    경고
-                  </Badge>
+                  <span className="text-sm">엘리베이터</span>
                 </button>
-                <button onClick={() => setFilter({
-            ...filter,
-            danger: !filter.danger
-          })} className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors touch-target">
-                  <div className={`w-4 h-4 rounded border-2 ${filter.danger ? "bg-red-500 border-red-500" : "border-muted-foreground"}`}>
-                    {filter.danger && <div className="text-white text-xs text-center leading-none">✓</div>}
+                <button onClick={() => setFilter({...filter, hasAccessibleRestroom: !filter.hasAccessibleRestroom})} className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors touch-target">
+                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${filter.hasAccessibleRestroom ? "bg-green-500 border-green-500" : "border-muted-foreground"}`}>
+                    {filter.hasAccessibleRestroom && <Check className="h-3 w-3 text-white" />}
                   </div>
-                  <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                    위험
-                  </Badge>
+                  <span className="text-sm">장애인화장실</span>
+                </button>
+                <button onClick={() => setFilter({...filter, hasLowThreshold: !filter.hasLowThreshold})} className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors touch-target">
+                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${filter.hasLowThreshold ? "bg-green-500 border-green-500" : "border-muted-foreground"}`}>
+                    {filter.hasLowThreshold && <Check className="h-3 w-3 text-white" />}
+                  </div>
+                  <span className="text-sm">턱 없음</span>
+                </button>
+                <button onClick={() => setFilter({...filter, hasWideDoor: !filter.hasWideDoor})} className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors touch-target">
+                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${filter.hasWideDoor ? "bg-green-500 border-green-500" : "border-muted-foreground"}`}>
+                    {filter.hasWideDoor && <Check className="h-3 w-3 text-white" />}
+                  </div>
+                  <span className="text-sm">넓은 출입문</span>
+                </button>
+                <div className="border-t my-2"></div>
+                <button onClick={() => setFilter({...filter, publicData: !filter.publicData})} className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors touch-target">
+                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${filter.publicData ? "bg-blue-500 border-blue-500" : "border-muted-foreground"}`}>
+                    {filter.publicData && <Check className="h-3 w-3 text-white" />}
+                  </div>
+                  <span className="text-sm">공공데이터</span>
                 </button>
               </div>}
           </div>}

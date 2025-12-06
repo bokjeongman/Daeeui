@@ -20,6 +20,11 @@ export type Database = {
           category: string
           created_at: string | null
           details: string | null
+          has_accessible_restroom: boolean | null
+          has_elevator: boolean | null
+          has_low_threshold: boolean | null
+          has_ramp: boolean | null
+          has_wide_door: boolean | null
           id: string
           latitude: number
           location_name: string
@@ -36,6 +41,11 @@ export type Database = {
           category: string
           created_at?: string | null
           details?: string | null
+          has_accessible_restroom?: boolean | null
+          has_elevator?: boolean | null
+          has_low_threshold?: boolean | null
+          has_ramp?: boolean | null
+          has_wide_door?: boolean | null
           id?: string
           latitude: number
           location_name: string
@@ -52,6 +62,11 @@ export type Database = {
           category?: string
           created_at?: string | null
           details?: string | null
+          has_accessible_restroom?: boolean | null
+          has_elevator?: boolean | null
+          has_low_threshold?: boolean | null
+          has_ramp?: boolean | null
+          has_wide_door?: boolean | null
           id?: string
           latitude?: number
           location_name?: string
@@ -123,6 +138,11 @@ export type Database = {
           created_at: string
           id: string
           proposed_details: string | null
+          proposed_has_accessible_restroom: boolean | null
+          proposed_has_elevator: boolean | null
+          proposed_has_low_threshold: boolean | null
+          proposed_has_ramp: boolean | null
+          proposed_has_wide_door: boolean | null
           proposed_photo_urls: string[] | null
           reason: string
           report_id: string
@@ -136,6 +156,11 @@ export type Database = {
           created_at?: string
           id?: string
           proposed_details?: string | null
+          proposed_has_accessible_restroom?: boolean | null
+          proposed_has_elevator?: boolean | null
+          proposed_has_low_threshold?: boolean | null
+          proposed_has_ramp?: boolean | null
+          proposed_has_wide_door?: boolean | null
           proposed_photo_urls?: string[] | null
           reason: string
           report_id: string
@@ -149,6 +174,11 @@ export type Database = {
           created_at?: string
           id?: string
           proposed_details?: string | null
+          proposed_has_accessible_restroom?: boolean | null
+          proposed_has_elevator?: boolean | null
+          proposed_has_low_threshold?: boolean | null
+          proposed_has_ramp?: boolean | null
+          proposed_has_wide_door?: boolean | null
           proposed_photo_urls?: string[] | null
           reason?: string
           report_id?: string
