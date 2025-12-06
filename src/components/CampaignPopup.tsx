@@ -82,11 +82,11 @@ const CampaignPopup = ({ onAgree }: CampaignPopupProps) => {
           <h2 className="text-xl font-bold text-gray-900 mb-6">접근성 정보 공유</h2>
 
           {/* 아이콘 */}
-          <div className="w-24 h-24 rounded-full overflow-hidden mb-6 bg-[#d4edda] flex items-center justify-center">
+          <div className="w-28 h-28 rounded-full overflow-hidden mb-6 bg-[#d4edda]">
             <img 
               src={wheelchairRampIcon} 
               alt="휠체어 경사로" 
-              className="w-20 h-20 object-contain"
+              className="w-full h-full object-cover"
             />
           </div>
 
