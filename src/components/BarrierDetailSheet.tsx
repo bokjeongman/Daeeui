@@ -302,11 +302,11 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
                   <CarouselContent>
                     {report.photo_urls.map((url, photoIndex) => (
                       <CarouselItem key={photoIndex}>
-                        <div className="relative aspect-video w-full max-h-[200px] overflow-hidden rounded-lg bg-muted">
+                        <div className="w-full flex items-center justify-center rounded-lg bg-muted p-2">
                           <img
                             src={url}
                             alt={`${report.name} 사진 ${photoIndex + 1}`}
-                            className="object-contain w-full h-full"
+                            className="max-h-[250px] w-auto object-contain rounded-lg"
                             onError={(e) => {
                               e.currentTarget.src = "/placeholder.svg";
                             }}

@@ -33,7 +33,27 @@ interface Review {
   status: string;
   created_at: string;
   address?: string;
+  photo_urls?: string[] | null;
+  has_ramp?: boolean | null;
+  has_elevator?: boolean | null;
+  has_accessible_restroom?: boolean | null;
+  has_low_threshold?: boolean | null;
+  has_wide_door?: boolean | null;
 }
+
+interface AccessibilityItem {
+  key: keyof Pick<Review, 'has_ramp' | 'has_elevator' | 'has_accessible_restroom' | 'has_low_threshold' | 'has_wide_door'>;
+  label: string;
+  inverted?: boolean;
+}
+
+const accessibilityItems: AccessibilityItem[] = [
+  { key: 'has_ramp', label: '경사로' },
+  { key: 'has_elevator', label: '엘리베이터' },
+  { key: 'has_accessible_restroom', label: '장애인 화장실' },
+  { key: 'has_low_threshold', label: '턱', inverted: true },
+  { key: 'has_wide_door', label: '넓은 출입문' },
+];
 
 const editReviewSchema = z.object({
   details: z.string().trim().min(1, "상세 내용을 입력해주세요.").max(2000, "상세 내용은 2000자 이하여야 합니다."),
@@ -174,22 +194,16 @@ const MyReviews = () => {
     }
   };
 
-  const getLevelColor = (level: string) => {
-    switch (level) {
-      case "good": return "bg-green-500";
-      case "moderate": return "bg-yellow-500";
-      case "difficult": return "bg-red-500";
-      default: return "bg-gray-500";
+  // 턱 항목은 inverted - 있음이면 빨간색(나쁨), 없음이면 초록색(좋음)
+  const getBadgeColor = (item: AccessibilityItem, value: boolean) => {
+    if (item.inverted) {
+      return value 
+        ? "bg-red-50 text-red-700 border-red-200" 
+        : "bg-green-50 text-green-700 border-green-200";
     }
-  };
-
-  const getLevelLabel = (level: string) => {
-    switch (level) {
-      case "good": return "양호";
-      case "moderate": return "보통";
-      case "difficult": return "어려움";
-      default: return level;
-    }
+    return value 
+      ? "bg-green-50 text-green-700 border-green-200" 
+      : "bg-red-50 text-red-700 border-red-200";
   };
 
   const getStatusLabel = (status: string) => {
@@ -248,18 +262,7 @@ const MyReviews = () => {
                 <Card key={review.id} className="p-4">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-semibold text-lg">{review.location_name}</h3>
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge className={getLevelColor(review.accessibility_level)}>
-                          {getLevelLabel(review.accessibility_level)}
-                        </Badge>
-                        <Badge variant="outline">{review.category}</Badge>
-                        <Badge className={statusInfo.color}>
-                          {statusInfo.label}
-                        </Badge>
-                      </div>
+                      <h3 className="font-semibold text-lg">{review.location_name}</h3>
                     </div>
                     <div className="flex gap-2">
                       <Button
@@ -280,10 +283,44 @@ const MyReviews = () => {
                     </div>
                   </div>
 
+                  {/* 5가지 접근성 항목 배지 */}
+                  <div className="flex flex-wrap gap-1 mb-3">
+                    {accessibilityItems.map(item => {
+                      const value = review[item.key];
+                      if (value === null || value === undefined) return null;
+                      return (
+                        <Badge
+                          key={item.key}
+                          variant="outline"
+                          className={getBadgeColor(item, value)}
+                        >
+                          {item.label}: {value ? "있음" : "없음"}
+                        </Badge>
+                      );
+                    })}
+                  </div>
+
                   {review.details && (
                     <p className="text-sm text-muted-foreground mb-3 whitespace-pre-wrap">
                       {review.details}
                     </p>
+                  )}
+
+                  {/* 사진 표시 */}
+                  {review.photo_urls && review.photo_urls.length > 0 && (
+                    <div className="flex gap-2 overflow-x-auto pb-2 mb-3">
+                      {review.photo_urls.map((url, idx) => (
+                        <img
+                          key={idx}
+                          src={url}
+                          alt={`제보 사진 ${idx + 1}`}
+                          className="max-h-32 w-auto object-contain rounded-lg border flex-shrink-0"
+                          onError={(e) => {
+                            e.currentTarget.src = "/placeholder.svg";
+                          }}
+                        />
+                      ))}
+                    </div>
                   )}
 
                   <div className="flex items-center gap-4 text-xs text-muted-foreground mb-2">
@@ -331,16 +368,16 @@ const MyReviews = () => {
               <label className="text-sm font-medium mb-2 block">접근성 수준</label>
               <div className="flex gap-2">
                 {[
-                  { value: "good", label: "양호" },
-                  { value: "moderate", label: "보통" },
-                  { value: "difficult", label: "어려움" }
+                  { value: "good", label: "양호", color: "bg-green-500" },
+                  { value: "moderate", label: "보통", color: "bg-yellow-500" },
+                  { value: "difficult", label: "어려움", color: "bg-red-500" }
                 ].map((level) => (
                   <Button
                     key={level.value}
                     variant={editedLevel === level.value ? "default" : "outline"}
                     size="sm"
                     onClick={() => setEditedLevel(level.value)}
-                    className={editedLevel === level.value ? getLevelColor(level.value) : ""}
+                    className={editedLevel === level.value ? level.color : ""}
                   >
                     {level.label}
                   </Button>
