@@ -15,7 +15,7 @@ declare global {
   }
 }
 
-// MapView component for route planning and navigation
+// MapView component for route planning and navigation - refreshable
 interface MapViewProps {
   startPoint?: {
     lat: number;

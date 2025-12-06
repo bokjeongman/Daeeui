@@ -438,7 +438,6 @@ const Index = () => {
           selectedSearchPlace={selectedSearchPlace}
           hideFilterButton={!!selectedSearchPlace}
           isRouteSelecting={!!(startPoint || endPoint)}
-          refreshKey={mapRefreshKey}
         />
 
         {/* 후기 등록 버튼 - 장소 검색 중일 때 숨김 */}
