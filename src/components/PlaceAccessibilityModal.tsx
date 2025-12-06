@@ -123,7 +123,7 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
       
       const reviewsWithNicknames = (data || []).map(r => ({
         ...r,
-        nickname: r.accessibility_level === "verified" ? "공공데이터" : nicknameMap.get(r.user_id) || "사용자"
+        nickname: r.accessibility_level === "public" ? "공공데이터" : nicknameMap.get(r.user_id) || "사용자"
       }));
       
       setReviews(reviewsWithNicknames);

@@ -1053,7 +1053,7 @@ const MapView = ({
         const report = feature.properties.report;
         if (!report) return;
         
-        const isPublicData = report.accessibility_level === "verified";
+        const isPublicData = report.accessibility_level === "public";
         // 5개 항목 중 하나라도 데이터가 있는지 확인
         const hasAccessibilityData = 
           report.has_ramp !== null || 

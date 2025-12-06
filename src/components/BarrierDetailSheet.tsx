@@ -119,7 +119,7 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
           
           const reportsWithNames = reports.map(r => {
             const reportId = r.id !== "single" ? r.id : (barrier as any).reportId || (barrier as any).id;
-            if (r.accessibility_level === "verified") {
+            if (r.accessibility_level === "public") {
               return { ...r, nickname: "공공데이터", reportId };
             }
             if (r.user_id) {
@@ -141,7 +141,7 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
             const reportId = r.id !== "single" ? r.id : (barrier as any).reportId || (barrier as any).id;
             return {
               ...r,
-              nickname: r.accessibility_level === "verified" ? "공공데이터" : "사용자",
+              nickname: r.accessibility_level === "public" ? "공공데이터" : "사용자",
               reportId
             };
           });
@@ -196,7 +196,7 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
               <div className="flex items-center gap-2 text-sm">
                 <User className="h-4 w-4 text-muted-foreground" />
                 <span className="font-medium">{report.nickname}</span>
-                {report.accessibility_level === "verified" && (
+                {report.accessibility_level === "public" && (
                   <Badge className="bg-blue-500 text-white text-xs">공공데이터</Badge>
                 )}
               </div>
