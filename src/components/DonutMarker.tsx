@@ -17,9 +17,6 @@ export function createTaegukMarkerSvg(size: number = 40): string {
   const cy = size / 2;
   const radius = size / 2 - 2;
   
-  // 스케일 계산 (원본 viewBox 기준으로 현재 size에 맞게 조정)
-  const scale = radius / 50;
-  
   return `
     <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
       <defs>
@@ -35,12 +32,24 @@ export function createTaegukMarkerSvg(size: number = 40): string {
       <circle cx="${cx}" cy="${cy}" r="${radius}" fill="white" filter="url(#shadow-${uniqueId})"/>
       
       <!-- 태극 문양 (정부 심볼 스타일) -->
-      <g transform="translate(${cx}, ${cy}) scale(${scale})">
+      <g transform="translate(${cx}, ${cy}) scale(${radius / 50})">
         <!-- 빨간색 상단 곡선 -->
-        <path d="M0,-42 C23,-42 42,-23 42,0 C42,12 35,22 25,28 C18,8 8,-8 0,-8 C-12,-8 -21,3 -21,17 C-21,25 -16,32 -8,35 C-18,40 -30,42 -42,38 C-48,20 -42,-10 -25,-28 C-12,-42 0,-42 0,-42" fill="#E8383D"/>
+        <path d="M0,-40 C22,-40 40,-22 40,0 C40,22 22,40 0,40 C-11,40 -20,31 -20,20 C-20,9 -11,0 0,0 C11,0 20,-9 20,-20 C20,-31 11,-40 0,-40" fill="#E8383D" clip-path="url(#top-${uniqueId})"/>
+        <clipPath id="top-${uniqueId}">
+          <rect x="-50" y="-50" width="100" height="50"/>
+        </clipPath>
         
         <!-- 파란색 하단 곡선 -->
-        <path d="M0,42 C-23,42 -42,23 -42,0 C-42,-12 -35,-22 -25,-28 C-18,-8 -8,8 0,8 C12,8 21,-3 21,-17 C21,-25 16,-32 8,-35 C18,-40 30,-42 42,-38 C48,-20 42,10 25,28 C12,42 0,42 0,42" fill="#0D4D90"/>
+        <path d="M0,-40 C22,-40 40,-22 40,0 C40,22 22,40 0,40 C-11,40 -20,31 -20,20 C-20,9 -11,0 0,0 C11,0 20,-9 20,-20 C20,-31 11,-40 0,-40" fill="#0D4D90" clip-path="url(#bottom-${uniqueId})"/>
+        <clipPath id="bottom-${uniqueId}">
+          <rect x="-50" y="0" width="100" height="50"/>
+        </clipPath>
+        
+        <!-- 빨간색 S커브 상단 -->
+        <path d="M0,0 C-11,0 -20,9 -20,20 C-20,31 -11,40 0,40 C22,40 40,22 40,0 C40,-8 36,-16 30,-22" fill="#E8383D"/>
+        
+        <!-- 파란색 S커브 하단 -->
+        <path d="M0,0 C11,0 20,-9 20,-20 C20,-31 11,-40 0,-40 C-22,-40 -40,-22 -40,0 C-40,8 -36,16 -30,22" fill="#0D4D90"/>
       </g>
     </svg>
   `;
