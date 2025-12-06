@@ -128,7 +128,12 @@ All colors MUST be HSL.
     margin-bottom: env(safe-area-inset-bottom, 0px);
   }
   
-  /* Improved touch targets for mobile */
+  /* Bottom offset for floating buttons on mobile */
+  .bottom-safe {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+  }
+  
+  /* Improved touch targets for mobile - minimum 44x44 */
   .touch-target {
     min-height: 44px;
     min-width: 44px;
@@ -142,5 +147,10 @@ All colors MUST be HSL.
   /* Prevent pull-to-refresh on mobile */
   .no-overscroll {
     overscroll-behavior-y: none;
+  }
+  
+  /* Ensure buttons are always visible on small screens */
+  .btn-responsive {
+    @apply h-11 w-11 sm:h-12 sm:w-12 md:h-14 md:w-14;
   }
 }

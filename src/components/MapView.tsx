@@ -1626,62 +1626,73 @@ const MapView = ({
           </div>
         </div>}
 
-      {/* 로드뷰 버튼 (상단 우측 - 여백 조정) */}
-      <div className="absolute top-4 right-6 md:right-8 z-50 pointer-events-auto">
-        <Button size="icon" variant="outline" onClick={() => {
-        if (map) {
-          const center = map.getCenter();
-          const lat = center._lat;
-          const lon = center._lng;
-          window.open(`https://map.kakao.com/?urlX=${lon}&urlY=${lat}&urlLevel=3&map_type=TYPE_MAP&map_hybrid=false`, "_blank");
-        }
-      }} title="카카오맵 로드뷰 열기" className="shadow-lg h-11 w-11 md:h-12 md:w-12 rounded-full px-0 bg-background border-2 border-border mx-[10px]">
+      {/* 로드뷰 버튼 (상단 우측) */}
+      <div className="absolute top-3 sm:top-4 right-3 sm:right-6 md:right-8 z-50 pointer-events-auto">
+        <Button 
+          size="icon" 
+          variant="outline" 
+          onClick={() => {
+            if (map) {
+              const center = map.getCenter();
+              const lat = center._lat;
+              const lon = center._lng;
+              window.open(`https://map.kakao.com/?urlX=${lon}&urlY=${lat}&urlLevel=3&map_type=TYPE_MAP&map_hybrid=false`, "_blank");
+            }
+          }} 
+          title="카카오맵 로드뷰 열기" 
+          className="shadow-lg h-10 w-10 sm:h-11 sm:w-11 md:h-12 md:w-12 rounded-full px-0 bg-background border-2 border-border active:scale-95 transition-transform"
+        >
           <Eye className="h-5 w-5" />
         </Button>
       </div>
 
       {/* 하단 버튼 그룹 컨테이너 - 필터, 현위치 버튼 */}
-      <div className={`absolute right-4 md:right-6 z-50 pointer-events-auto flex flex-col items-center gap-3 transition-all duration-300 ${isMobile ? isRouteSelecting ? "bottom-6" : "bottom-6" : isRouteSelecting ? "bottom-6" : "bottom-6"}`}>
+      <div className="absolute right-3 sm:right-4 md:right-6 bottom-20 sm:bottom-6 z-50 pointer-events-auto flex flex-col items-center gap-2 sm:gap-3">
         {/* 필터 버튼 - 장소 검색 중이 아닐 때만 표시 */}
         {!hideFilterButton && <div className="relative">
-            <Button onClick={() => setShowFilter(!showFilter)} size="lg" title="필터" className="h-12 w-12 md:h-14 md:w-14 rounded-full shadow-xl bg-background hover:bg-muted text-foreground border-2 border-border touch-target">
-              <Filter className="h-5 w-5 md:h-6 md:w-6" />
+            <Button 
+              onClick={() => setShowFilter(!showFilter)} 
+              size="lg" 
+              title="필터" 
+              className="h-11 w-11 sm:h-12 sm:w-12 md:h-14 md:w-14 rounded-full shadow-xl bg-background hover:bg-muted text-foreground border-2 border-border touch-target active:scale-95 transition-transform"
+            >
+              <Filter className="h-5 w-5 sm:h-5 sm:w-5 md:h-6 md:w-6" />
             </Button>
-            {showFilter && <div className="absolute bottom-full right-0 mb-2 bg-background border-2 border-border rounded-lg shadow-xl p-3 space-y-2 min-w-[180px] max-h-[300px] overflow-y-auto">
+            {showFilter && <div className="absolute bottom-full right-0 mb-2 bg-background border-2 border-border rounded-lg shadow-xl p-3 space-y-2 min-w-[180px] max-w-[calc(100vw-2rem)] max-h-[60vh] overflow-y-auto z-[60]">
                 <div className="text-sm font-semibold mb-2 text-foreground">접근성 필터</div>
-                <button onClick={() => setFilter({...filter, hasRamp: !filter.hasRamp})} className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors touch-target">
-                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${filter.hasRamp ? "bg-green-500 border-green-500" : "border-muted-foreground"}`}>
+                <button onClick={() => setFilter({...filter, hasRamp: !filter.hasRamp})} className="w-full flex items-center gap-2 p-2.5 rounded hover:bg-muted transition-colors touch-target active:bg-muted">
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${filter.hasRamp ? "bg-green-500 border-green-500" : "border-muted-foreground"}`}>
                     {filter.hasRamp && <Check className="h-3 w-3 text-white" />}
                   </div>
                   <span className="text-sm">경사로</span>
                 </button>
-                <button onClick={() => setFilter({...filter, hasElevator: !filter.hasElevator})} className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors touch-target">
-                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${filter.hasElevator ? "bg-green-500 border-green-500" : "border-muted-foreground"}`}>
+                <button onClick={() => setFilter({...filter, hasElevator: !filter.hasElevator})} className="w-full flex items-center gap-2 p-2.5 rounded hover:bg-muted transition-colors touch-target active:bg-muted">
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${filter.hasElevator ? "bg-green-500 border-green-500" : "border-muted-foreground"}`}>
                     {filter.hasElevator && <Check className="h-3 w-3 text-white" />}
                   </div>
                   <span className="text-sm">엘리베이터</span>
                 </button>
-                <button onClick={() => setFilter({...filter, hasAccessibleRestroom: !filter.hasAccessibleRestroom})} className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors touch-target">
-                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${filter.hasAccessibleRestroom ? "bg-green-500 border-green-500" : "border-muted-foreground"}`}>
+                <button onClick={() => setFilter({...filter, hasAccessibleRestroom: !filter.hasAccessibleRestroom})} className="w-full flex items-center gap-2 p-2.5 rounded hover:bg-muted transition-colors touch-target active:bg-muted">
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${filter.hasAccessibleRestroom ? "bg-green-500 border-green-500" : "border-muted-foreground"}`}>
                     {filter.hasAccessibleRestroom && <Check className="h-3 w-3 text-white" />}
                   </div>
                   <span className="text-sm">장애인화장실</span>
                 </button>
-                <button onClick={() => setFilter({...filter, hasLowThreshold: !filter.hasLowThreshold})} className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors touch-target">
-                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${filter.hasLowThreshold ? "bg-green-500 border-green-500" : "border-muted-foreground"}`}>
+                <button onClick={() => setFilter({...filter, hasLowThreshold: !filter.hasLowThreshold})} className="w-full flex items-center gap-2 p-2.5 rounded hover:bg-muted transition-colors touch-target active:bg-muted">
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${filter.hasLowThreshold ? "bg-green-500 border-green-500" : "border-muted-foreground"}`}>
                     {filter.hasLowThreshold && <Check className="h-3 w-3 text-white" />}
                   </div>
                   <span className="text-sm">턱 없음</span>
                 </button>
-                <button onClick={() => setFilter({...filter, hasWideDoor: !filter.hasWideDoor})} className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors touch-target">
-                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${filter.hasWideDoor ? "bg-green-500 border-green-500" : "border-muted-foreground"}`}>
+                <button onClick={() => setFilter({...filter, hasWideDoor: !filter.hasWideDoor})} className="w-full flex items-center gap-2 p-2.5 rounded hover:bg-muted transition-colors touch-target active:bg-muted">
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${filter.hasWideDoor ? "bg-green-500 border-green-500" : "border-muted-foreground"}`}>
                     {filter.hasWideDoor && <Check className="h-3 w-3 text-white" />}
                   </div>
                   <span className="text-sm">넓은 출입문</span>
                 </button>
                 <div className="border-t my-2"></div>
-                <button onClick={() => setFilter({...filter, publicData: !filter.publicData})} className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors touch-target">
-                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${filter.publicData ? "bg-blue-500 border-blue-500" : "border-muted-foreground"}`}>
+                <button onClick={() => setFilter({...filter, publicData: !filter.publicData})} className="w-full flex items-center gap-2 p-2.5 rounded hover:bg-muted transition-colors touch-target active:bg-muted">
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${filter.publicData ? "bg-blue-500 border-blue-500" : "border-muted-foreground"}`}>
                     {filter.publicData && <Check className="h-3 w-3 text-white" />}
                   </div>
                   <span className="text-sm">공공데이터</span>
@@ -1690,8 +1701,14 @@ const MapView = ({
           </div>}
 
         {/* 현재 위치 버튼 */}
-        <Button onClick={getCurrentLocation} size="lg" className="h-12 w-12 md:h-14 md:w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground border-4 border-background touch-target" title="현재 위치" disabled={loading}>
-          {loading && userLocation === null ? <Loader2 className="h-5 w-5 md:h-6 md:w-6 animate-spin" /> : <Navigation className="h-5 w-5 md:h-6 md:w-6" />}
+        <Button 
+          onClick={getCurrentLocation} 
+          size="lg" 
+          className="h-11 w-11 sm:h-12 sm:w-12 md:h-14 md:w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground border-4 border-background touch-target active:scale-95 transition-transform" 
+          title="현재 위치" 
+          disabled={loading}
+        >
+          {loading && userLocation === null ? <Loader2 className="h-5 w-5 sm:h-5 sm:w-5 md:h-6 md:w-6 animate-spin" /> : <Navigation className="h-5 w-5 sm:h-5 sm:w-5 md:h-6 md:w-6" />}
         </Button>
       </div>
     </div>;
