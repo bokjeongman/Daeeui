@@ -79,8 +79,31 @@ serve(async (req: Request) => {
       body: requestBody,
     });
 
-    const data = await response.json();
     console.log(`Tmap API response status: ${response.status}`);
+    
+    // 응답 텍스트를 먼저 가져와서 안전하게 파싱
+    const responseText = await response.text();
+    
+    // 빈 응답 처리
+    if (!responseText || responseText.trim() === "") {
+      console.error("Tmap API returned empty response");
+      return new Response(
+        JSON.stringify({ error: "Empty response from Tmap API", searchPoiInfo: { pois: { poi: [] } } }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    // JSON 파싱 시도
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error("Failed to parse Tmap response:", responseText.substring(0, 200));
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON from Tmap API", rawResponse: responseText.substring(0, 100) }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     return new Response(JSON.stringify(data), {
       status: response.status,
