@@ -19,6 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import ImageViewer from "@/components/ImageViewer";
 
 interface PlaceAccessibilityModalProps {
   open: boolean;
@@ -66,6 +67,7 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [deletingReviewId, setDeletingReviewId] = useState<string | null>(null);
+  const [viewingImages, setViewingImages] = useState<{ images: string[]; index: number } | null>(null);
   
   const [accessibilityValues, setAccessibilityValues] = useState<Record<string, boolean | null>>({
     has_ramp: null,
@@ -493,7 +495,8 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
                         key={idx}
                         src={url}
                         alt={`제보 사진 ${idx + 1}`}
-                        className="max-h-24 w-auto object-contain rounded-lg border flex-shrink-0"
+                        className="max-h-24 w-auto object-contain rounded-lg border flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => setViewingImages({ images: review.photo_urls!, index: idx })}
                         onError={(e) => {
                           e.currentTarget.src = "/placeholder.svg";
                         }}
@@ -615,6 +618,14 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 이미지 확대 뷰어 */}
+      <ImageViewer
+        images={viewingImages?.images || []}
+        initialIndex={viewingImages?.index || 0}
+        open={!!viewingImages}
+        onClose={() => setViewingImages(null)}
+      />
     </Dialog>
   );
 };

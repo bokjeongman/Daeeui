@@ -20,6 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import ImageViewer from "@/components/ImageViewer";
 
 interface ReportData {
   id: string;
@@ -91,6 +92,7 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
   const [reportsWithNicknames, setReportsWithNicknames] = useState<ReportData[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [deletingReviewId, setDeletingReviewId] = useState<string | null>(null);
+  const [viewingImages, setViewingImages] = useState<{ images: string[]; index: number } | null>(null);
   const isMobile = useIsMobile();
 
   // 현재 사용자 ID 가져오기
@@ -302,7 +304,10 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
                   <CarouselContent>
                     {report.photo_urls.map((url, photoIndex) => (
                       <CarouselItem key={photoIndex}>
-                        <div className="w-full flex items-center justify-center rounded-lg bg-muted p-2">
+                        <div 
+                          className="w-full flex items-center justify-center rounded-lg bg-muted p-2 cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => setViewingImages({ images: report.photo_urls!, index: photoIndex })}
+                        >
                           <img
                             src={url}
                             alt={`${report.name} 사진 ${photoIndex + 1}`}
@@ -429,6 +434,14 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 이미지 확대 뷰어 */}
+      <ImageViewer
+        images={viewingImages?.images || []}
+        initialIndex={viewingImages?.index || 0}
+        open={!!viewingImages}
+        onClose={() => setViewingImages(null)}
+      />
     </Sheet>
   );
 };
