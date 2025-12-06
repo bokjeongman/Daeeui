@@ -210,7 +210,7 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
         has_wide_door: accessibilityValues.has_wide_door,
         details: additionalDetails.trim() || null,
         photo_urls: photoUrls.length > 0 ? photoUrls : null,
-        accessibility_level: "public",
+        accessibility_level: "notpublic",
         category: "public",
         status: "approved",
       });

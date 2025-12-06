@@ -126,24 +126,24 @@ export function useAccessibilityMarkerCluster(
 
     // Filter reports based on filter state
     const filteredReports = reports.filter((report) => {
-      // 공공데이터 필터
-      if (report.accessibility_level === "public") {
-        return filter.publicData;
+      // 모든 필터가 꺼져있으면 모든 데이터 표시
+      const allFiltersOff = !filter.hasRamp && !filter.hasElevator && !filter.hasAccessibleRestroom && !filter.hasLowThreshold && !filter.hasWideDoor && !filter.publicData;
+      
+      if (allFiltersOff) return true;
+      
+      // 공공데이터 필터 체크
+      if (filter.publicData && report.accessibility_level === "public") {
+        return true;
       }
       
       // 개별 항목 필터 (하나라도 해당하면 표시)
-      let matchesFilter = false;
+      if (filter.hasRamp && report.has_ramp === true) return true;
+      if (filter.hasElevator && report.has_elevator === true) return true;
+      if (filter.hasAccessibleRestroom && report.has_accessible_restroom === true) return true;
+      if (filter.hasLowThreshold && report.has_low_threshold === false) return true; // 턱이 없으면 좋음
+      if (filter.hasWideDoor && report.has_wide_door === true) return true;
       
-      if (filter.hasRamp && report.has_ramp === true) matchesFilter = true;
-      if (filter.hasElevator && report.has_elevator === true) matchesFilter = true;
-      if (filter.hasAccessibleRestroom && report.has_accessible_restroom === true) matchesFilter = true;
-      if (filter.hasLowThreshold && report.has_low_threshold === true) matchesFilter = true;
-      if (filter.hasWideDoor && report.has_wide_door === true) matchesFilter = true;
-      
-      // 모든 필터가 꺼져있으면 모두 표시
-      const allFiltersOff = !filter.hasRamp && !filter.hasElevator && !filter.hasAccessibleRestroom && !filter.hasLowThreshold && !filter.hasWideDoor;
-      
-      return allFiltersOff || matchesFilter;
+      return false;
     });
 
     // Convert reports to GeoJSON features

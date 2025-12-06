@@ -111,7 +111,7 @@ const MapView = ({
     hasAccessibleRestroom: false,
     hasLowThreshold: false,
     hasWideDoor: false,
-    publicData: true,
+    publicData: false,
   });
   const [showFilter, setShowFilter] = useState(false);
   const [previousDuration, setPreviousDuration] = useState<number | null>(null);
