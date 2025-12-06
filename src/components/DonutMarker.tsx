@@ -16,7 +16,7 @@ export function createTaegukMarkerSvg(size: number = 40): string {
   const cx = size / 2;
   const cy = size / 2;
   const radius = size / 2 - 2;
-  const scale = radius / 55;
+  const scale = radius / 50;
   
   return `
     <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
@@ -32,13 +32,25 @@ export function createTaegukMarkerSvg(size: number = 40): string {
       <!-- 배경 원 (흰색 + 그림자) -->
       <circle cx="${cx}" cy="${cy}" r="${radius}" fill="white" filter="url(#shadow-${uniqueId})"/>
       
-      <!-- 태극 문양 (정부 심볼 스타일) -->
-      <g transform="translate(${cx}, ${cy}) scale(${scale}) rotate(-25)">
-        <!-- 파란색 반원 (외곽) -->
-        <path d="M 0,-45 A 45,45 0 0,1 0,45 A 22.5,22.5 0 0,1 0,0 A 22.5,22.5 0 0,0 0,-45 Z" fill="#003366"/>
+      <!-- 태극 문양 (정부 심볼 스타일 - 흰 공간 포함) -->
+      <g transform="translate(${cx}, ${cy}) scale(${scale})">
+        <!-- 빨간색 곡선 (상단 오른쪽) -->
+        <path d="M 8,-38 
+                 C 30,-32 42,-10 38,15 
+                 C 35,28 24,38 10,40
+                 C 0,36 -5,28 -5,18
+                 C -5,8 2,0 12,0
+                 C 22,0 28,-10 24,-22
+                 C 20,-32 12,-38 8,-38 Z" fill="#C8102E"/>
         
-        <!-- 빨간색 반원 (외곽) -->
-        <path d="M 0,45 A 45,45 0 0,1 0,-45 A 22.5,22.5 0 0,1 0,0 A 22.5,22.5 0 0,0 0,45 Z" fill="#C8102E"/>
+        <!-- 파란색 곡선 (하단 왼쪽) -->
+        <path d="M -8,38 
+                 C -30,32 -42,10 -38,-15 
+                 C -35,-28 -24,-38 -10,-40
+                 C 0,-36 5,-28 5,-18
+                 C 5,-8 -2,0 -12,0
+                 C -22,0 -28,10 -24,22
+                 C -20,32 -12,38 -8,38 Z" fill="#003366"/>
       </g>
     </svg>
   `;
