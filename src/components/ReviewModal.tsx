@@ -234,7 +234,7 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
   };
 
   const ContentBody = () => (
-    <ScrollArea className="h-full">
+    <div className="h-[60vh] overflow-y-auto">
       <div className="space-y-6 pr-2 pb-6">
         {/* 장소 검색 */}
         <div className="space-y-2">
@@ -392,7 +392,7 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
           )}
         </div>
       </div>
-    </ScrollArea>
+    </div>
   );
 
   const SubmitButtons = () => (

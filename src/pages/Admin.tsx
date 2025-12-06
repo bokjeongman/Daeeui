@@ -9,10 +9,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { CheckCircle2, XCircle, MapPin, Loader2, Search, Filter, Eye, Edit } from "lucide-react";
-import ModificationRequestsAdmin from "@/components/ModificationRequestsAdmin";
+import { CheckCircle2, XCircle, MapPin, Loader2, Search, Filter, Eye } from "lucide-react";
 
 interface Report {
   id: string;
@@ -190,16 +188,6 @@ const Admin = () => {
     <div className="container mx-auto p-6 max-w-7xl">
       <h1 className="text-3xl font-bold mb-6">관리자 대시보드</h1>
       
-      <Tabs defaultValue="reports" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="reports">제보 관리</TabsTrigger>
-          <TabsTrigger value="modifications" className="flex items-center gap-2">
-            <Edit className="h-4 w-4" />
-            수정/삭제 요청
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="reports" className="space-y-6">
       <Card className="mb-6">
         <CardHeader><CardTitle className="flex items-center gap-2"><Filter className="h-5 w-5" />검색 및 필터</CardTitle></CardHeader>
         <CardContent className="space-y-4">
@@ -322,13 +310,6 @@ const Admin = () => {
           </Card>
         ))}
       </div>
-
-        </TabsContent>
-
-        <TabsContent value="modifications">
-          <ModificationRequestsAdmin />
-        </TabsContent>
-      </Tabs>
 
       {/* 로드뷰 다이얼로그 */}
       <Dialog open={roadViewReport !== null} onOpenChange={(open) => !open && setRoadViewReport(null)}>

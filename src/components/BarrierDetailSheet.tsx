@@ -2,13 +2,12 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, User, Edit, X, Check, XIcon } from "lucide-react";
+import { MapPin, User, X, Check, XIcon } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { useEffect, useState } from "react";
 import { reverseGeocode } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import ModificationRequestModal from "./ModificationRequestModal";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ReportData {
@@ -76,16 +75,7 @@ const AccessibilityItem = ({ label, value }: { label: string; value: boolean | n
 const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetProps) => {
   const [address, setAddress] = useState<string>("");
   const [reportsWithNicknames, setReportsWithNicknames] = useState<ReportData[]>([]);
-  const [modificationModalOpen, setModificationModalOpen] = useState(false);
-  const [selectedReportForModification, setSelectedReportForModification] = useState<ReportData | null>(null);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const isMobile = useIsMobile();
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setCurrentUserId(session?.user?.id || null);
-    });
-  }, []);
 
   useEffect(() => {
     if (barrier && open) {
@@ -201,7 +191,7 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
               hasMultipleReports ? 'shadow-sm' : ''
             }`}
           >
-            {/* 작성자 정보 및 수정 요청 버튼 */}
+            {/* 작성자 정보 */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-sm">
                 <User className="h-4 w-4 text-muted-foreground" />
@@ -210,23 +200,6 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
                   <Badge className="bg-blue-500 text-white text-xs">공공데이터</Badge>
                 )}
               </div>
-              {currentUserId && report.accessibility_level !== "verified" && report.reportId && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs"
-                  onClick={() => {
-                    setSelectedReportForModification({
-                      ...report,
-                      id: report.reportId!,
-                    });
-                    setModificationModalOpen(true);
-                  }}
-                >
-                  <Edit className="h-3 w-3 mr-1" />
-                  수정 요청
-                </Button>
-              )}
             </div>
 
             {/* 5가지 접근성 항목 표시 */}
@@ -313,64 +286,10 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
 
   if (isMobile) {
     return (
-      <>
-        <Drawer open={open} onOpenChange={onOpenChange}>
-          <DrawerContent className="h-[85vh] flex flex-col">
-            <DrawerHeader className="mb-2 flex-shrink-0">
-              <DrawerTitle className="flex items-center justify-between pr-2">
-                <div className="flex items-center gap-2 text-xl font-semibold">
-                  <MapPin className="h-6 w-6 text-primary" />
-                  {barrier.name}
-                  {hasMultipleReports && (
-                    <Badge variant="secondary" className="ml-2">
-                      {reportsWithNicknames.length}개 제보
-                    </Badge>
-                  )}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 z-50"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onOpenChange(false);
-                  }}
-                >
-                  <X className="h-5 w-5" />
-                </Button>
-              </DrawerTitle>
-            </DrawerHeader>
-            <div className="flex-1 min-h-0 px-4 pb-4">
-              <ContentBody />
-            </div>
-          </DrawerContent>
-        </Drawer>
-
-        {selectedReportForModification && (
-          <ModificationRequestModal
-            open={modificationModalOpen}
-            onClose={() => {
-              setModificationModalOpen(false);
-              setSelectedReportForModification(null);
-            }}
-            report={{
-              id: selectedReportForModification.id,
-              details: selectedReportForModification.details,
-              photo_urls: selectedReportForModification.photo_urls,
-              location_name: selectedReportForModification.name,
-            }}
-          />
-        )}
-      </>
-    );
-  }
-
-  return (
-    <>
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="h-[85vh] overflow-hidden flex flex-col">
-          <SheetHeader className="mb-4 flex-shrink-0">
-            <SheetTitle className="flex items-center justify-between pr-2">
+      <Drawer open={open} onOpenChange={onOpenChange}>
+        <DrawerContent className="h-[85vh] flex flex-col">
+          <DrawerHeader className="mb-2 flex-shrink-0">
+            <DrawerTitle className="flex items-center justify-between pr-2">
               <div className="flex items-center gap-2 text-xl font-semibold">
                 <MapPin className="h-6 w-6 text-primary" />
                 {barrier.name}
@@ -391,30 +310,48 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
               >
                 <X className="h-5 w-5" />
               </Button>
-            </SheetTitle>
-          </SheetHeader>
-          <div className="flex-1 min-h-0">
+            </DrawerTitle>
+          </DrawerHeader>
+          <div className="flex-1 min-h-0 px-4 pb-4">
             <ContentBody />
           </div>
-        </SheetContent>
-      </Sheet>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
 
-      {selectedReportForModification && (
-        <ModificationRequestModal
-          open={modificationModalOpen}
-          onClose={() => {
-            setModificationModalOpen(false);
-            setSelectedReportForModification(null);
-          }}
-          report={{
-            id: selectedReportForModification.id,
-            details: selectedReportForModification.details,
-            photo_urls: selectedReportForModification.photo_urls,
-            location_name: selectedReportForModification.name,
-          }}
-        />
-      )}
-    </>
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="bottom" className="h-[85vh] overflow-hidden flex flex-col">
+        <SheetHeader className="mb-4 flex-shrink-0">
+          <SheetTitle className="flex items-center justify-between pr-2">
+            <div className="flex items-center gap-2 text-xl font-semibold">
+              <MapPin className="h-6 w-6 text-primary" />
+              {barrier.name}
+              {hasMultipleReports && (
+                <Badge variant="secondary" className="ml-2">
+                  {reportsWithNicknames.length}개 제보
+                </Badge>
+              )}
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 z-50"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenChange(false);
+              }}
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </SheetTitle>
+        </SheetHeader>
+        <div className="flex-1 min-h-0">
+          <ContentBody />
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 };
 
