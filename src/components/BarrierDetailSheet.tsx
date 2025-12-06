@@ -2,7 +2,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, AlertTriangle, ShieldCheck, User, Edit, X } from "lucide-react";
+import { MapPin, User, Edit, X, Check, XIcon } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { useEffect, useState } from "react";
 import { reverseGeocode } from "@/lib/utils";
@@ -25,6 +25,11 @@ interface ReportData {
   user_id?: string;
   nickname?: string;
   reportId?: string;
+  has_ramp?: boolean | null;
+  has_elevator?: boolean | null;
+  has_accessible_restroom?: boolean | null;
+  has_low_threshold?: boolean | null;
+  has_wide_door?: boolean | null;
 }
 
 interface BarrierDetailSheetProps {
@@ -42,8 +47,31 @@ interface BarrierDetailSheetProps {
     accessibility_level?: string;
     reports?: ReportData[];
     reportCount?: number;
+    has_ramp?: boolean | null;
+    has_elevator?: boolean | null;
+    has_accessible_restroom?: boolean | null;
+    has_low_threshold?: boolean | null;
+    has_wide_door?: boolean | null;
   } | null;
 }
+
+// 접근성 항목 컴포넌트
+const AccessibilityItem = ({ label, value }: { label: string; value: boolean | null | undefined }) => {
+  if (value === null || value === undefined) return null;
+  
+  return (
+    <div className="flex items-center gap-2">
+      <div className={`w-5 h-5 rounded-full flex items-center justify-center ${value ? 'bg-green-500' : 'bg-red-500'}`}>
+        {value ? (
+          <Check className="h-3 w-3 text-white" />
+        ) : (
+          <XIcon className="h-3 w-3 text-white" />
+        )}
+      </div>
+      <span className="text-sm">{label}</span>
+    </div>
+  );
+};
 
 const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetProps) => {
   const [address, setAddress] = useState<string>("");
@@ -58,11 +86,11 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
       setCurrentUserId(session?.user?.id || null);
     });
   }, []);
+
   useEffect(() => {
     if (barrier && open) {
       reverseGeocode(barrier.latitude, barrier.longitude).then(setAddress);
       
-      // 작성자 닉네임 가져오기
       const fetchNicknames = async () => {
         const reports = barrier.reports || [{
           id: "single",
@@ -76,9 +104,13 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
           created_at: barrier.created_at,
           accessibility_level: barrier.accessibility_level,
           user_id: (barrier as any).user_id,
+          has_ramp: barrier.has_ramp,
+          has_elevator: barrier.has_elevator,
+          has_accessible_restroom: barrier.has_accessible_restroom,
+          has_low_threshold: barrier.has_low_threshold,
+          has_wide_door: barrier.has_wide_door,
         }];
         
-        // user_id가 있는 제보들의 닉네임 가져오기
         const userIds = [...new Set(reports.filter(r => r.user_id).map(r => r.user_id))];
         
         if (userIds.length > 0) {
@@ -87,11 +119,9 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
             .select("id, nickname, email")
             .in("id", userIds);
           
-          // 닉네임이 없으면 이메일 앞부분 사용
           const nicknameMap = new Map(profiles?.map(p => {
             let displayName = p.nickname;
             if (!displayName && p.email) {
-              // 이메일 앞부분 사용 (@ 앞)
               displayName = p.email.split('@')[0];
             }
             return [p.id, displayName || "사용자"];
@@ -109,7 +139,6 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
             return { ...r, nickname: "사용자", reportId };
           });
           
-          // 최신순 정렬
           reportsWithNames.sort((a, b) => {
             const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
             const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
@@ -141,42 +170,6 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
 
   if (!barrier) return null;
 
-  const getSeverityBadge = (severity: string) => {
-    switch (severity) {
-      case "verified":
-        return <Badge className="bg-blue-500 text-white">공공데이터 인증</Badge>;
-      case "safe":
-        return <Badge className="bg-green-500 text-white">양호</Badge>;
-      case "warning":
-        return <Badge className="bg-yellow-500 text-white">보통</Badge>;
-      case "danger":
-        return <Badge className="bg-red-500 text-white">어려움</Badge>;
-      default:
-        return <Badge>알 수 없음</Badge>;
-    }
-  };
-
-  const getCategoryText = (type: string) => {
-    switch (type) {
-      case "ramp":
-        return "경사로";
-      case "elevator":
-        return "엘리베이터";
-      case "curb":
-        return "턱";
-      case "stairs":
-        return "계단";
-      case "parking":
-        return "주차장";
-      case "restroom":
-        return "화장실";
-      case "entrance":
-        return "출입구";
-      default:
-        return "기타";
-    }
-  };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('ko-KR', {
       year: 'numeric',
@@ -189,11 +182,18 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
 
   const hasMultipleReports = reportsWithNicknames.length > 1;
 
-  // 공통 컨텐츠
+  // 접근성 항목들의 유무 확인
+  const hasAccessibilityInfo = (report: ReportData) => {
+    return report.has_ramp !== null && report.has_ramp !== undefined ||
+           report.has_elevator !== null && report.has_elevator !== undefined ||
+           report.has_accessible_restroom !== null && report.has_accessible_restroom !== undefined ||
+           report.has_low_threshold !== null && report.has_low_threshold !== undefined ||
+           report.has_wide_door !== null && report.has_wide_door !== undefined;
+  };
+
   const ContentBody = () => (
     <ScrollArea className="h-full w-full [&_[data-radix-scroll-area-scrollbar]]:bg-muted [&_[data-radix-scroll-area-thumb]]:bg-border">
       <div className="space-y-4 pr-4 pb-6">
-        {/* 제보 목록 */}
         {reportsWithNicknames.map((report, index) => (
           <div 
             key={report.id || index} 
@@ -207,10 +207,9 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
                 <User className="h-4 w-4 text-muted-foreground" />
                 <span className="font-medium">{report.nickname}</span>
                 {report.accessibility_level === "verified" && (
-                  <ShieldCheck className="h-4 w-4 text-blue-500" />
+                  <Badge className="bg-blue-500 text-white text-xs">공공데이터</Badge>
                 )}
               </div>
-              {/* 수정 요청 버튼: 공공데이터가 아닌 모든 제보에 표시 (본인 제보 포함) */}
               {currentUserId && report.accessibility_level !== "verified" && report.reportId && (
                 <Button
                   variant="ghost"
@@ -230,7 +229,18 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
               )}
             </div>
 
-            {/* 상세 정보 (상단, 크게) + 등록 시각 */}
+            {/* 5가지 접근성 항목 표시 */}
+            {hasAccessibilityInfo(report) && (
+              <div className="grid grid-cols-2 gap-2 p-3 bg-muted/50 rounded-lg">
+                <AccessibilityItem label="경사로" value={report.has_ramp} />
+                <AccessibilityItem label="엘리베이터" value={report.has_elevator} />
+                <AccessibilityItem label="장애인 화장실" value={report.has_accessible_restroom} />
+                <AccessibilityItem label="턱 없음" value={report.has_low_threshold} />
+                <AccessibilityItem label="넓은 출입문" value={report.has_wide_door} />
+              </div>
+            )}
+
+            {/* 상세 정보 + 등록 시각 */}
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
                 {report.details ? (
@@ -252,31 +262,18 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
               )}
             </div>
 
-            {/* 접근성 정보 및 분류 */}
-            <div className="flex gap-3 flex-wrap">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">접근성:</span>
-                {getSeverityBadge(report.severity)}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm">분류:</span>
-                <Badge variant="outline">{getCategoryText(report.type)}</Badge>
-              </div>
-            </div>
-
-            {/* 사진 갤러리 */}
+            {/* 사진 갤러리 - 이미지 사이즈 수정 */}
             {report.photo_urls && report.photo_urls.length > 0 && (
               <div>
                 <Carousel className="w-full">
                   <CarouselContent>
                     {report.photo_urls.map((url, photoIndex) => (
                       <CarouselItem key={photoIndex}>
-                        <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-muted">
+                        <div className="relative aspect-video w-full max-h-[200px] overflow-hidden rounded-lg bg-muted">
                           <img
                             src={url}
                             alt={`${report.name} 사진 ${photoIndex + 1}`}
-                            className="object-cover w-full h-full"
+                            className="object-contain w-full h-full"
                             onError={(e) => {
                               e.currentTarget.src = "/placeholder.svg";
                             }}
@@ -302,7 +299,7 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
           </div>
         ))}
 
-        {/* 위치 정보 (맨 아래) */}
+        {/* 위치 정보 */}
         <div className="bg-muted p-4 rounded-lg mt-4">
           <p className="text-sm text-muted-foreground mb-1">위치</p>
           <p className="text-sm font-medium">{barrier.name}</p>
@@ -314,7 +311,6 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
     </ScrollArea>
   );
 
-  // 모바일: Drawer (스와이프로 닫기 가능)
   if (isMobile) {
     return (
       <>
@@ -350,7 +346,6 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
           </DrawerContent>
         </Drawer>
 
-        {/* 수정 요청 모달 */}
         {selectedReportForModification && (
           <ModificationRequestModal
             open={modificationModalOpen}
@@ -370,7 +365,6 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
     );
   }
 
-  // 데스크톱: Sheet
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
@@ -405,7 +399,6 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
         </SheetContent>
       </Sheet>
 
-      {/* 수정 요청 모달 */}
       {selectedReportForModification && (
         <ModificationRequestModal
           open={modificationModalOpen}
