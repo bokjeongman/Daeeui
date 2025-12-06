@@ -14,6 +14,12 @@ const CampaignPopup = ({ onAgree }: CampaignPopupProps) => {
   const [hideForToday, setHideForToday] = useState(false);
 
   useEffect(() => {
+    // 이번 세션에서 이미 팝업을 본 경우 표시하지 않음
+    const shownThisSession = sessionStorage.getItem("campaignPopupShownThisSession");
+    if (shownThisSession === "true") {
+      return;
+    }
+
     // localStorage에서 사용자 선택 확인
     const status = localStorage.getItem("campaignPopupStatus");
     const hideUntil = localStorage.getItem("campaignPopupHideUntil");
@@ -34,8 +40,9 @@ const CampaignPopup = ({ onAgree }: CampaignPopupProps) => {
       localStorage.removeItem("campaignPopupHideUntil");
     }
 
-    // 그 외 모든 경우 팝업 표시
+    // 팝업 표시 및 세션에 기록
     setOpen(true);
+    sessionStorage.setItem("campaignPopupShownThisSession", "true");
   }, []);
 
   const handleAgree = () => {
@@ -59,6 +66,20 @@ const CampaignPopup = ({ onAgree }: CampaignPopupProps) => {
       localStorage.setItem("campaignPopupHideUntil", tomorrow.toISOString());
     }
     setOpen(false);
+  };
+
+  // 체크박스 상태 변경 시 바로 팝업 닫기
+  const handleHideForTodayChange = (checked: boolean) => {
+    if (checked) {
+      // 내일 자정까지 숨기기 설정 후 바로 닫기
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(0, 0, 0, 0);
+      localStorage.setItem("campaignPopupHideUntil", tomorrow.toISOString());
+      setOpen(false);
+    } else {
+      setHideForToday(false);
+    }
   };
 
   return (
@@ -90,15 +111,19 @@ const CampaignPopup = ({ onAgree }: CampaignPopupProps) => {
           </Button>
         </div>
 
-        {/* 하단 체크박스 */}
+        {/* 하단 체크박스 - 클릭 시 바로 닫힘 */}
         <div className="flex items-center justify-center gap-2 py-4 border-t border-gray-100">
           <Checkbox
             id="hideForToday"
             checked={hideForToday}
-            onCheckedChange={(checked) => setHideForToday(checked === true)}
+            onCheckedChange={handleHideForTodayChange}
             className="border-gray-400 data-[state=checked]:bg-gray-500 data-[state=checked]:border-gray-500 h-4 w-4"
           />
-          <label htmlFor="hideForToday" className="text-sm text-gray-500 cursor-pointer select-none">
+          <label 
+            htmlFor="hideForToday" 
+            className="text-sm text-gray-500 cursor-pointer select-none"
+            onClick={() => handleHideForTodayChange(true)}
+          >
             오늘 하루동안 이 창을 보지 않음
           </label>
         </div>

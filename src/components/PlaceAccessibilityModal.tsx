@@ -115,24 +115,62 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
     if (!place) return;
     setLoading(true);
     try {
-      // Use public_accessibility_reports view to protect user_id privacy
-      const { data, error } = await supabase
-        .from("public_accessibility_reports")
-        .select("*")
-        .gte("latitude", place.lat - 0.0001)
-        .lte("latitude", place.lat + 0.0001)
-        .gte("longitude", place.lon - 0.0001)
-        .lte("longitude", place.lon + 0.0001)
-        .eq("status", "approved")
-        .order("created_at", { ascending: false });
+      // 현재 사용자 ID 가져오기
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // 로그인한 사용자는 accessibility_reports에서 조회 (자신의 후기 삭제 가능하도록)
+      // 비로그인 사용자는 public_accessibility_reports에서 조회
+      let data, error;
+      
+      if (user) {
+        // 로그인 사용자: 원본 테이블에서 조회 (RLS가 적용되어 본인 것만 user_id 노출)
+        const result = await supabase
+          .from("accessibility_reports")
+          .select("*")
+          .gte("latitude", place.lat - 0.0001)
+          .lte("latitude", place.lat + 0.0001)
+          .gte("longitude", place.lon - 0.0001)
+          .lte("longitude", place.lon + 0.0001)
+          .eq("status", "approved")
+          .order("created_at", { ascending: false });
+        data = result.data;
+        error = result.error;
+      } else {
+        // 비로그인 사용자: public view에서 조회
+        const result = await supabase
+          .from("public_accessibility_reports")
+          .select("*")
+          .gte("latitude", place.lat - 0.0001)
+          .lte("latitude", place.lat + 0.0001)
+          .gte("longitude", place.lon - 0.0001)
+          .lte("longitude", place.lon + 0.0001)
+          .eq("status", "approved")
+          .order("created_at", { ascending: false });
+        data = result.data;
+        error = result.error;
+      }
       
       if (error) throw error;
       
-      // public_accessibility_reports view doesn't expose user_id for privacy
-      // Nicknames are determined by accessibility_level only
+      // user_id가 있는 리뷰에 대해 닉네임 조회
+      const userIds = [...new Set((data || []).filter(r => r.user_id).map(r => r.user_id as string))];
+      let nicknameMap = new Map<string, string>();
+      
+      if (userIds.length > 0) {
+        const nicknamePromises = userIds.map(async (userId: string) => {
+          const { data: nickname } = await supabase.rpc("get_public_nickname", { profile_id: userId });
+          return { id: userId, nickname: nickname as string | null };
+        });
+        
+        const nicknameResults = await Promise.all(nicknamePromises);
+        nicknameMap = new Map(nicknameResults.map(p => [p.id, p.nickname || "사용자"]));
+      }
+      
       const reviewsWithNicknames = (data || []).map(r => ({
         ...r,
-        nickname: r.accessibility_level === "public" ? "공공데이터" : "사용자"
+        nickname: r.accessibility_level === "public" 
+          ? "공공데이터" 
+          : (r.user_id ? nicknameMap.get(r.user_id) || "사용자" : "사용자")
       }));
       
       setReviews(reviewsWithNicknames as AccessibilityReport[]);
@@ -440,7 +478,16 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
                     <span className="text-xs text-muted-foreground">
                       {formatDate(review.created_at)}
                     </span>
-                    {/* Delete button hidden - public view doesn't expose user_id for privacy */}
+                    {currentUserId && review.user_id === currentUserId && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => setDeletingReviewId(review.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    )}
                   </div>
                 </div>
                 
