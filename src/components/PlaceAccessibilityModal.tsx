@@ -9,7 +9,6 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MapPin, Check, X, Upload, Info, User, ChevronRight, Loader2 } from "lucide-react";
-import { z } from "zod";
 
 interface PlaceAccessibilityModalProps {
   open: boolean;
@@ -100,6 +99,7 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
         .lte("latitude", place.lat + 0.0001)
         .gte("longitude", place.lon - 0.0001)
         .lte("longitude", place.lon + 0.0001)
+        .eq("status", "approved")
         .order("created_at", { ascending: false });
       
       if (error) throw error;
@@ -200,6 +200,7 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
         }
       }
       
+      // 자동 승인으로 변경 (status: approved)
       const { error } = await supabase.from("accessibility_reports").insert({
         user_id: user.id,
         location_name: place.name,
@@ -212,9 +213,9 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
         has_wide_door: accessibilityValues.has_wide_door,
         details: additionalDetails.trim() || null,
         photo_urls: photoUrls.length > 0 ? photoUrls : null,
-        accessibility_level: "good", // 새로운 시스템에서는 기본값
+        accessibility_level: "good",
         category: "facility",
-        status: "pending",
+        status: "approved", // 자동 승인
       });
       
       if (error) throw error;
@@ -229,24 +230,6 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
     }
   };
 
-  // 접근성 통계 계산
-  const getAccessibilityStats = () => {
-    const stats: Record<string, { yes: number; no: number }> = {};
-    accessibilityItems.forEach(item => {
-      stats[item.key] = { yes: 0, no: 0 };
-    });
-    
-    reviews.forEach(review => {
-      accessibilityItems.forEach(item => {
-        const value = review[item.key];
-        if (value === true) stats[item.key].yes++;
-        else if (value === false) stats[item.key].no++;
-      });
-    });
-    
-    return stats;
-  };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('ko-KR', {
       year: 'numeric',
@@ -257,228 +240,206 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
     });
   };
 
-  const stats = getAccessibilityStats();
   const displayedReviews = showAllReviews ? reviews : reviews.slice(0, 2);
 
-  const ContentBody = () => (
-    <div className="h-full overflow-y-auto overscroll-contain w-full">
-      <div className="space-y-6 pr-2 pb-6">
-        {/* 제보 입력 섹션 */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <h3 className="text-lg font-semibold">접근성 정보를 알려주세요</h3>
-            <Info className="h-4 w-4 text-muted-foreground" />
-          </div>
-          
-          <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-            <p className="text-sm text-blue-700 dark:text-blue-300">
-              💡 알고 계신 정보만 선택해주세요. 모든 항목을 작성할 필요는 없습니다!
-            </p>
-          </div>
-          
-          {/* 5개 접근성 항목 */}
-          <div className="space-y-3">
-            {accessibilityItems.map((item) => (
-              <div key={item.key} className="border rounded-lg p-4 bg-card">
-                <div className="flex items-center gap-3 mb-3">
-                  <span className="text-xl">{item.icon}</span>
-                  <div>
-                    <p className="font-medium">{item.label}</p>
-                    <p className="text-xs text-muted-foreground">{item.description}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    type="button"
-                    variant={accessibilityValues[item.key] === true ? "default" : "outline"}
-                    className={`h-12 ${accessibilityValues[item.key] === true ? "bg-green-500 hover:bg-green-600 text-white" : ""}`}
-                    onClick={() => handleToggle(item.key, true)}
-                  >
-                    <Check className="h-4 w-4 mr-2" />
-                    있어요
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={accessibilityValues[item.key] === false ? "default" : "outline"}
-                    className={`h-12 ${accessibilityValues[item.key] === false ? "bg-red-500 hover:bg-red-600 text-white" : ""}`}
-                    onClick={() => handleToggle(item.key, false)}
-                  >
-                    <X className="h-4 w-4 mr-2" />
-                    없어요
-                  </Button>
+  const formContent = (
+    <div className="space-y-6 pb-6">
+      {/* 제보 입력 섹션 */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <h3 className="text-lg font-semibold">접근성 정보를 알려주세요</h3>
+          <Info className="h-4 w-4 text-muted-foreground" />
+        </div>
+        
+        <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+          <p className="text-sm text-blue-700 dark:text-blue-300">
+            💡 알고 계신 정보만 선택해주세요. 모든 항목을 작성할 필요는 없습니다!
+          </p>
+        </div>
+        
+        {/* 5개 접근성 항목 */}
+        <div className="space-y-3">
+          {accessibilityItems.map((item) => (
+            <div key={item.key} className="border rounded-lg p-4 bg-card">
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-xl">{item.icon}</span>
+                <div>
+                  <p className="font-medium">{item.label}</p>
+                  <p className="text-xs text-muted-foreground">{item.description}</p>
                 </div>
               </div>
-            ))}
-          </div>
-          
-          {/* 추가 후기 작성 */}
-          <div className="space-y-2">
-            <h4 className="font-medium">추가 후기 작성</h4>
-            <p className="text-sm text-muted-foreground">더 자세한 정보가 있다면 공유해주세요 (선택사항)</p>
-            <Textarea
-              placeholder="예시:
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={accessibilityValues[item.key] === true ? "default" : "outline"}
+                  className={`h-12 ${accessibilityValues[item.key] === true ? "bg-green-500 hover:bg-green-600 text-white" : ""}`}
+                  onClick={() => handleToggle(item.key, true)}
+                >
+                  <Check className="h-4 w-4 mr-2" />
+                  있어요
+                </Button>
+                <Button
+                  type="button"
+                  variant={accessibilityValues[item.key] === false ? "default" : "outline"}
+                  className={`h-12 ${accessibilityValues[item.key] === false ? "bg-red-500 hover:bg-red-600 text-white" : ""}`}
+                  onClick={() => handleToggle(item.key, false)}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  없어요
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        {/* 추가 후기 작성 */}
+        <div className="space-y-2">
+          <h4 className="font-medium">추가 후기 작성</h4>
+          <p className="text-sm text-muted-foreground">더 자세한 정보가 있다면 공유해주세요 (선택사항)</p>
+          <Textarea
+            placeholder="예시:
 • 입구에 자동문이 있어서 편리해요
 • 1층에만 경사로가 있고 2층은 계단만 있어요
 • 화장실이 조금 좁아요"
-              value={additionalDetails}
-              onChange={(e) => setAdditionalDetails(e.target.value)}
-              rows={4}
-              className="resize-none"
-              maxLength={500}
-            />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>💡 구체적일수록 도움이 됩니다</span>
-              <span>{additionalDetails.length} / 500</span>
-            </div>
-          </div>
-          
-          {/* 사진 첨부 */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h4 className="font-medium">📸 사진 첨부 (최대 5장)</h4>
-              <span className="text-sm text-green-600">정확한 정보 제공을 위해 추천</span>
-            </div>
-            <div className="border-2 border-dashed border-green-200 dark:border-green-800 rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer bg-green-50/30 dark:bg-green-950/20">
-              <input
-                id="photo-upload"
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handlePhotoChange}
-                className="hidden"
-                disabled={photos.length >= 5}
-              />
-              <label htmlFor="photo-upload" className="cursor-pointer flex flex-col items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
-                  <Upload className="h-6 w-6 text-green-600 dark:text-green-400" />
-                </div>
-                <span className="text-sm text-muted-foreground">
-                  클릭하여 사진 선택 (최대 5MB, {photos.length}/5장)
-                </span>
-              </label>
-            </div>
-            {photoPreviews.length > 0 && (
-              <div className="grid grid-cols-3 gap-2 mt-2">
-                {photoPreviews.map((preview, index) => (
-                  <div key={index} className="relative aspect-square">
-                    <img
-                      src={preview}
-                      alt={`미리보기 ${index + 1}`}
-                      className="w-full h-full object-cover rounded-lg border"
-                    />
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="icon"
-                      className="absolute top-1 right-1 h-6 w-6"
-                      onClick={() => handleRemovePhoto(index)}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
+            value={additionalDetails}
+            onChange={(e) => setAdditionalDetails(e.target.value)}
+            rows={4}
+            className="resize-none"
+            maxLength={500}
+          />
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>💡 구체적일수록 도움이 됩니다</span>
+            <span>{additionalDetails.length} / 500</span>
           </div>
         </div>
         
-        {/* 기존 제보 내역 */}
-        {reviews.length > 0 && (
-          <div className="space-y-3 border-t pt-4">
-            <div className="flex items-center justify-between">
-              <h4 className="font-semibold">기존 제보 내역</h4>
-              {reviews.length > 2 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowAllReviews(!showAllReviews)}
-                  className="text-primary"
-                >
-                  {showAllReviews ? "접기" : "더보기"}
-                  <ChevronRight className={`h-4 w-4 ml-1 transition-transform ${showAllReviews ? "rotate-90" : ""}`} />
-                </Button>
-              )}
-            </div>
-            
-            <div className="space-y-3">
-              {displayedReviews.map((review) => (
-                <div key={review.id} className="border rounded-lg p-4 bg-card space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium text-sm">{review.nickname}</span>
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {formatDate(review.created_at)}
-                    </span>
-                  </div>
-                  
-                  {review.details && (
-                    <p className="text-sm">{review.details}</p>
-                  )}
-                  
-                  {/* 접근성 배지 표시 */}
-                  <div className="flex flex-wrap gap-1">
-                    {accessibilityItems.map(item => {
-                      const value = review[item.key];
-                      if (value === null) return null;
-                      return (
-                        <Badge
-                          key={item.key}
-                          variant="outline"
-                          className={value ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}
-                        >
-                          {item.label}: {value ? "있음" : "없음"}
-                        </Badge>
-                      );
-                    })}
-                    {/* 기존 데이터 호환 */}
-                    {review.accessibility_level && (
-                      <Badge
-                        variant="outline"
-                        className={
-                          review.accessibility_level === "good" ? "bg-green-50 text-green-700 border-green-200" :
-                          review.accessibility_level === "moderate" ? "bg-yellow-50 text-yellow-700 border-yellow-200" :
-                          "bg-red-50 text-red-700 border-red-200"
-                        }
-                      >
-                        접근성: {
-                          review.accessibility_level === "good" ? "양호" :
-                          review.accessibility_level === "moderate" ? "보통" :
-                          review.accessibility_level === "difficult" ? "어려움" :
-                          review.accessibility_level === "verified" ? "공공데이터" :
-                          review.accessibility_level
-                        }
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  {/* 사진 표시 */}
-                  {review.photo_urls && review.photo_urls.length > 0 && (
-                    <div className="flex gap-2 overflow-x-auto pb-2">
-                      {review.photo_urls.map((url, idx) => (
-                        <img
-                          key={idx}
-                          src={url}
-                          alt={`제보 사진 ${idx + 1}`}
-                          className="h-16 w-16 object-cover rounded-lg border flex-shrink-0"
-                          onError={(e) => {
-                            e.currentTarget.src = "/placeholder.svg";
-                          }}
-                        />
-                      ))}
-                    </div>
-                  )}
+        {/* 사진 첨부 */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h4 className="font-medium">📸 사진 첨부 (최대 5장)</h4>
+            <span className="text-sm text-green-600">정확한 정보 제공을 위해 추천</span>
+          </div>
+          <div className="border-2 border-dashed border-green-200 dark:border-green-800 rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer bg-green-50/30 dark:bg-green-950/20">
+            <input
+              id="photo-upload-place"
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handlePhotoChange}
+              className="hidden"
+              disabled={photos.length >= 5}
+            />
+            <label htmlFor="photo-upload-place" className="cursor-pointer flex flex-col items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                <Upload className="h-6 w-6 text-green-600 dark:text-green-400" />
+              </div>
+              <span className="text-sm text-muted-foreground">
+                클릭하여 사진 선택 (최대 5MB, {photos.length}/5장)
+              </span>
+            </label>
+          </div>
+          {photoPreviews.length > 0 && (
+            <div className="grid grid-cols-3 gap-2 mt-2">
+              {photoPreviews.map((preview, index) => (
+                <div key={index} className="relative aspect-square">
+                  <img
+                    src={preview}
+                    alt={`미리보기 ${index + 1}`}
+                    className="w-full h-full object-cover rounded-lg border"
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-1 right-1 h-6 w-6"
+                    onClick={() => handleRemovePhoto(index)}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
+      
+      {/* 기존 제보 내역 */}
+      {reviews.length > 0 && (
+        <div className="space-y-3 border-t pt-4">
+          <div className="flex items-center justify-between">
+            <h4 className="font-semibold">기존 제보 내역</h4>
+            {reviews.length > 2 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowAllReviews(!showAllReviews)}
+                className="text-primary"
+              >
+                {showAllReviews ? "접기" : "더보기"}
+                <ChevronRight className={`h-4 w-4 ml-1 transition-transform ${showAllReviews ? "rotate-90" : ""}`} />
+              </Button>
+            )}
+          </div>
+          
+          <div className="space-y-3">
+            {displayedReviews.map((review) => (
+              <div key={review.id} className="border rounded-lg p-4 bg-card space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium text-sm">{review.nickname}</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {formatDate(review.created_at)}
+                  </span>
+                </div>
+                
+                {review.details && (
+                  <p className="text-sm">{review.details}</p>
+                )}
+                
+                {/* 접근성 배지 표시 */}
+                <div className="flex flex-wrap gap-1">
+                  {accessibilityItems.map(item => {
+                    const value = review[item.key];
+                    if (value === null) return null;
+                    return (
+                      <Badge
+                        key={item.key}
+                        variant="outline"
+                        className={value ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}
+                      >
+                        {item.label}: {value ? "있음" : "없음"}
+                      </Badge>
+                    );
+                  })}
+                </div>
+                
+                {/* 사진 표시 */}
+                {review.photo_urls && review.photo_urls.length > 0 && (
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {review.photo_urls.map((url, idx) => (
+                      <img
+                        key={idx}
+                        src={url}
+                        alt={`제보 사진 ${idx + 1}`}
+                        className="h-16 w-16 object-cover rounded-lg border flex-shrink-0"
+                        onError={(e) => {
+                          e.currentTarget.src = "/placeholder.svg";
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 
-  const SubmitButton = () => (
+  const submitButton = (
     <div className="flex-shrink-0 pt-4 border-t bg-background">
       <Button
         onClick={handleSubmit}
@@ -506,7 +467,7 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onClose}>
-        <DrawerContent className="h-[90vh] flex flex-col">
+        <DrawerContent className="max-h-[90vh] flex flex-col">
           <DrawerHeader className="flex-shrink-0">
             <DrawerTitle className="flex items-center gap-2">
               <MapPin className="h-5 w-5 text-green-600" />
@@ -518,17 +479,17 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
               )}
             </DrawerTitle>
           </DrawerHeader>
-          <div className="flex-1 min-h-0 overflow-hidden px-4">
+          <ScrollArea className="flex-1 px-4">
             {loading ? (
-              <div className="flex items-center justify-center h-full">
+              <div className="flex items-center justify-center h-40">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : (
-              <ContentBody />
+              formContent
             )}
-          </div>
+          </ScrollArea>
           <div className="flex-shrink-0 px-4 pb-4">
-            <SubmitButton />
+            {submitButton}
           </div>
         </DrawerContent>
       </Drawer>
@@ -537,7 +498,7 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col p-0 overflow-hidden">
+      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col p-0">
         <DialogHeader className="flex-shrink-0 p-6 pb-4">
           <DialogTitle className="flex items-center gap-2">
             <MapPin className="h-5 w-5 text-green-600" />
@@ -549,17 +510,17 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
             )}
           </DialogTitle>
         </DialogHeader>
-        <div className="flex-1 min-h-0 overflow-hidden px-6">
+        <ScrollArea className="flex-1 px-6">
           {loading ? (
-            <div className="flex items-center justify-center h-64">
+            <div className="flex items-center justify-center h-40">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : (
-            <ContentBody />
+            formContent
           )}
-        </div>
+        </ScrollArea>
         <div className="flex-shrink-0 p-6 pt-0">
-          <SubmitButton />
+          {submitButton}
         </div>
       </DialogContent>
     </Dialog>
