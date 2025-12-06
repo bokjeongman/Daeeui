@@ -8,13 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { z } from "zod";
 import NicknameSetupModal from "@/components/NicknameSetupModal";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 declare global {
   interface Window {
@@ -27,11 +21,7 @@ declare global {
         getAccessToken: () => string | null;
       };
       API: {
-        request: (options: {
-          url: string;
-          success: (res: any) => void;
-          fail: (err: any) => void;
-        }) => void;
+        request: (options: { url: string; success: (res: any) => void; fail: (err: any) => void }) => void;
       };
     };
   }
@@ -85,9 +75,11 @@ const Auth = () => {
 
   useEffect(() => {
     setRecentMethod(getRecentLoginMethod());
-    
+
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (session) {
         // OAuth 로그인 후 provider 감지하여 최근 로그인 방법 저장
         const provider = session.user.app_metadata?.provider;
@@ -101,14 +93,16 @@ const Auth = () => {
           setRecentLoginMethod("email");
           setRecentMethod("email");
         }
-        
+
         await checkNicknameAndRedirect(session.user.id);
       }
     };
     checkUser();
 
     // Auth 상태 변경 리스너
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" && session) {
         const provider = session.user.app_metadata?.provider;
         if (provider === "google") {
@@ -128,20 +122,19 @@ const Auth = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  const checkNicknameAndRedirect = useCallback(async (userId: string) => {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("nickname")
-      .eq("id", userId)
-      .single();
+  const checkNicknameAndRedirect = useCallback(
+    async (userId: string) => {
+      const { data: profile } = await supabase.from("profiles").select("nickname").eq("id", userId).single();
 
-    if (!profile?.nickname) {
-      setCurrentUserId(userId);
-      setShowNicknameModal(true);
-    } else {
-      navigate("/");
-    }
-  }, [navigate]);
+      if (!profile?.nickname) {
+        setCurrentUserId(userId);
+        setShowNicknameModal(true);
+      } else {
+        navigate("/");
+      }
+    },
+    [navigate],
+  );
 
   const handleNicknameComplete = () => {
     setShowNicknameModal(false);
@@ -156,8 +149,7 @@ const Auth = () => {
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .rpc("find_email_by_nickname", { search_nickname: findNickname.trim() });
+      const { data, error } = await supabase.rpc("find_email_by_nickname", { search_nickname: findNickname.trim() });
 
       if (error || !data) {
         toast.error("해당 닉네임으로 등록된 계정을 찾을 수 없습니다.");
@@ -203,7 +195,7 @@ const Auth = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       emailSchema.parse(email);
       passwordSchema.parse(password);
@@ -297,15 +289,15 @@ const Auth = () => {
   const processKakaoCallback = useCallback(async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get("code");
-    
+
     if (!code) return;
-    
+
     // URL에서 code 파라미터 제거
     const newUrl = window.location.pathname;
     window.history.replaceState({}, "", newUrl);
-    
+
     setIsLoading(true);
-    
+
     try {
       // 인가 코드로 토큰 요청
       const tokenResponse = await fetch("https://kauth.kakao.com/oauth/token", {
@@ -320,24 +312,24 @@ const Auth = () => {
           code: code,
         }),
       });
-      
+
       const tokenData = await tokenResponse.json();
-      
+
       if (tokenData.error) {
         toast.error("카카오 인증에 실패했습니다.");
         setIsLoading(false);
         return;
       }
-      
+
       // 토큰으로 사용자 정보 요청
       const userResponse = await fetch("https://kapi.kakao.com/v2/user/me", {
         headers: {
           Authorization: `Bearer ${tokenData.access_token}`,
         },
       });
-      
+
       const userData = await userResponse.json();
-      
+
       const kakaoEmail = userData.kakao_account?.email;
       const kakaoId = userData.id;
       const kakaoNickname = userData.properties?.nickname || userData.kakao_account?.profile?.nickname;
@@ -387,12 +379,9 @@ const Auth = () => {
 
         if (signUpData?.user) {
           setRecentLoginMethod("kakao");
-          
+
           if (kakaoNickname) {
-            await supabase
-              .from("profiles")
-              .update({ nickname: kakaoNickname })
-              .eq("id", signUpData.user.id);
+            await supabase.from("profiles").update({ nickname: kakaoNickname }).eq("id", signUpData.user.id);
           }
 
           toast.success("카카오 계정으로 회원가입되었습니다!");
@@ -417,7 +406,7 @@ const Auth = () => {
     const deployedUrl = "https://safedd.lovable.app";
     const redirectUri = encodeURIComponent(`${deployedUrl}/auth`);
     const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_JS_KEY}&redirect_uri=${redirectUri}&response_type=code&scope=profile_nickname,account_email`;
-    
+
     window.location.href = kakaoAuthUrl;
   };
 
@@ -435,9 +424,7 @@ const Auth = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">
-            🦽 휠체어 경로 안내
-          </CardTitle>
+          <CardTitle className="text-2xl font-bold text-center">🦽 대의 지도</CardTitle>
           <CardDescription className="text-center">
             {isLogin ? "로그인하여 시작하기" : "계정을 만들어 시작하기"}
           </CardDescription>
@@ -535,11 +522,7 @@ const Auth = () => {
           </form>
 
           <div className="text-center text-sm">
-            <button
-              type="button"
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-primary hover:underline"
-            >
+            <button type="button" onClick={() => setIsLogin(!isLogin)} className="text-primary hover:underline">
               {isLogin ? "계정이 없으신가요? 회원가입" : "이미 계정이 있으신가요? 로그인"}
             </button>
           </div>
@@ -571,9 +554,7 @@ const Auth = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>아이디 찾기</DialogTitle>
-            <DialogDescription>
-              회원가입 시 등록한 닉네임을 입력해주세요.
-            </DialogDescription>
+            <DialogDescription>회원가입 시 등록한 닉네임을 입력해주세요.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-4">
             <div className="space-y-2">
@@ -603,9 +584,7 @@ const Auth = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>비밀번호 찾기</DialogTitle>
-            <DialogDescription>
-              가입한 이메일 주소를 입력하시면 비밀번호 재설정 링크를 보내드립니다.
-            </DialogDescription>
+            <DialogDescription>가입한 이메일 주소를 입력하시면 비밀번호 재설정 링크를 보내드립니다.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-4">
             <div className="space-y-2">
@@ -626,11 +605,7 @@ const Auth = () => {
       </Dialog>
 
       {currentUserId && (
-        <NicknameSetupModal
-          open={showNicknameModal}
-          onComplete={handleNicknameComplete}
-          userId={currentUserId}
-        />
+        <NicknameSetupModal open={showNicknameModal} onComplete={handleNicknameComplete} userId={currentUserId} />
       )}
     </div>
   );
