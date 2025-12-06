@@ -183,7 +183,7 @@ const MapView = ({
           window.addEventListener("deviceorientation", handleOrientation, true);
         }
       } catch (error) {
-        console.log("나침반 권한 요청 실패:", error);
+        if (import.meta.env.DEV) console.log("나침반 권한 요청 실패:", error);
       }
     } else {
       // 권한 요청이 필요 없는 경우 (Android 등)
@@ -271,7 +271,7 @@ const MapView = ({
             hasMore = false;
           }
         }
-        console.log("🔍 가져온 제보 데이터:", allData.length, "개");
+        if (import.meta.env.DEV) console.log("🔍 가져온 제보 데이터:", allData.length, "개");
 
         // 새로운 AccessibilityReport 형식으로 변환 (user_id excluded for privacy)
         const rawReports: AccessibilityReport[] = allData.map(report => ({
@@ -1211,20 +1211,16 @@ const MapView = ({
     // 동일한 경로 요청인지 확인 (중복 호출 방지)
     const routeKey = `${start.lat.toFixed(6)},${start.lon.toFixed(6)}-${endPoint.lat.toFixed(6)},${endPoint.lon.toFixed(6)}`;
     if (routeKey === lastRouteRequestRef.current) {
-      console.log("⏭️ 동일한 경로 - API 호출 생략");
+      if (import.meta.env.DEV) console.log("⏭️ 동일한 경로 - API 호출 생략");
       return;
     }
     lastRouteRequestRef.current = routeKey;
-    console.log("✅ 도보 경로 API 호출", {
-      start: {
-        lat: start.lat,
-        lon: start.lon
-      },
-      end: {
-        lat: endPoint.lat,
-        lon: endPoint.lon
-      }
-    });
+    if (import.meta.env.DEV) {
+      console.log("✅ 도보 경로 API 호출", {
+        start: { lat: start.lat, lon: start.lon },
+        end: { lat: endPoint.lat, lon: endPoint.lon }
+      });
+    }
     const calculateRoute = async () => {
       try {
         clearRoutes();
@@ -1239,7 +1235,7 @@ const MapView = ({
           endPoint.name
         );
         if (data.error) {
-          console.warn("API 에러:", data.error);
+          if (import.meta.env.DEV) console.warn("API 에러:", data.error);
           // 429 할당량 초과 에러 처리
           if (data.error.code === "QUOTA_EXCEEDED") {
             toast.error("API 일일 할당량을 초과했습니다. 잠시 후 다시 시도해주세요.", {
@@ -1314,10 +1310,12 @@ const MapView = ({
           })),
           lineStrings
         };
-        console.log("✅ 경로 계산 완료:", {
-          distance: totalDistance,
-          duration: totalTime
-        });
+        if (import.meta.env.DEV) {
+          console.log("✅ 경로 계산 완료:", {
+            distance: totalDistance,
+            duration: totalTime
+          });
+        }
 
         // 콜백 호출
         if (onRoutesCalculated) {
@@ -1400,7 +1398,7 @@ const MapView = ({
         lineStrings.forEach((point: any) => bounds.extend(point));
         map.fitBounds(bounds);
       } catch (error) {
-        console.error("경로 탐색 실패:", error);
+        if (import.meta.env.DEV) console.error("경로 탐색 실패:", error);
         toast.error("경로를 찾을 수 없습니다.");
       }
     };

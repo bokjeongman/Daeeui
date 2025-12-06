@@ -40,11 +40,13 @@ export const useGeolocationWatch = (
       timestamp: pos.timestamp,
     });
     setError(null);
-    console.log("📍 위치 업데이트:", {
-      lat: pos.coords.latitude,
-      lon: pos.coords.longitude,
-      accuracy: pos.coords.accuracy,
-    });
+    if (import.meta.env.DEV) {
+      console.log("📍 위치 업데이트:", {
+        lat: pos.coords.latitude,
+        lon: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+      });
+    }
   }, []);
 
   const handleError = useCallback((err: GeolocationPositionError) => {
@@ -66,7 +68,7 @@ export const useGeolocationWatch = (
       code: err.code,
       message: errorMessage,
     });
-    console.error("❌ 위치 추적 오류:", errorMessage);
+    if (import.meta.env.DEV) console.error("❌ 위치 추적 오류:", errorMessage);
   }, []);
 
   const startTracking = useCallback(() => {
@@ -79,11 +81,11 @@ export const useGeolocationWatch = (
     }
 
     if (watchId !== null) {
-      console.log("⚠️ 이미 위치 추적 중입니다.");
+      if (import.meta.env.DEV) console.log("⚠️ 이미 위치 추적 중입니다.");
       return;
     }
 
-    console.log("🚀 위치 추적 시작");
+    if (import.meta.env.DEV) console.log("🚀 위치 추적 시작");
     const id = navigator.geolocation.watchPosition(
       handleSuccess,
       handleError,
@@ -96,7 +98,7 @@ export const useGeolocationWatch = (
 
   const stopTracking = useCallback(() => {
     if (watchId !== null) {
-      console.log("🛑 위치 추적 중지");
+      if (import.meta.env.DEV) console.log("🛑 위치 추적 중지");
       navigator.geolocation.clearWatch(watchId);
       setWatchId(null);
       setIsTracking(false);
