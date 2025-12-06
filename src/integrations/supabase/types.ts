@@ -227,7 +227,63 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_accessibility_reports: {
+        Row: {
+          accessibility_level: string | null
+          category: string | null
+          created_at: string | null
+          details: string | null
+          has_accessible_restroom: boolean | null
+          has_elevator: boolean | null
+          has_low_threshold: boolean | null
+          has_ramp: boolean | null
+          has_wide_door: boolean | null
+          id: string | null
+          latitude: number | null
+          location_name: string | null
+          longitude: number | null
+          photo_urls: string[] | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          accessibility_level?: string | null
+          category?: string | null
+          created_at?: string | null
+          details?: string | null
+          has_accessible_restroom?: boolean | null
+          has_elevator?: boolean | null
+          has_low_threshold?: boolean | null
+          has_ramp?: boolean | null
+          has_wide_door?: boolean | null
+          id?: string | null
+          latitude?: number | null
+          location_name?: string | null
+          longitude?: number | null
+          photo_urls?: string[] | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          accessibility_level?: string | null
+          category?: string | null
+          created_at?: string | null
+          details?: string | null
+          has_accessible_restroom?: boolean | null
+          has_elevator?: boolean | null
+          has_low_threshold?: boolean | null
+          has_ramp?: boolean | null
+          has_wide_door?: boolean | null
+          id?: string | null
+          latitude?: number | null
+          location_name?: string | null
+          longitude?: number | null
+          photo_urls?: string[] | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       check_nickname_exists: {
