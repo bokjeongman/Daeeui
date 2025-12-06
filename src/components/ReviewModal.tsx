@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { searchPOI } from "@/lib/tmap";
 
 interface ReviewModalProps {
   open: boolean;
@@ -133,27 +134,9 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect, onSuccess }: ReviewMod
     }
 
     try {
-      const response = await fetch(
-        `https://apis.openapi.sk.com/tmap/pois?version=1&searchKeyword=${encodeURIComponent(query)}&resCoordType=WGS84GEO&reqCoordType=WGS84GEO&count=10`,
-        {
-          headers: {
-            appKey: "KZDXJtx63R735Qktn8zkkaJv4tbaUqDc1lXzyjLT",
-          },
-        },
-      );
-
-      const data = await response.json();
-      if (data.searchPoiInfo?.pois?.poi) {
-        const results = data.searchPoiInfo.pois.poi.map((poi: any, index: number) => ({
-          id: index,
-          name: poi.name,
-          address: poi.upperAddrName + " " + poi.middleAddrName + " " + poi.lowerAddrName,
-          lat: parseFloat(poi.noorLat),
-          lon: parseFloat(poi.noorLon),
-        }));
-        setSearchResults(results);
-        setShowResults(true);
-      }
+      const results = await searchPOI(query, 10);
+      setSearchResults(results);
+      setShowResults(results.length > 0);
     } catch (error) {
       if (import.meta.env.DEV) console.error("POI 검색 실패:", error);
       setSearchResults([]);
