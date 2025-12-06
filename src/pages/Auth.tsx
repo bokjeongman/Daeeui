@@ -27,6 +27,7 @@ declare global {
   }
 }
 
+// Kakao App Key (public JS key for SDK initialization only - not used for password generation)
 const KAKAO_JS_KEY = "dc0db09ad3ab9f29fed146728402f08a";
 
 const emailSchema = z.string().email("올바른 이메일 주소를 입력해주세요.");
@@ -285,7 +286,7 @@ const Auth = () => {
     }
   }, []);
 
-  // 카카오 로그인 콜백 처리
+  // 카카오 로그인 콜백 처리 - Edge Function을 통한 안전한 인증
   const processKakaoCallback = useCallback(async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get("code");
@@ -299,94 +300,44 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
-      // 인가 코드로 토큰 요청
-      const tokenResponse = await fetch("https://kauth.kakao.com/oauth/token", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          grant_type: "authorization_code",
-          client_id: KAKAO_JS_KEY,
-          redirect_uri: `${window.location.origin}/auth`,
-          code: code,
-        }),
+      // Edge Function을 통해 안전하게 Kakao 인증 처리
+      const deployedUrl = "https://safedd.lovable.app";
+      const redirectUri = `${deployedUrl}/auth`;
+
+      const { data: authData, error: authError } = await supabase.functions.invoke("kakao-auth", {
+        body: { code, redirectUri },
       });
 
-      const tokenData = await tokenResponse.json();
-
-      if (tokenData.error) {
-        toast.error("카카오 인증에 실패했습니다.");
+      if (authError || authData?.error) {
+        const errorMessage = authData?.error || "카카오 인증에 실패했습니다.";
+        toast.error(errorMessage);
         setIsLoading(false);
         return;
       }
 
-      // 토큰으로 사용자 정보 요청
-      const userResponse = await fetch("https://kapi.kakao.com/v2/user/me", {
-        headers: {
-          Authorization: `Bearer ${tokenData.access_token}`,
-        },
+      // 서버에서 생성된 안전한 비밀번호로 로그인
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: authData.email,
+        password: authData.password,
       });
 
-      const userData = await userResponse.json();
-
-      const kakaoEmail = userData.kakao_account?.email;
-      const kakaoId = userData.id;
-      const kakaoNickname = userData.properties?.nickname || userData.kakao_account?.profile?.nickname;
-
-      if (!kakaoEmail) {
-        toast.error("카카오 계정에 이메일이 없습니다. 이메일 제공에 동의해주세요.");
+      if (signInError) {
+        if (import.meta.env.DEV) console.error("카카오 로그인 오류:", signInError);
+        toast.error("카카오 로그인에 실패했습니다.");
         setIsLoading(false);
         return;
       }
-
-      // 카카오 ID를 사용한 고유 비밀번호 생성
-      const kakaoPassword = `kakao_${kakaoId}_secure_password_${KAKAO_JS_KEY.slice(0, 8)}`;
-
-      // 먼저 로그인 시도
-      const { data: signInData } = await supabase.auth.signInWithPassword({
-        email: kakaoEmail,
-        password: kakaoPassword,
-      });
 
       if (signInData?.user) {
         setRecentLoginMethod("kakao");
-        toast.success("카카오 로그인 성공!");
-        await checkNicknameAndRedirect(signInData.user.id);
-      } else {
-        // 신규 사용자 - 회원가입 진행
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: kakaoEmail,
-          password: kakaoPassword,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-            data: {
-              provider: "kakao",
-              kakao_id: kakaoId,
-            },
-          },
-        });
-
-        if (signUpError) {
-          if (signUpError.message.includes("already registered")) {
-            toast.error("이미 다른 방법으로 가입된 이메일입니다.");
-          } else {
-            toast.error("회원가입에 실패했습니다.");
-          }
-          setIsLoading(false);
-          return;
-        }
-
-        if (signUpData?.user) {
-          setRecentLoginMethod("kakao");
-
-          if (kakaoNickname) {
-            await supabase.from("profiles").update({ nickname: kakaoNickname }).eq("id", signUpData.user.id);
-          }
-
+        
+        if (authData.isNewUser) {
           toast.success("카카오 계정으로 회원가입되었습니다!");
-          await checkNicknameAndRedirect(signUpData.user.id);
+        } else {
+          toast.success("카카오 로그인 성공!");
         }
+        
+        await checkNicknameAndRedirect(signInData.user.id);
       }
     } catch (error) {
       if (import.meta.env.DEV) console.error("카카오 로그인 처리 오류:", error);

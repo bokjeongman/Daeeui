@@ -39,14 +39,13 @@ const NicknameSetupModal = ({ open, onComplete, userId }: NicknameSetupModalProp
 
     setIsChecking(true);
     try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("nickname")
-        .eq("nickname", value)
-        .maybeSingle();
+      // Use the secure function to check nickname availability
+      const { data, error } = await supabase.rpc("check_nickname_exists", {
+        check_nickname: value,
+      });
 
       if (error) throw error;
-      setIsAvailable(data === null);
+      setIsAvailable(!data); // data is true if nickname exists, so we invert it
     } catch (error) {
       if (import.meta.env.DEV) console.error("닉네임 확인 실패:", error);
       setIsAvailable(null);

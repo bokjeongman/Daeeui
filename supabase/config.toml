@@ -46,3 +46,6 @@ verify_jwt = false
 
 [functions.send-request-result-notification]
 verify_jwt = false
+
+[functions.kakao-auth]
+verify_jwt = false
