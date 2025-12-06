@@ -29,7 +29,7 @@ interface PlaceAccessibilityModalProps {
 
 interface AccessibilityReport {
   id: string;
-  user_id: string;
+  user_id?: string | null; // Optional - not available from public view for privacy
   location_name: string;
   details: string | null;
   photo_urls: string[] | null;
@@ -115,8 +115,9 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
     if (!place) return;
     setLoading(true);
     try {
+      // Use public_accessibility_reports view to protect user_id privacy
       const { data, error } = await supabase
-        .from("accessibility_reports")
+        .from("public_accessibility_reports")
         .select("*")
         .gte("latitude", place.lat - 0.0001)
         .lte("latitude", place.lat + 0.0001)
@@ -127,26 +128,14 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
       
       if (error) throw error;
       
-      const userIds = [...new Set((data || []).filter(r => r.user_id).map(r => r.user_id))];
-      let nicknameMap = new Map<string, string>();
-      
-      // Use get_public_nickname RPC function to bypass RLS restrictions
-      if (userIds.length > 0) {
-        const nicknamePromises = userIds.map(async (userId) => {
-          const { data: nickname } = await supabase.rpc("get_public_nickname", { profile_id: userId });
-          return { id: userId, nickname };
-        });
-        
-        const nicknameResults = await Promise.all(nicknamePromises);
-        nicknameMap = new Map(nicknameResults.map(p => [p.id, p.nickname || "사용자"]));
-      }
-      
+      // public_accessibility_reports view doesn't expose user_id for privacy
+      // Nicknames are determined by accessibility_level only
       const reviewsWithNicknames = (data || []).map(r => ({
         ...r,
-        nickname: r.accessibility_level === "public" ? "공공데이터" : nicknameMap.get(r.user_id) || "사용자"
+        nickname: r.accessibility_level === "public" ? "공공데이터" : "사용자"
       }));
       
-      setReviews(reviewsWithNicknames);
+      setReviews(reviewsWithNicknames as AccessibilityReport[]);
     } catch (error) {
       if (import.meta.env.DEV) console.error("후기 조회 실패:", error);
     } finally {
@@ -451,16 +440,7 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
                     <span className="text-xs text-muted-foreground">
                       {formatDate(review.created_at)}
                     </span>
-                    {currentUserId && review.user_id === currentUserId && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => setDeletingReviewId(review.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    )}
+                    {/* Delete button hidden - public view doesn't expose user_id for privacy */}
                   </div>
                 </div>
                 
