@@ -128,11 +128,7 @@ const MapView = ({
   const [transitDetails, setTransitDetails] = useState<any>(null);
   const hasInitializedPositionRef = useRef(false);
   const [isMobile] = useState(() => /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
-  const [pathHistory, setPathHistory] = useState<Array<{
-    lat: number;
-    lon: number;
-  }>>([]);
-  const pathHistoryPolylineRef = useRef<any>(null);
+  // 경로 히스토리 제거됨 (노란색 폴리라인 문제 원인)
 
   // 클러스터링을 위한 상태
   const [mapZoom, setMapZoom] = useState(16);
@@ -217,20 +213,6 @@ const MapView = ({
         onUserLocationChange(location);
       }
 
-      // 경로 히스토리에 추가 (10m 이상 이동했을 때만)
-      setPathHistory(prev => {
-        if (prev.length === 0) {
-          return [location];
-        }
-        const lastPoint = prev[prev.length - 1];
-        const distance = calculateDistance(lastPoint.lat, lastPoint.lon, location.lat, location.lon);
-
-        // 10m 이상 이동했을 때만 기록
-        if (distance > 10) {
-          return [...prev, location];
-        }
-        return prev;
-      });
       setLoading(false);
     }
   }, [geoPosition, onUserLocationChange]);
@@ -711,30 +693,6 @@ const MapView = ({
     currentMarkerRef.current.setIcon(iconUrl);
   }, [heading, isMobile]);
 
-  // 실시간 이동 경로 표시 (노란색)
-  useEffect(() => {
-    if (!map || !window.Tmapv2 || pathHistory.length < 2) return;
-
-    // 기존 경로 히스토리 폴리라인 제거
-    if (pathHistoryPolylineRef.current) {
-      pathHistoryPolylineRef.current.setMap(null);
-    }
-
-    // 경로 히스토리를 Tmap LatLng 배열로 변환
-    const pathPoints = pathHistory.map(point => new window.Tmapv2.LatLng(point.lat, point.lon));
-
-    // 노란색 폴리라인으로 지나간 경로 표시
-    const polyline = new window.Tmapv2.Polyline({
-      path: pathPoints,
-      strokeColor: "#fbbf24",
-      // 노란색
-      strokeWeight: 5,
-      strokeOpacity: 0.8,
-      map: map,
-      zIndex: 45 // 경로보다 낮게, 배리어보다는 높게
-    });
-    pathHistoryPolylineRef.current = polyline;
-  }, [map, pathHistory]);
 
   // 새로운 접근성 마커 클러스터 훅 사용
   const {

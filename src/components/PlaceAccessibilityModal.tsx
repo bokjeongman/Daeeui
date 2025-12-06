@@ -261,7 +261,7 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
   const displayedReviews = showAllReviews ? reviews : reviews.slice(0, 2);
 
   const ContentBody = () => (
-    <div className="h-[60vh] overflow-y-auto w-full">
+    <div className="overflow-y-auto w-full" style={{ maxHeight: 'calc(90vh - 180px)' }}>
       <div className="space-y-6 pr-2 pb-6">
         {/* 제보 입력 섹션 */}
         <div className="space-y-4">

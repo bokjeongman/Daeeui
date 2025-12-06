@@ -234,7 +234,7 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
   };
 
   const ContentBody = () => (
-    <div className="h-[60vh] overflow-y-auto">
+    <div className="overflow-y-auto" style={{ maxHeight: 'calc(90vh - 180px)' }}>
       <div className="space-y-6 pr-2 pb-6">
         {/* 장소 검색 */}
         <div className="space-y-2">
