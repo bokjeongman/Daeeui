@@ -1,5 +1,4 @@
 // 도넛 차트 마커 SVG 생성 함수
-import publicDataMarkerImg from "@/assets/public-data-marker.png";
 
 interface DonutMarkerProps {
   yesCount: number;
@@ -11,9 +10,50 @@ interface DonutMarkerProps {
   hasAccessibilityData?: boolean;
 }
 
-// 공공데이터 마커 이미지 URL을 반환하는 함수
-export function getPublicDataMarkerUrl(): string {
-  return publicDataMarkerImg;
+// 태극 문양 SVG 생성 함수 (공공데이터용)
+export function createTaegukMarkerSvg(size: number = 40): string {
+  const uniqueId = `taeguk-${Date.now()}-${Math.random()}`.replace(/\./g, '_');
+  const cx = size / 2;
+  const cy = size / 2;
+  const radius = size / 2 - 3;
+  
+  // 태극 문양 비율 계산
+  const r = radius * 0.9; // 메인 원 반지름
+  const smallR = r / 2; // 작은 원 반지름
+  
+  return `
+    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="shadow-${uniqueId}" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+          <feOffset dx="0" dy="2" result="offsetblur"/>
+          <feComponentTransfer><feFuncA type="linear" slope="0.4"/></feComponentTransfer>
+          <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <clipPath id="circle-clip-${uniqueId}">
+          <circle cx="${cx}" cy="${cy}" r="${r}"/>
+        </clipPath>
+      </defs>
+      
+      <!-- 배경 원 (흰색 + 그림자) -->
+      <circle cx="${cx}" cy="${cy}" r="${radius}" fill="white" stroke="white" stroke-width="2" filter="url(#shadow-${uniqueId})"/>
+      
+      <!-- 태극 문양 그룹 -->
+      <g clip-path="url(#circle-clip-${uniqueId})">
+        <!-- 빨간색 반원 (오른쪽 위) -->
+        <path d="M${cx},${cy - r} A${r},${r} 0 0,1 ${cx},${cy + r} A${smallR},${smallR} 0 0,0 ${cx},${cy} A${smallR},${smallR} 0 0,1 ${cx},${cy - r}" fill="#c73634"/>
+        
+        <!-- 파란색 반원 (왼쪽 아래) -->
+        <path d="M${cx},${cy + r} A${r},${r} 0 0,1 ${cx},${cy - r} A${smallR},${smallR} 0 0,0 ${cx},${cy} A${smallR},${smallR} 0 0,1 ${cx},${cy + r}" fill="#0d4d90"/>
+      </g>
+    </svg>
+  `;
+}
+
+// 공공데이터 마커 SVG URL 반환
+export function getPublicDataMarkerUrl(size: number = 40): string {
+  const svg = createTaegukMarkerSvg(size);
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
 export function createDonutMarkerSvg({
@@ -27,11 +67,9 @@ export function createDonutMarkerSvg({
 }: DonutMarkerProps): string {
   const total = yesCount + noCount;
   
-  // 공공데이터이고 5개 항목 데이터가 없으면 이미지 마커 사용 (별도 처리 필요)
-  // 이 함수에서는 SVG만 반환하므로, 이미지 마커는 MapView에서 별도 처리
+  // 공공데이터이고 5개 항목 데이터가 없으면 태극 마커 사용
   if (isPublicData && !isCluster && !hasAccessibilityData) {
-    // 이미지 마커를 사용하기 위해 특별한 SVG 반환 (MapView에서 감지)
-    return "USE_IMAGE_MARKER";
+    return createTaegukMarkerSvg(size);
   }
   
   // 데이터가 없으면 회색 마커
