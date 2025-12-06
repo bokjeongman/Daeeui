@@ -76,8 +76,16 @@ function calculateAccessibilityStats(reports: AccessibilityReport[]) {
   reports.forEach(report => {
     keys.forEach(key => {
       const value = report[key];
-      if (value === true) yesCount++;
-      else if (value === false) noCount++;
+      if (value !== null && value !== undefined) {
+        // 턱(has_low_threshold)은 값을 반전시킴 - 턱이 없으면(false) 좋음(yesCount++)
+        if (key === 'has_low_threshold') {
+          if (value === false) yesCount++;
+          else if (value === true) noCount++;
+        } else {
+          if (value === true) yesCount++;
+          else if (value === false) noCount++;
+        }
+      }
     });
   });
   

@@ -23,13 +23,14 @@ interface AccessibilityItem {
   label: string;
   description: string;
   icon: string;
+  inverted?: boolean;
 }
 
 const accessibilityItems: AccessibilityItem[] = [
   { key: 'has_ramp', label: '경사로', description: '휠체어 접근 가능한 경사로', icon: '♿' },
   { key: 'has_elevator', label: '엘리베이터', description: '층간 이동을 위한 승강기', icon: '🛗' },
   { key: 'has_accessible_restroom', label: '장애인 화장실', description: '장애인 전용 화장실 시설', icon: '🚻' },
-  { key: 'has_low_threshold', label: '턱 (없음이 좋음)', description: '출입구나 내부의 단차', icon: '⚠️' },
+  { key: 'has_low_threshold', label: '턱', description: '출입구나 내부의 단차 (없으면 좋음)', icon: '⚠️', inverted: true },
   { key: 'has_wide_door', label: '넓은 출입문', description: '휠체어 통과 가능한 출입문', icon: '🚪' },
 ];
 
