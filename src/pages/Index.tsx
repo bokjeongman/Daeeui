@@ -33,6 +33,7 @@ const Index = () => {
   const [viewMode, setViewMode] = useState<"default" | "yellow">("default");
   const [hasRoute, setHasRoute] = useState(false);
   const [routeClearKey, setRouteClearKey] = useState(0);
+  const [mapRefreshKey, setMapRefreshKey] = useState(0);
   const [startPoint, setStartPoint] = useState<{
     lat: number;
     lon: number;
@@ -86,6 +87,11 @@ const Index = () => {
   const handlePlaceClick = useCallback((place: { name: string; lat: number; lon: number }) => {
     setSelectedPlace(place);
     setPlaceReviewModalOpen(true);
+  }, []);
+
+  const handleReviewSuccess = useCallback(() => {
+    // 마커 즉시 새로고침을 위해 mapRefreshKey 증가
+    setMapRefreshKey(prev => prev + 1);
   }, []);
 
   const handleCampaignAgree = () => {
@@ -419,7 +425,7 @@ const Index = () => {
       {/* 지도 영역 */}
       <div className="flex-1 relative">
         <MapView
-          key={routeClearKey}
+          key={`${routeClearKey}-${mapRefreshKey}`}
           startPoint={startPoint}
           endPoint={endPoint}
           selectedRouteType={selectedRouteType}
@@ -432,6 +438,7 @@ const Index = () => {
           selectedSearchPlace={selectedSearchPlace}
           hideFilterButton={!!selectedSearchPlace}
           isRouteSelecting={!!(startPoint || endPoint)}
+          refreshKey={mapRefreshKey}
         />
 
         {/* 후기 등록 버튼 - 장소 검색 중일 때 숨김 */}
@@ -446,6 +453,7 @@ const Index = () => {
         open={reviewModalOpen} 
         onOpenChange={setReviewModalOpen}
         onPlaceSelect={(lat, lon) => setMapCenter({ lat, lon })}
+        onSuccess={handleReviewSuccess}
       />
       
       {/* 장소 접근성 모달 */}
