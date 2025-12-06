@@ -105,27 +105,30 @@ const CampaignPopup = ({ onAgree }: CampaignPopupProps) => {
           {/* 버튼 */}
           <Button
             onClick={handleAgree}
-            className="w-full h-12 text-base font-medium bg-[#22c55e] hover:bg-[#16a34a] text-white rounded-full shadow-md"
+            className="w-full h-12 text-base font-medium bg-[#22c55e] hover:bg-[#16a34a] active:bg-[#15803d] text-white rounded-full shadow-md touch-target"
           >
             지금 공유하기
           </Button>
         </div>
 
         {/* 하단 체크박스 - 클릭 시 바로 닫힘 */}
-        <div className="flex items-center justify-center gap-2 py-4 border-t border-gray-100">
+        <div 
+          className="flex items-center justify-center gap-2 py-4 border-t border-gray-100 cursor-pointer touch-target active:bg-gray-50"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleHideForTodayChange(true);
+          }}
+        >
           <Checkbox
             id="hideForToday"
             checked={hideForToday}
-            onCheckedChange={handleHideForTodayChange}
-            className="border-gray-400 data-[state=checked]:bg-gray-500 data-[state=checked]:border-gray-500 h-4 w-4"
+            onCheckedChange={() => {}}
+            className="border-gray-400 data-[state=checked]:bg-gray-500 data-[state=checked]:border-gray-500 h-5 w-5 pointer-events-none"
           />
-          <label 
-            htmlFor="hideForToday" 
-            className="text-sm text-gray-500 cursor-pointer select-none"
-            onClick={() => handleHideForTodayChange(true)}
-          >
+          <span className="text-sm text-gray-500 select-none">
             오늘 하루동안 이 창을 보지 않음
-          </label>
+          </span>
         </div>
       </DialogContent>
     </Dialog>
