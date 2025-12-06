@@ -1114,14 +1114,11 @@ const MapView = ({
         });
         
         const handleMarkerClick = () => {
-          if (onBarrierClick) {
-            onBarrierClick({
-              ...report,
+          if (onPlaceClick) {
+            onPlaceClick({
               name: report.location_name,
-              type: 'facility',
-              severity: 'safe',
-              latitude: report.lat,
-              longitude: report.lon
+              lat: report.lat,
+              lon: report.lon
             });
           }
         };
