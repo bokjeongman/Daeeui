@@ -214,18 +214,27 @@ const PlaceSearchResult = ({ results, onSelect, onClose, onMoveToPlace, onClearP
   }
 
   return (
-    <div className="absolute top-full left-0 right-0 z-20 bg-background border-t shadow-lg max-h-[60vh] overflow-y-auto overscroll-contain relative">
-      <button
-        onClick={onClose}
-        className="absolute top-2 right-2 z-10 w-10 h-10 flex items-center justify-center bg-background border rounded-full shadow-md hover:bg-muted active:scale-95 touch-manipulation text-lg font-bold"
-      >
-        ✕
-      </button>
-      <div className="pt-2 pb-safe">
+    <div 
+      className="fixed left-0 right-0 z-50 bg-background border-t shadow-lg max-h-[50vh] overflow-y-auto overscroll-contain"
+      style={{ top: 'auto', bottom: 'auto', marginTop: '0' }}
+      onTouchStart={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.preventDefault()}
+    >
+      <div className="sticky top-0 right-0 z-10 flex justify-end p-2 bg-background border-b">
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-10 h-10 flex items-center justify-center bg-background border rounded-full shadow-md hover:bg-muted active:scale-95 touch-manipulation text-lg font-bold"
+        >
+          ✕
+        </button>
+      </div>
+      <div className="pb-safe">
         {results.map((place) => (
           <Card
             key={place.id}
             className="mx-2 mb-2 p-4 hover:bg-muted/50 active:bg-muted active:scale-[0.98] transition-all cursor-pointer touch-manipulation"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => {
               if (onMoveToPlace) {
                 onMoveToPlace({ lat: place.lat, lon: place.lon, name: place.name });
