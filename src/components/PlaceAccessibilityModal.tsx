@@ -261,7 +261,7 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
   const displayedReviews = showAllReviews ? reviews : reviews.slice(0, 2);
 
   const ContentBody = () => (
-    <div className="overflow-y-auto w-full" style={{ maxHeight: 'calc(90vh - 180px)' }}>
+    <div className="h-full overflow-y-auto overscroll-contain w-full">
       <div className="space-y-6 pr-2 pb-6">
         {/* 제보 입력 섹션 */}
         <div className="space-y-4">
@@ -518,7 +518,7 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
               )}
             </DrawerTitle>
           </DrawerHeader>
-          <div className="flex-1 min-h-0 px-4">
+          <div className="flex-1 min-h-0 overflow-hidden px-4">
             {loading ? (
               <div className="flex items-center justify-center h-full">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -527,7 +527,7 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
               <ContentBody />
             )}
           </div>
-          <div className="px-4 pb-4">
+          <div className="flex-shrink-0 px-4 pb-4">
             <SubmitButton />
           </div>
         </DrawerContent>
@@ -537,7 +537,7 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col p-0">
+      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col p-0 overflow-hidden">
         <DialogHeader className="flex-shrink-0 p-6 pb-4">
           <DialogTitle className="flex items-center gap-2">
             <MapPin className="h-5 w-5 text-green-600" />
@@ -549,7 +549,7 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
             )}
           </DialogTitle>
         </DialogHeader>
-        <div className="flex-1 min-h-0 px-6">
+        <div className="flex-1 min-h-0 overflow-hidden px-6">
           {loading ? (
             <div className="flex items-center justify-center h-64">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -558,7 +558,7 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
             <ContentBody />
           )}
         </div>
-        <div className="p-6 pt-0">
+        <div className="flex-shrink-0 p-6 pt-0">
           <SubmitButton />
         </div>
       </DialogContent>
