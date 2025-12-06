@@ -29,39 +29,44 @@ interface MapViewProps {
   } | null;
   selectedRouteType?: "transit" | "walk" | "car" | null;
   onBarrierClick?: (barrier: any) => void;
-  onPlaceClick?: (place: { name: string; lat: number; lon: number }) => void;
-  onRoutesCalculated?: (
-    routes: Array<{
-      type: "transit" | "walk" | "car";
-      distance: number;
-      duration: number;
-      safePercentage: number;
-      warningPercentage: number;
-      dangerPercentage: number;
-      barriers: {
-        type: string;
-        severity: string;
-        name: string;
-      }[];
-      transitInfo?: {
-        legs: Array<{
-          mode: string;
-          route: string;
-          from: string;
-          to: string;
-          distance: number;
-          time: number;
-        }>;
-        transfers: number;
-      };
-    }>,
-  ) => void;
+  onPlaceClick?: (place: {
+    name: string;
+    lat: number;
+    lon: number;
+  }) => void;
+  onRoutesCalculated?: (routes: Array<{
+    type: "transit" | "walk" | "car";
+    distance: number;
+    duration: number;
+    safePercentage: number;
+    warningPercentage: number;
+    dangerPercentage: number;
+    barriers: {
+      type: string;
+      severity: string;
+      name: string;
+    }[];
+    transitInfo?: {
+      legs: Array<{
+        mode: string;
+        route: string;
+        from: string;
+        to: string;
+        distance: number;
+        time: number;
+      }>;
+      transfers: number;
+    };
+  }>) => void;
   className?: string;
   center?: {
     lat: number;
     lon: number;
   } | null;
-  onUserLocationChange?: (location: { lat: number; lon: number }) => void;
+  onUserLocationChange?: (location: {
+    lat: number;
+    lon: number;
+  }) => void;
   clearKey?: number;
   selectedSearchPlace?: {
     lat: number;
@@ -83,8 +88,10 @@ const MapView = ({
   clearKey,
   selectedSearchPlace,
   hideFilterButton = false,
-  isRouteSelecting = false,
-}: MapViewProps & { isRouteSelecting?: boolean }) => {
+  isRouteSelecting = false
+}: MapViewProps & {
+  isRouteSelecting?: boolean;
+}) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -99,7 +106,7 @@ const MapView = ({
   const [filter, setFilter] = useState({
     safe: true,
     warning: true,
-    danger: true,
+    danger: true
   });
   const [showFilter, setShowFilter] = useState(false);
   const [previousDuration, setPreviousDuration] = useState<number | null>(null);
@@ -116,24 +123,30 @@ const MapView = ({
   const searchPlaceMarkerRef = useRef<any>(null);
   const [transitDetails, setTransitDetails] = useState<any>(null);
   const hasInitializedPositionRef = useRef(false);
-  const [isMobile] = useState(() =>
-    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent),
-  );
-  const [pathHistory, setPathHistory] = useState<Array<{ lat: number; lon: number }>>([]);
+  const [isMobile] = useState(() => /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+  const [pathHistory, setPathHistory] = useState<Array<{
+    lat: number;
+    lon: number;
+  }>>([]);
   const pathHistoryPolylineRef = useRef<any>(null);
-  
+
   // 클러스터링을 위한 상태
   const [mapZoom, setMapZoom] = useState(16);
-  const [mapBounds, setMapBounds] = useState<{ west: number; south: number; east: number; north: number } | null>(null);
+  const [mapBounds, setMapBounds] = useState<{
+    west: number;
+    south: number;
+    east: number;
+    north: number;
+  } | null>(null);
   const clusterMarkersRef = useRef<any[]>([]);
 
   // useGeolocationWatch 훅 사용
-  const { 
-    position: geoPosition, 
-    error: geoError, 
-    isTracking, 
-    startTracking, 
-    stopTracking 
+  const {
+    position: geoPosition,
+    error: geoError,
+    isTracking,
+    startTracking,
+    stopTracking
   } = useGeolocationWatch();
 
   // 실시간 위치 추적 시작 (버튼 클릭 시 호출)
@@ -145,7 +158,7 @@ const MapView = ({
         startCompassTracking();
       }
     }
-    
+
     // 현재 위치로 지도 중심 이동
     if (map && window.Tmapv2 && userLocation) {
       hasInitializedPositionRef.current = false;
@@ -176,7 +189,6 @@ const MapView = ({
       window.addEventListener("deviceorientation", handleOrientation, true);
     }
   };
-
   const handleOrientation = (event: DeviceOrientationEvent) => {
     if (event.alpha !== null) {
       // alpha는 0-360도 값, 북쪽이 0도
@@ -190,29 +202,31 @@ const MapView = ({
   // useGeolocationWatch의 위치 정보를 userLocation에 동기화
   useEffect(() => {
     if (geoPosition) {
-      const location = { lat: geoPosition.latitude, lon: geoPosition.longitude };
+      const location = {
+        lat: geoPosition.latitude,
+        lon: geoPosition.longitude
+      };
       setUserLocation(location);
-      
+
       // 위치 변경 콜백 호출
       if (onUserLocationChange) {
         onUserLocationChange(location);
       }
 
       // 경로 히스토리에 추가 (10m 이상 이동했을 때만)
-      setPathHistory((prev) => {
+      setPathHistory(prev => {
         if (prev.length === 0) {
           return [location];
         }
         const lastPoint = prev[prev.length - 1];
         const distance = calculateDistance(lastPoint.lat, lastPoint.lon, location.lat, location.lon);
-        
+
         // 10m 이상 이동했을 때만 기록
         if (distance > 10) {
           return [...prev, location];
         }
         return prev;
       });
-
       setLoading(false);
     }
   }, [geoPosition, onUserLocationChange]);
@@ -255,15 +269,12 @@ const MapView = ({
         let from = 0;
         const pageSize = 1000;
         let hasMore = true;
-
         while (hasMore) {
-          const { data, error } = await supabase
-            .from("accessibility_reports")
-            .select("*")
-            .range(from, from + pageSize - 1);
-          
+          const {
+            data,
+            error
+          } = await supabase.from("accessibility_reports").select("*").range(from, from + pageSize - 1);
           if (error) throw error;
-          
           if (data && data.length > 0) {
             allData = [...allData, ...data];
             from += pageSize;
@@ -272,11 +283,10 @@ const MapView = ({
             hasMore = false;
           }
         }
-
         console.log("🔍 가져온 제보 데이터:", allData.length, "개");
 
         // 제보 데이터를 barrierData 형식으로 변환
-        const rawBarriers = allData.map((report) => {
+        const rawBarriers = allData.map(report => {
           let severity = "safe";
           if (report.accessibility_level === "verified") {
             severity = "verified";
@@ -298,13 +308,13 @@ const MapView = ({
             photo_urls: report.photo_urls || [],
             created_at: report.created_at,
             accessibility_level: report.accessibility_level,
-            user_id: report.user_id,
+            user_id: report.user_id
           };
         });
 
         // 같은 위치의 제보들을 그룹화 (위도/경도 소수점 5자리까지 동일하면 같은 장소로 취급)
         const locationMap = new Map<string, any[]>();
-        rawBarriers.forEach((barrier) => {
+        rawBarriers.forEach(barrier => {
           const locationKey = `${barrier.lat.toFixed(5)},${barrier.lon.toFixed(5)}`;
           if (!locationMap.has(locationKey)) {
             locationMap.set(locationKey, []);
@@ -317,24 +327,19 @@ const MapView = ({
           danger: 4,
           warning: 3,
           safe: 2,
-          verified: 1,
+          verified: 1
         };
-
-        const groupedBarriers = Array.from(locationMap.values()).map((reports) => {
+        const groupedBarriers = Array.from(locationMap.values()).map(reports => {
           // 가장 위험한 등급 찾기
-          reports.sort((a, b) => 
-            (severityPriority[b.severity] || 0) - (severityPriority[a.severity] || 0)
-          );
-          
+          reports.sort((a, b) => (severityPriority[b.severity] || 0) - (severityPriority[a.severity] || 0));
           const representative = reports[0];
-          
           return {
             ...representative,
-            reports: reports, // 모든 제보 포함
-            reportCount: reports.length,
+            reports: reports,
+            // 모든 제보 포함
+            reportCount: reports.length
           };
         });
-
         setBarrierData(groupedBarriers);
       } catch (error) {
         if (import.meta.env.DEV) console.error("제보 데이터 로딩 실패:", error);
@@ -343,21 +348,14 @@ const MapView = ({
     fetchApprovedReports();
 
     // 실시간 변경 사항 구독 (모든 제보 포함)
-    const channel = supabase
-      .channel("accessibility_reports_changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "accessibility_reports",
-        },
-        (payload) => {
-          console.log("배리어 데이터 변경 감지:", payload);
-          fetchApprovedReports();
-        },
-      )
-      .subscribe();
+    const channel = supabase.channel("accessibility_reports_changes").on("postgres_changes", {
+      event: "*",
+      schema: "public",
+      table: "accessibility_reports"
+    }, payload => {
+      console.log("배리어 데이터 변경 감지:", payload);
+      fetchApprovedReports();
+    }).subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
@@ -367,11 +365,16 @@ const MapView = ({
   useEffect(() => {
     const fetchFavorites = async () => {
       const {
-        data: { session },
+        data: {
+          session
+        }
       } = await supabase.auth.getSession();
       if (!session) return;
       try {
-        const { data, error } = await supabase.from("favorites").select("*").eq("user_id", session.user.id);
+        const {
+          data,
+          error
+        } = await supabase.from("favorites").select("*").eq("user_id", session.user.id);
         if (error) throw error;
         setFavorites(data || []);
       } catch (error) {
@@ -381,20 +384,13 @@ const MapView = ({
     fetchFavorites();
 
     // 실시간 업데이트 구독
-    const channel = supabase
-      .channel("favorites_changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "favorites",
-        },
-        () => {
-          fetchFavorites();
-        },
-      )
-      .subscribe();
+    const channel = supabase.channel("favorites_changes").on("postgres_changes", {
+      event: "*",
+      schema: "public",
+      table: "favorites"
+    }, () => {
+      fetchFavorites();
+    }).subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
@@ -407,11 +403,9 @@ const MapView = ({
   // 지도 bounds/zoom 업데이트 함수 (무한 루프 방지)
   const updateMapBoundsAndZoom = useCallback((mapInstance: any) => {
     if (!mapInstance || !window.Tmapv2) return;
-    
     try {
       const bounds = mapInstance.getBounds();
       const zoom = mapInstance.getZoom();
-      
       if (bounds) {
         const sw = bounds.getSouthWest();
         const ne = bounds.getNorthEast();
@@ -419,18 +413,16 @@ const MapView = ({
           west: sw.lng(),
           south: sw.lat(),
           east: ne.lng(),
-          north: ne.lat(),
+          north: ne.lat()
         };
-        
+
         // 변경 여부 확인 (문자열 비교로 성능 최적화)
         const boundsKey = `${newBounds.west.toFixed(4)},${newBounds.south.toFixed(4)},${newBounds.east.toFixed(4)},${newBounds.north.toFixed(4)}`;
-        
         if (boundsKey !== prevBoundsRef.current) {
           prevBoundsRef.current = boundsKey;
           setMapBounds(newBounds);
         }
       }
-      
       if (zoom !== prevZoomRef.current) {
         prevZoomRef.current = zoom;
         setMapZoom(zoom);
@@ -465,13 +457,12 @@ const MapView = ({
         } catch (e) {}
         searchPlaceMarkerRef.current = null;
       }
-
       const tmapInstance = new window.Tmapv2.Map(mapRef.current, {
         center: new window.Tmapv2.LatLng(37.5665, 126.978),
         // 서울시청 기본 위치
         width: "100%",
         height: "100%",
-        zoom: 16,
+        zoom: 16
       });
 
       // 지도 드래그 시 자동 중심 이동 비활성화
@@ -487,13 +478,11 @@ const MapView = ({
           updateMapBoundsAndZoom(tmapInstance);
         }, 300);
       };
-      
       tmapInstance.addListener("zoom_changed", debouncedUpdate);
       tmapInstance.addListener("dragend", debouncedUpdate);
-
       setMap(tmapInstance);
       setLoading(false);
-      
+
       // 초기 bounds 설정
       setTimeout(() => {
         updateMapBoundsAndZoom(tmapInstance);
@@ -508,14 +497,11 @@ const MapView = ({
         if (!onPlaceClick) return;
         try {
           // 클릭한 위치 주변의 POI 검색
-          const response = await fetch(
-            `https://apis.openapi.sk.com/tmap/pois/search/around?version=1&centerLon=${lon}&centerLat=${lat}&radius=50&resCoordType=WGS84GEO&reqCoordType=WGS84GEO&count=1`,
-            {
-              headers: {
-                appKey: "KZDXJtx63R735Qktn8zkkaJv4tbaUqDc1lXzyjLT",
-              },
-            },
-          );
+          const response = await fetch(`https://apis.openapi.sk.com/tmap/pois/search/around?version=1&centerLon=${lon}&centerLat=${lat}&radius=50&resCoordType=WGS84GEO&reqCoordType=WGS84GEO&count=1`, {
+            headers: {
+              appKey: "KZDXJtx63R735Qktn8zkkaJv4tbaUqDc1lXzyjLT"
+            }
+          });
           if (!response.ok) return;
           const text = await response.text();
           if (!text) return;
@@ -525,7 +511,7 @@ const MapView = ({
             onPlaceClick({
               name: poi.name,
               lat: parseFloat(poi.noorLat),
-              lon: parseFloat(poi.noorLon),
+              lon: parseFloat(poi.noorLon)
             });
           }
         } catch (error) {
@@ -542,7 +528,6 @@ const MapView = ({
   // 제보 모달에서 장소 선택 시 지도 중심 이동
   useEffect(() => {
     if (!map || !center) return;
-
     const targetPosition = new window.Tmapv2.LatLng(center.lat, center.lon);
     map.setCenter(targetPosition);
     map.setZoom(17);
@@ -560,7 +545,6 @@ const MapView = ({
 
     // selectedSearchPlace가 없으면 종료
     if (!selectedSearchPlace) return;
-
     try {
       const position = new window.Tmapv2.LatLng(selectedSearchPlace.lat, selectedSearchPlace.lon);
 
@@ -587,18 +571,15 @@ const MapView = ({
           <circle cx="20" cy="18" r="6" fill="white"/>
         </svg>
       `;
-
       const iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(bluePinIcon)}`;
-
       const marker = new window.Tmapv2.Marker({
         position: position,
         map: map,
         icon: iconUrl,
         iconSize: new window.Tmapv2.Size(40, 50),
         title: selectedSearchPlace.name,
-        zIndex: 999,
+        zIndex: 999
       });
-
       searchPlaceMarkerRef.current = marker;
 
       // 지도 중심을 검색 장소로 이동
@@ -612,7 +593,10 @@ const MapView = ({
   // 사용자 위치가 변경되면 현재 위치 마커 표시 (위치만 업데이트, 마커 재생성 방지)
   useEffect(() => {
     if (!map || !userLocation || !window.Tmapv2) return;
-    const { lat, lon } = userLocation;
+    const {
+      lat,
+      lon
+    } = userLocation;
     const position = new window.Tmapv2.LatLng(lat, lon);
 
     // 기존 마커가 있고 맵에 연결되어 있으면 위치만 업데이트
@@ -687,17 +671,15 @@ const MapView = ({
         </svg>
       `;
     }
-
     const iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgIcon)}`;
     const markerSize = isMobile ? 56 : 40;
-
     const marker = new window.Tmapv2.Marker({
       position: position,
       map: map,
       icon: iconUrl,
       iconSize: new window.Tmapv2.Size(markerSize, markerSize),
       title: "현재 위치",
-      zIndex: 1000,
+      zIndex: 1000
     });
     currentMarkerRef.current = marker;
 
@@ -712,7 +694,6 @@ const MapView = ({
   // 모바일 나침반 방향 업데이트 (마커 재생성 없이 아이콘만 변경)
   useEffect(() => {
     if (!isMobile || !currentMarkerRef.current || heading === null) return;
-    
     const svgIcon = `
       <svg width="56" height="56" viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg">
         <defs>
@@ -750,33 +731,34 @@ const MapView = ({
     }
 
     // 경로 히스토리를 Tmap LatLng 배열로 변환
-    const pathPoints = pathHistory.map(
-      (point) => new window.Tmapv2.LatLng(point.lat, point.lon)
-    );
+    const pathPoints = pathHistory.map(point => new window.Tmapv2.LatLng(point.lat, point.lon));
 
     // 노란색 폴리라인으로 지나간 경로 표시
     const polyline = new window.Tmapv2.Polyline({
       path: pathPoints,
-      strokeColor: "#fbbf24", // 노란색
+      strokeColor: "#fbbf24",
+      // 노란색
       strokeWeight: 5,
       strokeOpacity: 0.8,
       map: map,
-      zIndex: 45, // 경로보다 낮게, 배리어보다는 높게
+      zIndex: 45 // 경로보다 낮게, 배리어보다는 높게
     });
-
     pathHistoryPolylineRef.current = polyline;
   }, [map, pathHistory]);
 
   // 클러스터 훅 사용
-  const { clusters, getClusterExpansionZoom } = useMarkerCluster(
-    barrierData as BarrierPoint[],
-    mapBounds,
-    mapZoom,
-    filter
-  );
+  const {
+    clusters,
+    getClusterExpansionZoom
+  } = useMarkerCluster(barrierData as BarrierPoint[], mapBounds, mapZoom, filter);
 
   // 클러스터 마커용 SVG 생성 함수 (접근성 레벨별 색상)
-  const getClusterIcon = useCallback((count: number, dominantSeverity?: string, severityCounts?: { safe: number; warning: number; danger: number; verified: number }) => {
+  const getClusterIcon = useCallback((count: number, dominantSeverity?: string, severityCounts?: {
+    safe: number;
+    warning: number;
+    danger: number;
+    verified: number;
+  }) => {
     // 클러스터 크기에 따른 기본 크기
     let size = 48;
     if (count >= 100) {
@@ -790,7 +772,6 @@ const MapView = ({
     // 접근성 레벨에 따른 색상
     let color = "#22c55e"; // 기본: 안전 (초록)
     let borderColor = "#16a34a";
-    
     if (dominantSeverity === "danger") {
       color = "#ef4444"; // 위험 (빨강)
       borderColor = "#dc2626";
@@ -801,7 +782,6 @@ const MapView = ({
       color = "#3b82f6"; // 인증 (파랑)
       borderColor = "#2563eb";
     }
-
     const fontSize = count >= 100 ? 16 : count >= 10 ? 14 : 13;
     const uniqueId = `cluster-${count}-${Date.now()}`;
 
@@ -815,22 +795,25 @@ const MapView = ({
         const cx = size / 2;
         const cy = size / 2;
         let startAngle = -90;
-        
-        const segments = [
-          { count: severityCounts.danger, color: "#ef4444" },
-          { count: severityCounts.warning, color: "#f59e0b" },
-          { count: severityCounts.verified, color: "#3b82f6" },
-          { count: severityCounts.safe, color: "#22c55e" },
-        ];
-        
+        const segments = [{
+          count: severityCounts.danger,
+          color: "#ef4444"
+        }, {
+          count: severityCounts.warning,
+          color: "#f59e0b"
+        }, {
+          count: severityCounts.verified,
+          color: "#3b82f6"
+        }, {
+          count: severityCounts.safe,
+          color: "#22c55e"
+        }];
         segments.forEach(seg => {
           if (seg.count > 0) {
-            const angle = (seg.count / total) * 360;
+            const angle = seg.count / total * 360;
             const endAngle = startAngle + angle;
-            
-            const startRad = (startAngle * Math.PI) / 180;
-            const endRad = (endAngle * Math.PI) / 180;
-            
+            const startRad = startAngle * Math.PI / 180;
+            const endRad = endAngle * Math.PI / 180;
             const x1Outer = cx + outerRadius * Math.cos(startRad);
             const y1Outer = cy + outerRadius * Math.sin(startRad);
             const x2Outer = cx + outerRadius * Math.cos(endRad);
@@ -839,16 +822,13 @@ const MapView = ({
             const y1Inner = cy + innerRadius * Math.sin(startRad);
             const x2Inner = cx + innerRadius * Math.cos(endRad);
             const y2Inner = cy + innerRadius * Math.sin(endRad);
-            
             const largeArc = angle > 180 ? 1 : 0;
-            
             chartSegments += `<path d="M${x1Outer},${y1Outer} A${outerRadius},${outerRadius} 0 ${largeArc},1 ${x2Outer},${y2Outer} L${x2Inner},${y2Inner} A${innerRadius},${innerRadius} 0 ${largeArc},0 ${x1Inner},${y1Inner} Z" fill="${seg.color}"/>`;
             startAngle = endAngle;
           }
         });
       }
     }
-
     return `
       <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
         <defs>
@@ -869,13 +849,13 @@ const MapView = ({
           </linearGradient>
         </defs>
         <!-- 외곽 원 -->
-        <circle cx="${size/2}" cy="${size/2}" r="${size/2 - 3}" fill="url(#cluster-grad-${uniqueId})" stroke="white" stroke-width="3" filter="url(#cluster-shadow-${uniqueId})"/>
+        <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 3}" fill="url(#cluster-grad-${uniqueId})" stroke="white" stroke-width="3" filter="url(#cluster-shadow-${uniqueId})"/>
         <!-- 도넛 차트 세그먼트 -->
         ${chartSegments}
         <!-- 중앙 흰색 원 -->
-        <circle cx="${size/2}" cy="${size/2}" r="${size/3}" fill="white"/>
+        <circle cx="${size / 2}" cy="${size / 2}" r="${size / 3}" fill="white"/>
         <!-- 숫자 -->
-        <text x="${size/2}" y="${size/2 + fontSize/3}" font-family="Arial, sans-serif" font-size="${fontSize}" font-weight="bold" fill="${color}" text-anchor="middle">${count}</text>
+        <text x="${size / 2}" y="${size / 2 + fontSize / 3}" font-family="Arial, sans-serif" font-size="${fontSize}" font-weight="bold" fill="${color}" text-anchor="middle">${count}</text>
       </svg>
     `;
   }, []);
@@ -884,11 +864,11 @@ const MapView = ({
   const getCategoryIcon = useCallback((category: string, severity: string, uniqueId: string, reportCount?: number) => {
     // SVG ID에 사용할 수 있도록 uniqueId 정리 (특수문자 제거)
     const safeId = uniqueId.replace(/[^a-zA-Z0-9]/g, '_');
-    
+
     // 기본 초록색 - 모든 공공데이터는 초록색 (safe 포함 모든 경우)
     let fillColor = "#22c55e";
     let borderColor = "#16a34a";
-    
+
     // severity에 따른 색상 (verified, warning, danger만 다른 색상, 나머지는 전부 초록색)
     if (severity === "verified") {
       fillColor = "#3b82f6";
@@ -908,7 +888,6 @@ const MapView = ({
       <circle cx="34" cy="8" r="10" fill="#ef4444" stroke="white" stroke-width="2"/>
       <text x="34" y="12" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="white" text-anchor="middle">+${extraCount > 9 ? '9+' : extraCount}</text>
     ` : '';
-
     const viewBox = extraCount > 0 ? "0 0 48 48" : "0 0 40 40";
     const width = extraCount > 0 ? 52 : 44;
     const height = extraCount > 0 ? 52 : 44;
@@ -938,7 +917,6 @@ const MapView = ({
         </svg>
       `;
     }
-
     let iconContent = "";
     switch (category) {
       case "ramp":
@@ -1032,7 +1010,6 @@ const MapView = ({
         `;
         break;
     }
-
     return `
       <svg width="${width}" height="${height}" viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">
         <defs>
@@ -1085,17 +1062,14 @@ const MapView = ({
     prevClusterKeyRef.current = currentKey;
 
     // 기존 마커 제거
-    barrierMarkersRef.current.forEach((marker) => marker.setMap(null));
+    barrierMarkersRef.current.forEach(marker => marker.setMap(null));
     barrierMarkersRef.current = [];
-    clusterMarkersRef.current.forEach((marker) => marker.setMap(null));
+    clusterMarkersRef.current.forEach(marker => marker.setMap(null));
     clusterMarkersRef.current = [];
-
     if (clusters.length === 0) return;
-
     clusters.forEach((feature, index) => {
       const [lon, lat] = feature.geometry.coordinates;
       const position = new window.Tmapv2.LatLng(lat, lon);
-
       if (feature.properties.cluster) {
         // 클러스터 마커
         const count = feature.properties.point_count || 0;
@@ -1104,16 +1078,14 @@ const MapView = ({
         const severityCounts = feature.properties.severityCounts;
         const iconSvg = getClusterIcon(count, dominantSeverity, severityCounts);
         const iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg)}`;
-        
         const size = count >= 100 ? 64 : count >= 30 ? 56 : count >= 10 ? 52 : 48;
-
         const marker = new window.Tmapv2.Marker({
           position: position,
           map: map,
           icon: iconUrl,
           iconSize: new window.Tmapv2.Size(size, size),
           title: `${count}개 마커`,
-          zIndex: 150,
+          zIndex: 150
         });
 
         // 클러스터 클릭 시 확대
@@ -1124,7 +1096,6 @@ const MapView = ({
             map.setZoom(Math.min(expansionZoom, 18));
           }
         };
-
         marker.addListener("click", handleClusterClick);
         marker.addListener("touchend", handleClusterClick);
         clusterMarkersRef.current.push(marker);
@@ -1132,30 +1103,26 @@ const MapView = ({
         // 개별 마커
         const barrier = feature.properties.barrier;
         if (!barrier) return;
-
         const uniqueId = `${barrier.type}-${barrier.id}`;
         const reportCount = barrier.reportCount || 1;
         const iconSvg = getCategoryIcon(barrier.type, barrier.severity, uniqueId, reportCount);
         const iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg)}`;
         // 뱃지가 있으면 마커 크기 증가 (모바일은 축소)
         const hasExtraReports = reportCount > 1;
-        const markerSize = isMobile ? (hasExtraReports ? 28 : 24) : (hasExtraReports ? 52 : 44);
-
+        const markerSize = isMobile ? hasExtraReports ? 28 : 24 : hasExtraReports ? 52 : 44;
         const marker = new window.Tmapv2.Marker({
           position: position,
           map: map,
           icon: iconUrl,
           iconSize: new window.Tmapv2.Size(markerSize, markerSize),
           title: barrier.name,
-          zIndex: 100,
+          zIndex: 100
         });
-
         const handleMarkerClick = () => {
           if (onBarrierClick) {
             onBarrierClick(barrier);
           }
         };
-
         marker.addListener("click", handleMarkerClick);
         marker.addListener("touchend", handleMarkerClick);
         barrierMarkersRef.current.push(marker);
@@ -1168,7 +1135,7 @@ const MapView = ({
     if (!map || !window.Tmapv2) return;
 
     // 기존 즐겨찾기 마커 제거
-    favoriteMarkersRef.current.forEach((marker) => marker.setMap(null));
+    favoriteMarkersRef.current.forEach(marker => marker.setMap(null));
     favoriteMarkersRef.current = [];
 
     // 즐겨찾기 마커 생성 비활성화 - 지도에 표시하지 않음
@@ -1177,8 +1144,7 @@ const MapView = ({
     favorites.forEach((favorite) => {
       const position = new window.Tmapv2.LatLng(Number(favorite.latitude), Number(favorite.longitude));
       const uniqueId = `star-${favorite.id}`;
-
-      // 별표 SVG 아이콘 - 개선된 디자인
+       // 별표 SVG 아이콘 - 개선된 디자인
       const starIcon = `
         <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
           <defs>
@@ -1217,8 +1183,7 @@ const MapView = ({
         title: favorite.place_name,
         zIndex: 80,
       });
-
-      // 마커 클릭 이벤트 - 장소 후기 열기
+       // 마커 클릭 이벤트 - 장소 후기 열기
       marker.addListener("click", () => {
         if (onPlaceClick) {
           onPlaceClick({
@@ -1252,9 +1217,9 @@ const MapView = ({
         routeLayerRef.current.forEach((layer: any) => layer.setMap(null));
         routeLayerRef.current = [];
       }
-      markersRef.current.forEach((marker) => marker.setMap(null));
+      markersRef.current.forEach(marker => marker.setMap(null));
       markersRef.current = [];
-      arrowMarkersRef.current.forEach((marker) => marker.setMap(null));
+      arrowMarkersRef.current.forEach(marker => marker.setMap(null));
       arrowMarkersRef.current = [];
     };
 
@@ -1279,16 +1244,19 @@ const MapView = ({
       return;
     }
     lastRouteRequestRef.current = routeKey;
-
-    console.log("✅ 도보 경로 API 호출", { 
-      start: { lat: start.lat, lon: start.lon },
-      end: { lat: endPoint.lat, lon: endPoint.lon }
+    console.log("✅ 도보 경로 API 호출", {
+      start: {
+        lat: start.lat,
+        lon: start.lon
+      },
+      end: {
+        lat: endPoint.lat,
+        lon: endPoint.lon
+      }
     });
-
     const calculateRoute = async () => {
       try {
         clearRoutes();
-
         const requestBody = {
           startX: start.lon.toString(),
           startY: start.lat.toString(),
@@ -1297,34 +1265,30 @@ const MapView = ({
           reqCoordType: "WGS84GEO",
           resCoordType: "WGS84GEO",
           startName: startPoint?.name || "현재 위치",
-          endName: endPoint.name,
+          endName: endPoint.name
         };
-
         const response = await fetch("https://apis.openapi.sk.com/tmap/routes/pedestrian?version=1", {
           method: "POST",
           headers: {
             appKey: "KZDXJtx63R735Qktn8zkkaJv4tbaUqDc1lXzyjLT",
-            "Content-Type": "application/json",
+            "Content-Type": "application/json"
           },
-          body: JSON.stringify(requestBody),
+          body: JSON.stringify(requestBody)
         });
-
         const data = await response.json();
-
         if (data.error) {
           console.warn("API 에러:", data.error);
           // 429 할당량 초과 에러 처리
           if (data.error.code === "QUOTA_EXCEEDED" || response.status === 429) {
             toast.error("API 일일 할당량을 초과했습니다. 잠시 후 다시 시도해주세요.", {
               description: "TMap API 사용량이 한도에 도달했습니다.",
-              duration: 5000,
+              duration: 5000
             });
           } else {
             toast.error("도보 경로를 찾을 수 없습니다.");
           }
           return;
         }
-
         if (!data.features) {
           toast.error("경로를 찾을 수 없습니다.");
           return;
@@ -1334,7 +1298,6 @@ const MapView = ({
         const lineStrings: any[] = [];
         let totalDistance = 0;
         let totalTime = 0;
-
         data.features.forEach((feature: any) => {
           if (feature.geometry.type === "LineString") {
             feature.geometry.coordinates.forEach((coord: any) => {
@@ -1355,24 +1318,25 @@ const MapView = ({
         }
 
         // 경로 근처의 배리어 찾기
-        const nearbyBarriers = barrierData.filter((barrier) => {
-          return lineStrings.some((point) => {
+        const nearbyBarriers = barrierData.filter(barrier => {
+          return lineStrings.some(point => {
             const distance = calculateDistance(point.lat(), point.lng(), barrier.latitude, barrier.longitude);
             return distance < 0.05;
           });
         });
 
         // 안전도 계산
-        const dangerCount = nearbyBarriers.filter((b) => b.severity === "danger").length;
-        const warningCount = nearbyBarriers.filter((b) => b.severity === "warning").length;
+        const dangerCount = nearbyBarriers.filter(b => b.severity === "danger").length;
+        const warningCount = nearbyBarriers.filter(b => b.severity === "warning").length;
         const totalBarriers = dangerCount + warningCount;
-        let dangerPercentage = 0, warningPercentage = 0, safePercentage = 100;
+        let dangerPercentage = 0,
+          warningPercentage = 0,
+          safePercentage = 100;
         if (totalBarriers > 0) {
-          dangerPercentage = (dangerCount / totalBarriers) * 100;
-          warningPercentage = (warningCount / totalBarriers) * 100;
+          dangerPercentage = dangerCount / totalBarriers * 100;
+          warningPercentage = warningCount / totalBarriers * 100;
           safePercentage = 100 - dangerPercentage - warningPercentage;
         }
-
         const routeResult = {
           type: "walk" as const,
           distance: totalDistance,
@@ -1381,10 +1345,12 @@ const MapView = ({
           warningPercentage,
           dangerPercentage,
           barriers: nearbyBarriers,
-          lineStrings,
+          lineStrings
         };
-
-        console.log("✅ 경로 계산 완료:", { distance: totalDistance, duration: totalTime });
+        console.log("✅ 경로 계산 완료:", {
+          distance: totalDistance,
+          duration: totalTime
+        });
 
         // 콜백 호출
         if (onRoutesCalculated) {
@@ -1394,12 +1360,12 @@ const MapView = ({
         // 경로 그리기
         const routeSegments = createRouteSegments(lineStrings);
         const createdPolylines: any[] = [];
-        routeSegments.forEach((segment) => {
+        routeSegments.forEach(segment => {
           const polyline = new window.Tmapv2.Polyline({
             path: segment.path,
             strokeColor: segment.color,
             strokeWeight: 6,
-            map: map,
+            map: map
           });
           createdPolylines.push(polyline);
         });
@@ -1431,7 +1397,7 @@ const MapView = ({
             iconSize: new window.Tmapv2.Size(36, 48),
             map: map,
             title: "출발",
-            zIndex: 90,
+            zIndex: 90
           });
           markersRef.current.push(startMarker);
         }
@@ -1458,7 +1424,7 @@ const MapView = ({
           iconSize: new window.Tmapv2.Size(36, 48),
           map: map,
           title: "도착",
-          zIndex: 90,
+          zIndex: 90
         });
         markersRef.current.push(endMarker);
 
@@ -1466,13 +1432,11 @@ const MapView = ({
         const bounds = new window.Tmapv2.LatLngBounds();
         lineStrings.forEach((point: any) => bounds.extend(point));
         map.fitBounds(bounds);
-
       } catch (error) {
         console.error("경로 탐색 실패:", error);
         toast.error("경로를 찾을 수 없습니다.");
       }
     };
-
     calculateRoute();
   }, [map, startPoint, endPoint, selectedRouteType, clearKey]);
 
@@ -1487,12 +1451,12 @@ const MapView = ({
     // 자동차 경로가 선택되었을 때만 실시간 업데이트 시작
     if (selectedRouteType === "car" && map && endPoint) {
       toast.info("🚗 실시간 교통 정보 업데이트 시작", {
-        description: "30초마다 경로를 자동 업데이트합니다.",
+        description: "30초마다 경로를 자동 업데이트합니다."
       });
 
       // 30초마다 경로 재탐색
       updateIntervalRef.current = setInterval(() => {
-        setRouteUpdateTrigger((prev) => prev + 1);
+        setRouteUpdateTrigger(prev => prev + 1);
       }, 30000);
     }
 
@@ -1508,7 +1472,7 @@ const MapView = ({
   // 화살표 마커 추가 함수 (이미지 참조 스타일)
   const addArrowMarkers = (path: any[]) => {
     // 기존 화살표 제거
-    arrowMarkersRef.current.forEach((marker) => marker.setMap(null));
+    arrowMarkersRef.current.forEach(marker => marker.setMap(null));
     arrowMarkersRef.current = [];
 
     // 경로 길이에 따라 화살표 간격 조정 (약 100m마다)
@@ -1545,15 +1509,13 @@ const MapView = ({
                 filter="url(#arrow-shadow-${i})"/>
         </svg>
       `;
-
       const iconUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(arrowSvg)}`;
-
       const arrowMarker = new window.Tmapv2.Marker({
         position: currentPoint,
         icon: iconUrl,
         iconSize: new window.Tmapv2.Size(32, 32),
         map: map,
-        zIndex: 50, // 경로 위에 표시되도록
+        zIndex: 50 // 경로 위에 표시되도록
       });
       arrowMarkersRef.current.push(arrowMarker);
     }
@@ -1561,12 +1523,12 @@ const MapView = ({
 
   // 방향 계산 함수 (bearing)
   const calculateBearing = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const dLon = ((lon2 - lon1) * Math.PI) / 180;
-    const lat1Rad = (lat1 * Math.PI) / 180;
-    const lat2Rad = (lat2 * Math.PI) / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const lat1Rad = lat1 * Math.PI / 180;
+    const lat2Rad = lat2 * Math.PI / 180;
     const y = Math.sin(dLon) * Math.cos(lat2Rad);
     const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) - Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
-    const bearing = (Math.atan2(y, x) * 180) / Math.PI;
+    const bearing = Math.atan2(y, x) * 180 / Math.PI;
     return (bearing + 360) % 360;
   };
 
@@ -1600,7 +1562,7 @@ const MapView = ({
 
     path.forEach((point, index) => {
       // 배리어와의 거리 계산하여 색상 결정
-      const nearbyBarrier = barrierData.find((barrier) => {
+      const nearbyBarrier = barrierData.find(barrier => {
         const distance = calculateDistance(point.lat(), point.lng(), barrier.lat, barrier.lon);
         return distance < 20; // 20m 이내
       });
@@ -1615,7 +1577,7 @@ const MapView = ({
       if (segmentColor !== currentColor && currentSegment.length > 0) {
         segments.push({
           path: [...currentSegment],
-          color: currentColor,
+          color: currentColor
         });
         currentSegment = [point];
         currentColor = segmentColor;
@@ -1625,35 +1587,28 @@ const MapView = ({
       if (index === path.length - 1 && currentSegment.length > 0) {
         segments.push({
           path: currentSegment,
-          color: currentColor,
+          color: currentColor
         });
       }
     });
-    return segments.length > 0
-      ? segments
-      : [
-          {
-            path,
-            color: currentColor,
-          },
-        ];
+    return segments.length > 0 ? segments : [{
+      path,
+      color: currentColor
+    }];
   };
 
   // 두 지점 간 거리 계산 (하버사인 공식, 미터 단위)
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const toRad = (deg: number) => (deg * Math.PI) / 180;
+    const toRad = (deg: number) => deg * Math.PI / 180;
     const R = 6371000; // 지구 반지름 (m)
     const dLat = toRad(lat2 - lat1);
     const dLon = toRad(lon2 - lon1);
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   };
   if (!window.Tmapv2) {
-    return (
-      <div className="relative w-full h-full bg-muted/30 flex items-center justify-center">
+    return <div className="relative w-full h-full bg-muted/30 flex items-center justify-center">
         <div className="text-center space-y-4 p-8">
           <AlertCircle className="h-16 w-16 text-destructive mx-auto" />
           <div className="space-y-2">
@@ -1661,27 +1616,22 @@ const MapView = ({
             <p className="text-sm text-muted-foreground max-w-md">페이지를 새로고침해주세요.</p>
           </div>
         </div>
-      </div>
-    );
+      </div>;
   }
-  return (
-    <div className={`relative w-full h-full ${className ?? ""}`}>
+  return <div className={`relative w-full h-full ${className ?? ""}`}>
       {/* 지도 컨테이너 */}
       <div ref={mapRef} className="w-full h-full" />
 
       {/* 로딩 오버레이 */}
-      {loading && userLocation === null && (
-        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10">
+      {loading && userLocation === null && <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10">
           <div className="text-center space-y-4">
             <Loader2 className="h-12 w-12 text-primary mx-auto animate-spin" />
             <p className="text-lg font-medium">위치 정보를 가져오는 중...</p>
           </div>
-        </div>
-      )}
+        </div>}
 
       {/* 에러 표시 */}
-      {error && !loading && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 max-w-sm w-full px-4">
+      {error && !loading && <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 max-w-sm w-full px-4">
           <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 space-y-3">
             <div className="flex items-start gap-3">
               <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
@@ -1691,139 +1641,72 @@ const MapView = ({
               다시 시도
             </Button>
           </div>
-        </div>
-      )}
+        </div>}
 
       {/* 로드뷰 버튼 (상단 우측 - 여백 조정) */}
       <div className="absolute top-4 right-6 md:right-8 z-50 pointer-events-auto">
-        <Button
-          size="icon"
-          variant="outline"
-          onClick={() => {
-            if (map) {
-              const center = map.getCenter();
-              const lat = center._lat;
-              const lon = center._lng;
-              window.open(
-                `https://map.kakao.com/?urlX=${lon}&urlY=${lat}&urlLevel=3&map_type=TYPE_MAP&map_hybrid=false`,
-                "_blank",
-              );
-            }
-          }}
-          title="카카오맵 로드뷰 열기"
-          className="shadow-lg h-11 w-11 md:h-12 md:w-12 rounded-full px-0 bg-background border-2 border-border"
-        >
+        <Button size="icon" variant="outline" onClick={() => {
+        if (map) {
+          const center = map.getCenter();
+          const lat = center._lat;
+          const lon = center._lng;
+          window.open(`https://map.kakao.com/?urlX=${lon}&urlY=${lat}&urlLevel=3&map_type=TYPE_MAP&map_hybrid=false`, "_blank");
+        }
+      }} title="카카오맵 로드뷰 열기" className="shadow-lg h-11 w-11 md:h-12 md:w-12 rounded-full px-0 bg-background border-2 border-border mx-[10px]">
           <Eye className="h-5 w-5" />
         </Button>
       </div>
 
       {/* 하단 버튼 그룹 컨테이너 - 필터, 현위치 버튼 */}
-      <div 
-        className={`absolute right-4 md:right-6 z-50 pointer-events-auto flex flex-col items-center gap-3 transition-all duration-300 ${
-          isMobile
-            ? isRouteSelecting
-              ? "bottom-6"
-              : "bottom-6"
-            : isRouteSelecting
-              ? "bottom-6"
-              : "bottom-6"
-        }`}
-      >
+      <div className={`absolute right-4 md:right-6 z-50 pointer-events-auto flex flex-col items-center gap-3 transition-all duration-300 ${isMobile ? isRouteSelecting ? "bottom-6" : "bottom-6" : isRouteSelecting ? "bottom-6" : "bottom-6"}`}>
         {/* 현재 위치 버튼 */}
-        <Button
-          onClick={getCurrentLocation}
-          size="lg"
-          className="h-12 w-12 md:h-14 md:w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground border-4 border-background touch-target"
-          title="현재 위치"
-          disabled={loading}
-        >
-          {loading && userLocation === null ? (
-            <Loader2 className="h-5 w-5 md:h-6 md:w-6 animate-spin" />
-          ) : (
-            <Navigation className="h-5 w-5 md:h-6 md:w-6" />
-          )}
+        <Button onClick={getCurrentLocation} size="lg" className="h-12 w-12 md:h-14 md:w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 text-primary-foreground border-4 border-background touch-target" title="현재 위치" disabled={loading}>
+          {loading && userLocation === null ? <Loader2 className="h-5 w-5 md:h-6 md:w-6 animate-spin" /> : <Navigation className="h-5 w-5 md:h-6 md:w-6" />}
         </Button>
 
         {/* 필터 버튼 - 장소 검색 중이 아닐 때만 표시 */}
-        {!hideFilterButton && (
-          <div className="relative">
-            <Button
-              onClick={() => setShowFilter(!showFilter)}
-              size="lg"
-              title="필터"
-              className="h-12 w-12 md:h-14 md:w-14 rounded-full shadow-xl bg-background hover:bg-muted text-foreground border-2 border-border touch-target"
-            >
+        {!hideFilterButton && <div className="relative">
+            <Button onClick={() => setShowFilter(!showFilter)} size="lg" title="필터" className="h-12 w-12 md:h-14 md:w-14 rounded-full shadow-xl bg-background hover:bg-muted text-foreground border-2 border-border touch-target">
               <Filter className="h-5 w-5 md:h-6 md:w-6" />
             </Button>
-            {showFilter && (
-              <div className="absolute bottom-full right-0 mb-2 bg-background border-2 border-border rounded-lg shadow-xl p-3 space-y-2 min-w-[160px]">
+            {showFilter && <div className="absolute bottom-full right-0 mb-2 bg-background border-2 border-border rounded-lg shadow-xl p-3 space-y-2 min-w-[160px]">
                 <div className="text-sm font-semibold mb-2 text-foreground">접근성 필터</div>
-                <button
-                  onClick={() =>
-                    setFilter({
-                      ...filter,
-                      safe: !filter.safe,
-                    })
-                  }
-                  className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors touch-target"
-                >
-                  <div
-                    className={`w-4 h-4 rounded border-2 ${
-                      filter.safe ? "bg-green-500 border-green-500" : "border-muted-foreground"
-                    }`}
-                  >
+                <button onClick={() => setFilter({
+            ...filter,
+            safe: !filter.safe
+          })} className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors touch-target">
+                  <div className={`w-4 h-4 rounded border-2 ${filter.safe ? "bg-green-500 border-green-500" : "border-muted-foreground"}`}>
                     {filter.safe && <div className="text-white text-xs text-center leading-none">✓</div>}
                   </div>
                   <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                     안심
                   </Badge>
                 </button>
-                <button
-                  onClick={() =>
-                    setFilter({
-                      ...filter,
-                      warning: !filter.warning,
-                    })
-                  }
-                  className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors touch-target"
-                >
-                  <div
-                    className={`w-4 h-4 rounded border-2 ${
-                      filter.warning ? "bg-yellow-500 border-yellow-500" : "border-muted-foreground"
-                    }`}
-                  >
+                <button onClick={() => setFilter({
+            ...filter,
+            warning: !filter.warning
+          })} className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors touch-target">
+                  <div className={`w-4 h-4 rounded border-2 ${filter.warning ? "bg-yellow-500 border-yellow-500" : "border-muted-foreground"}`}>
                     {filter.warning && <div className="text-white text-xs text-center leading-none">✓</div>}
                   </div>
                   <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
                     경고
                   </Badge>
                 </button>
-                <button
-                  onClick={() =>
-                    setFilter({
-                      ...filter,
-                      danger: !filter.danger,
-                    })
-                  }
-                  className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors touch-target"
-                >
-                  <div
-                    className={`w-4 h-4 rounded border-2 ${
-                      filter.danger ? "bg-red-500 border-red-500" : "border-muted-foreground"
-                    }`}
-                  >
+                <button onClick={() => setFilter({
+            ...filter,
+            danger: !filter.danger
+          })} className="w-full flex items-center gap-2 p-2 rounded hover:bg-muted transition-colors touch-target">
+                  <div className={`w-4 h-4 rounded border-2 ${filter.danger ? "bg-red-500 border-red-500" : "border-muted-foreground"}`}>
                     {filter.danger && <div className="text-white text-xs text-center leading-none">✓</div>}
                   </div>
                   <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
                     위험
                   </Badge>
                 </button>
-              </div>
-            )}
-          </div>
-        )}
+              </div>}
+          </div>}
       </div>
-    </div>
-  );
+    </div>;
 };
 export default MapView;
