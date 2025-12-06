@@ -2,13 +2,24 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, User, X, Check, XIcon } from "lucide-react";
+import { MapPin, User, X, Check, XIcon, Trash2 } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { useEffect, useState } from "react";
 import { reverseGeocode } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface ReportData {
   id: string;
@@ -78,7 +89,18 @@ const AccessibilityItem = ({ label, value, inverted = false }: { label: string; 
 const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetProps) => {
   const [address, setAddress] = useState<string>("");
   const [reportsWithNicknames, setReportsWithNicknames] = useState<ReportData[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [deletingReviewId, setDeletingReviewId] = useState<string | null>(null);
   const isMobile = useIsMobile();
+
+  // 현재 사용자 ID 가져오기
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || null);
+    };
+    fetchCurrentUser();
+  }, []);
 
   useEffect(() => {
     if (barrier && open) {
@@ -184,6 +206,31 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
            report.has_wide_door !== null && report.has_wide_door !== undefined;
   };
 
+  const handleDeleteReview = async () => {
+    if (!deletingReviewId) return;
+
+    try {
+      const { error } = await supabase
+        .from("accessibility_reports")
+        .delete()
+        .eq("id", deletingReviewId);
+
+      if (error) throw error;
+
+      toast.success("후기가 삭제되었습니다.");
+      setDeletingReviewId(null);
+      // 삭제 후 목록에서 제거
+      setReportsWithNicknames(prev => prev.filter(r => r.id !== deletingReviewId && r.reportId !== deletingReviewId));
+      // 모든 후기가 삭제되면 시트 닫기
+      if (reportsWithNicknames.length <= 1) {
+        onOpenChange(false);
+      }
+    } catch (error) {
+      if (import.meta.env.DEV) console.error("후기 삭제 실패:", error);
+      toast.error("후기 삭제에 실패했습니다.");
+    }
+  };
+
   const ContentBody = () => (
     <ScrollArea className="h-full w-full [&_[data-radix-scroll-area-scrollbar]]:bg-muted [&_[data-radix-scroll-area-thumb]]:bg-border">
       <div className="space-y-4 pr-4 pb-6">
@@ -203,6 +250,16 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
                   <Badge className="bg-blue-500 text-white text-xs">공공데이터</Badge>
                 )}
               </div>
+              {currentUserId && report.user_id === currentUserId && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setDeletingReviewId(report.reportId || report.id)}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              )}
             </div>
 
             {/* 5가지 접근성 항목 표시 */}
@@ -354,6 +411,24 @@ const BarrierDetailSheet = ({ open, onOpenChange, barrier }: BarrierDetailSheetP
           <ContentBody />
         </div>
       </SheetContent>
+
+      {/* 삭제 확인 다이얼로그 */}
+      <AlertDialog open={!!deletingReviewId} onOpenChange={() => setDeletingReviewId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>후기를 삭제하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              이 작업은 되돌릴 수 없습니다. 후기가 영구적으로 삭제됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteReview} className="bg-destructive hover:bg-destructive/90">
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sheet>
   );
 };
