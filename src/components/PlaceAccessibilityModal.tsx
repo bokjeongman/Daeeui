@@ -54,7 +54,6 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
   const [submitting, setSubmitting] = useState(false);
   const [showAllReviews, setShowAllReviews] = useState(false);
   
-  // 새 제보 상태
   const [accessibilityValues, setAccessibilityValues] = useState<Record<string, boolean | null>>({
     has_ramp: null,
     has_elevator: null,
@@ -104,7 +103,6 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
       
       if (error) throw error;
       
-      // 닉네임 가져오기
       const userIds = [...new Set((data || []).filter(r => r.user_id).map(r => r.user_id))];
       let nicknameMap = new Map<string, string>();
       
@@ -187,7 +185,6 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
         return;
       }
       
-      // 사진 업로드
       const photoUrls: string[] = [];
       if (photos.length > 0) {
         for (const photo of photos) {
@@ -200,7 +197,6 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
         }
       }
       
-      // 자동 승인으로 변경 (status: approved)
       const { error } = await supabase.from("accessibility_reports").insert({
         user_id: user.id,
         location_name: place.name,
@@ -215,7 +211,7 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
         photo_urls: photoUrls.length > 0 ? photoUrls : null,
         accessibility_level: "good",
         category: "facility",
-        status: "approved", // 자동 승인
+        status: "approved",
       });
       
       if (error) throw error;
@@ -243,7 +239,7 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
   const displayedReviews = showAllReviews ? reviews : reviews.slice(0, 2);
 
   const formContent = (
-    <div className="space-y-6 pb-6">
+    <div className="space-y-6 pb-6 pr-4">
       {/* 제보 입력 섹션 */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
@@ -398,7 +394,6 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
                   <p className="text-sm">{review.details}</p>
                 )}
                 
-                {/* 접근성 배지 표시 */}
                 <div className="flex flex-wrap gap-1">
                   {accessibilityItems.map(item => {
                     const value = review[item.key];
@@ -415,7 +410,6 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
                   })}
                 </div>
                 
-                {/* 사진 표시 */}
                 {review.photo_urls && review.photo_urls.length > 0 && (
                   <div className="flex gap-2 overflow-x-auto pb-2">
                     {review.photo_urls.map((url, idx) => (
@@ -440,7 +434,7 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
   );
 
   const submitButton = (
-    <div className="flex-shrink-0 pt-4 border-t bg-background">
+    <div className="pt-4 border-t bg-background">
       <Button
         onClick={handleSubmit}
         disabled={submitting}
@@ -467,8 +461,8 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onClose}>
-        <DrawerContent className="max-h-[90vh] flex flex-col">
-          <DrawerHeader className="flex-shrink-0">
+        <DrawerContent className="h-[85vh]">
+          <DrawerHeader className="flex-shrink-0 pb-2">
             <DrawerTitle className="flex items-center gap-2">
               <MapPin className="h-5 w-5 text-green-600" />
               {place?.name || "장소"}
@@ -479,15 +473,17 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
               )}
             </DrawerTitle>
           </DrawerHeader>
-          <ScrollArea className="flex-1 px-4">
+          <div className="flex-1 overflow-hidden px-4">
             {loading ? (
               <div className="flex items-center justify-center h-40">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : (
-              formContent
+              <ScrollArea className="h-[calc(85vh-200px)]">
+                {formContent}
+              </ScrollArea>
             )}
-          </ScrollArea>
+          </div>
           <div className="flex-shrink-0 px-4 pb-4">
             {submitButton}
           </div>
@@ -498,8 +494,8 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col p-0">
-        <DialogHeader className="flex-shrink-0 p-6 pb-4">
+      <DialogContent className="max-w-lg h-[85vh] flex flex-col p-0">
+        <DialogHeader className="flex-shrink-0 p-6 pb-2">
           <DialogTitle className="flex items-center gap-2">
             <MapPin className="h-5 w-5 text-green-600" />
             {place?.name || "장소"}
@@ -510,16 +506,18 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
             )}
           </DialogTitle>
         </DialogHeader>
-        <ScrollArea className="flex-1 px-6">
+        <div className="flex-1 overflow-hidden px-6">
           {loading ? (
             <div className="flex items-center justify-center h-40">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : (
-            formContent
+            <ScrollArea className="h-[calc(85vh-200px)]">
+              {formContent}
+            </ScrollArea>
           )}
-        </ScrollArea>
-        <div className="flex-shrink-0 p-6 pt-0">
+        </div>
+        <div className="flex-shrink-0 p-6 pt-2">
           {submitButton}
         </div>
       </DialogContent>

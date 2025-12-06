@@ -190,7 +190,6 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
     try {
       setIsSubmitting(true);
 
-      // Upload photos
       const photoUrls: string[] = [];
       if (photos.length > 0) {
         for (const photo of photos) {
@@ -203,7 +202,6 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
         }
       }
 
-      // 자동 승인으로 변경 (status: approved)
       const { error } = await supabase.from("accessibility_reports").insert({
         user_id: user.id,
         location_name: location.trim(),
@@ -218,7 +216,7 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
         photo_urls: photoUrls.length > 0 ? photoUrls : null,
         accessibility_level: "good",
         category: "facility",
-        status: "approved", // 자동 승인
+        status: "approved",
       });
 
       if (error) throw error;
@@ -235,7 +233,7 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
   };
 
   const formContent = (
-    <div className="space-y-6 pb-6">
+    <div className="space-y-6 pb-6 pr-4">
       {/* 장소 검색 */}
       <div className="space-y-2">
         <Label htmlFor="search" className="font-semibold">장소 검색 *</Label>
@@ -395,7 +393,7 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
   );
 
   const submitButtons = (
-    <div className="flex gap-2 flex-shrink-0 pt-4 border-t bg-background">
+    <div className="flex gap-2 pt-4 border-t bg-background">
       <Button
         type="button"
         variant="outline"
@@ -428,16 +426,18 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="max-h-[90vh] flex flex-col">
-          <DrawerHeader className="flex-shrink-0">
+        <DrawerContent className="h-[85vh]">
+          <DrawerHeader className="flex-shrink-0 pb-2">
             <DrawerTitle className="flex items-center gap-2">
               <MapPin className="h-5 w-5 text-green-600" />
               접근성 정보 제보
             </DrawerTitle>
           </DrawerHeader>
-          <ScrollArea className="flex-1 px-4">
-            {formContent}
-          </ScrollArea>
+          <div className="flex-1 overflow-hidden px-4">
+            <ScrollArea className="h-[calc(85vh-180px)]">
+              {formContent}
+            </ScrollArea>
+          </div>
           <div className="flex-shrink-0 px-4 pb-4">
             {submitButtons}
           </div>
@@ -448,17 +448,19 @@ const ReviewModal = ({ open, onOpenChange, onPlaceSelect }: ReviewModalProps) =>
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col p-0">
-        <DialogHeader className="flex-shrink-0 p-6 pb-4">
+      <DialogContent className="max-w-lg h-[85vh] flex flex-col p-0">
+        <DialogHeader className="flex-shrink-0 p-6 pb-2">
           <DialogTitle className="flex items-center gap-2">
             <MapPin className="h-5 w-5 text-green-600" />
             접근성 정보 제보
           </DialogTitle>
         </DialogHeader>
-        <ScrollArea className="flex-1 px-6">
-          {formContent}
-        </ScrollArea>
-        <div className="flex-shrink-0 p-6 pt-0">
+        <div className="flex-1 overflow-hidden px-6">
+          <ScrollArea className="h-[calc(85vh-180px)]">
+            {formContent}
+          </ScrollArea>
+        </div>
+        <div className="flex-shrink-0 p-6 pt-2">
           {submitButtons}
         </div>
       </DialogContent>
