@@ -73,6 +73,21 @@ const Index = () => {
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [selectedSearchPlace, setSelectedSearchPlace] = useState<{ lat: number; lon: number; name: string } | null>(null);
 
+  // 무한 루프 방지를 위한 useCallback
+  const handleUserLocationChange = useCallback((location: { lat: number; lon: number }) => {
+    setCurrentLocation(location);
+  }, []);
+
+  const handleBarrierClick = useCallback((barrier: any) => {
+    setSelectedBarrier(barrier);
+    setBarrierSheetOpen(true);
+  }, []);
+
+  const handlePlaceClick = useCallback((place: { name: string; lat: number; lon: number }) => {
+    setSelectedPlace(place);
+    setPlaceReviewModalOpen(true);
+  }, []);
+
   const handleCampaignAgree = () => {
     setReviewModalOpen(true);
     toast.success("접근성 정보를 공유해 주셔서 감사합니다!");
@@ -410,17 +425,9 @@ const Index = () => {
           selectedRouteType={selectedRouteType}
           onRoutesCalculated={handleRoutesCalculated}
           center={mapCenter}
-          onBarrierClick={(barrier: any) => {
-            setSelectedBarrier(barrier);
-            setBarrierSheetOpen(true);
-          }}
-          onPlaceClick={(place: { name: string; lat: number; lon: number }) => {
-            setSelectedPlace(place);
-            setPlaceReviewModalOpen(true);
-          }}
-          onUserLocationChange={(location) => {
-            setCurrentLocation(location);
-          }}
+          onBarrierClick={handleBarrierClick}
+          onPlaceClick={handlePlaceClick}
+          onUserLocationChange={handleUserLocationChange}
           clearKey={routeClearKey}
           selectedSearchPlace={selectedSearchPlace}
           hideFilterButton={!!selectedSearchPlace}
