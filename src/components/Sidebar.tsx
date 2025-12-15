@@ -101,23 +101,23 @@ const Sidebar = ({ open, onOpenChange }: SidebarProps) => {
         </div>
 
         {/* Tech for Impact Footer */}
-        <div className="p-4 border-t-2 border-primary/20 mt-auto bg-gradient-to-t from-primary/5 to-transparent">
-          <div className="flex flex-col items-center gap-3">
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-foreground/70 tracking-wide">kakao</span>
-              <span className="text-primary/50">|</span>
+        <div className="p-4 border-t mt-auto">
+          <div className="flex flex-col items-center gap-1 text-muted-foreground">
+            <div className="flex items-center gap-2 text-xs">
+              <span>kakao</span>
+              <span>|</span>
               <a 
                 href="https://techforimpact.io/" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-sm font-bold text-primary hover:text-primary/80 transition-colors tracking-wider hover:underline"
+                className="font-semibold hover:text-primary transition-colors"
               >
                 TECH FOR IMPACT
               </a>
             </div>
-            <p className="text-xs text-muted-foreground text-center leading-relaxed">
-              본 서비스는 카카오임팩트 재단의 지원과<br />
-              <span className="font-medium text-foreground/60">테크포임팩트 커뮤니티</span>의 기여로 개발되었습니다.
+            <p className="text-[10px] text-center">
+              본 서비스는 카카오임팩트 재단의 지원과 테크포임팩트<br />
+              커뮤니티의 기여로 개발되었습니다.
             </p>
           </div>
         </div>
