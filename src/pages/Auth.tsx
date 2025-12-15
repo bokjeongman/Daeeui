@@ -497,6 +497,28 @@ const Auth = () => {
               </button>
             </div>
           )}
+
+          {/* Tech for Impact Footer */}
+          <div className="pt-4 border-t mt-4">
+            <div className="flex flex-col items-center gap-1 text-muted-foreground">
+              <div className="flex items-center gap-2 text-xs">
+                <span>kakao</span>
+                <span>|</span>
+                <a 
+                  href="https://techforimpact.io/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="font-semibold hover:text-primary transition-colors"
+                >
+                  TECH FOR IMPACT
+                </a>
+              </div>
+              <p className="text-[10px] text-center">
+                본 서비스는 카카오임팩트 재단의 지원과 테크포임팩트<br />
+                커뮤니티의 기여로 개발되었습니다.
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
