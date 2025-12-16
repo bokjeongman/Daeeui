@@ -63,7 +63,7 @@
 3. 패키지 설치
    ```bash
    npm install
-   또는 yarn install
+   # 또는 yarn install
 
 4. 환경 변수 설정 프로젝트 루트에 .env 파일을 생성하고 필요한 키를 입력
    ```bash
@@ -74,7 +74,7 @@
 5. 개발 서버 실행
    ```bash
    npm run dev
-   또는 yarn dev
+   # 또는 yarn dev
    
 ---
 
