@@ -35,18 +35,18 @@
 ## 기술 스택 (Tech Stack)
 
 ### Front-end
-**TypeScript** 
-**React**
-**PWA (Progressive Web App)**
+* **TypeScript** 
+* **React**
+* **PWA (Progressive Web App)**
 
 ### Back-end & Infra
-**Supabase** (PostgreSQL, Serverless)
-**Real-time Database:** 실시간 데이터 반영
-**Storage:** 제보 사진 저장 및 관리
-**Authentication:** 소셜 로그인 인증 구현
+* **Supabase** (PostgreSQL, Serverless)
+* **Real-time Database:** 실시간 데이터 반영
+* **Storage:** 제보 사진 저장 및 관리
+* **Authentication:** 소셜 로그인 인증 구현
 
 ### Map Engine
-**TMAP API:** 도보 경로 데이터 실시간 반환 및 오버레이 구현
+* **TMAP API:** 도보 경로 데이터 실시간 반환 및 오버레이 구현
 
 ---
 
@@ -57,18 +57,22 @@
    git clone [https://github.com/bokjeongman/safedd.git](https://github.com/bokjeongman/safedd.git)
 
 2. 프로젝트 폴더로 이동
+   ```bash
    cd safedd
 
 3. 패키지 설치
+   ```bash
    npm install
    또는 yarn install
 
-5. 환경 변수 설정 프로젝트 루트에 .env 파일을 생성하고 필요한 키를 입력
+4. 환경 변수 설정 프로젝트 루트에 .env 파일을 생성하고 필요한 키를 입력
+   ```bash
    REACT_APP_SUPABASE_URL=your_supabase_url
    REACT_APP_SUPABASE_ANON_KEY=your_supabase_anon_key
    REACT_APP_TMAP_API_KEY=your_tmap_api_key
 
-6. 개발 서버 실행
+5. 개발 서버 실행
+   ```bash
    npm run dev
    또는 yarn dev
    
