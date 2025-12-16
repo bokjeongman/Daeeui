@@ -3,7 +3,8 @@
 > **"누구나 원하는 장소 어디든 안전하고 편리하게"** > 휠체어 사용자를 위한 실시간 접근성 지도 커뮤니티
 > https://safedd.lovable.app
 
-![프로젝트 로고]([[./assets/logo.png]])
+<img src="https://github.com/bokjeongman/Daeeui/blob/main/src/assets/logo.png?raw=true" alt="Daeyi Logo" width="200">
+
 ## 프로젝트 소개 (Project Overview)
 
 **대의**는 휠체어 사용자가 겪는 정보 부재와 이동 제약 문제를 해결하기 위한 서비스입니다. 기존 지도 앱들이 제공하지 못하는 **'도보 경로 상의 실시간 장애물(턱, 경사로 등) 정보'**를 사용자가 직접 제보하고, 이를 지도 위에 시각화하여 공유하는 커뮤니티형 지도 서비스입니다.
@@ -103,7 +104,7 @@
 
 본 프로젝트는 카카오임팩트 테크포임팩트 프로그램을 통해 개발되었습니다.
 
-![카카오임팩트 로고]([[./assets/kakao_impact_logo.png]])
+<img src="https://github.com/bokjeongman/Daeeui/blob/main/src/assets/kakao_impact_logo.png?raw=true" alt="Kakao Impact" width="200"
 
 ---
 
