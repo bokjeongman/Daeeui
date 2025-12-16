@@ -58,7 +58,7 @@
 
 2. 프로젝트 폴더로 이동
    ```bash
-   cd safedd
+   cd Daeeui
 
 3. 패키지 설치
    ```bash
