@@ -68,9 +68,9 @@
 
 4. 환경 변수 설정 프로젝트 루트에 .env 파일을 생성하고 필요한 키를 입력
    ```bash
-   REACT_APP_SUPABASE_URL="your_supabase_url"
-   REACT_APP_SUPABASE_ANON_KEY="your_supabase_anon_key"
-   REACT_APP_TMAP_API_KEY="your_tmap_api_key"
+   REACT_APP_SUPABASE_URL="YOUR_SUPABASE_URL"
+   REACT_APP_SUPABASE_ANON_KEY="YOUR_SUPABASE_ANON_KEY"
+   REACT_APP_TMAP_API_KEY="YOUR_TMAP_API_KEY"
 
 5. 개발 서버 실행
    ```bash
