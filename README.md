@@ -104,7 +104,7 @@
 
 본 프로젝트는 카카오임팩트 테크포임팩트 프로그램을 통해 개발되었습니다.
 
-<img src="https://github.com/bokjeongman/Daeeui/blob/main/src/assets/kakao_impact_logo.png?raw=true" alt="Kakao Impact" width="200"
+<img src="https://github.com/bokjeongman/Daeeui/blob/main/src/assets/kakao_impact_logo.png?raw=true" alt="Kakao Impact" width="200">
 
 ---
 
