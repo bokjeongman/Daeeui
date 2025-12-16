@@ -3,7 +3,7 @@
 > **"누구나 원하는 장소 어디든 안전하고 편리하게"** > 휠체어 사용자를 위한 실시간 접근성 지도 커뮤니티
 > https://safedd.lovable.app
 
-![프로젝트 로고]([./assets/logo.png](https://github.com/bokjeongman/Daeeui/blob/main/src/assets/kakao_impact_logo.png))
+![프로젝트 로고]([./assets/logo.png])
 
 ## 프로젝트 소개 (Project Overview)
 
@@ -104,7 +104,7 @@
 
 본 프로젝트는 카카오임팩트 테크포임팩트 프로그램을 통해 개발되었습니다.
 
-![카카오임팩트 로고]([./assets/kakao_impact_logo.png](https://github.com/bokjeongman/Daeeui/blob/main/src/assets/logo.png))
+![카카오임팩트 로고]([./assets/kakao_impact_logo.png])
 
 ---
 
