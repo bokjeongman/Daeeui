@@ -110,6 +110,5 @@
 
 ## License
 
-License
-Copyright (c) 2025 대의
-Developed with support from Kakao Impact Tech for Impact Program.
+* Copyright (c) 2025 대의
+* Developed with support from Kakao Impact Tech for Impact Program.
