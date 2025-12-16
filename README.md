@@ -60,7 +60,7 @@
 
 3. 패키지 설치
    npm install
-   # 또는 yarn install
+   또는 yarn install
 
 5. 환경 변수 설정 프로젝트 루트에 .env 파일을 생성하고 필요한 키를 입력
    REACT_APP_SUPABASE_URL=your_supabase_url
@@ -69,7 +69,7 @@
 
 6. 개발 서버 실행
    npm run dev
-   # 또는 yarn dev
+   또는 yarn dev
    
 ---
 
