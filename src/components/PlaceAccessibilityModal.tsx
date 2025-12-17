@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { MapPin, Check, X, Upload, Info, User, ChevronRight, Loader2, Trash2 } from "lucide-react";
+import { MapPin, Check, X, Upload, Info, User, ChevronRight, Loader2, Trash2, Sparkles } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -64,6 +64,7 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
   const [reviews, setReviews] = useState<AccessibilityReport[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [analyzingAI, setAnalyzingAI] = useState(false);
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [deletingReviewId, setDeletingReviewId] = useState<string | null>(null);
@@ -210,6 +211,72 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
       URL.revokeObjectURL(photoPreviews[index]);
     }
     setPhotoPreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAIAnalysis = async () => {
+    if (photos.length === 0) {
+      toast.error("분석할 사진을 먼저 업로드해주세요.");
+      return;
+    }
+
+    setAnalyzingAI(true);
+    try {
+      // Convert first photo to base64
+      const photo = photos[0];
+      const reader = new FileReader();
+      
+      const base64 = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(photo);
+      });
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-accessibility`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ imageBase64: base64 }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'AI 분석 실패');
+      }
+
+      const result = await response.json();
+      
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      // Update accessibility values with AI results
+      const newValues: Record<string, boolean | null> = { ...accessibilityValues };
+      
+      if (result.has_ramp !== undefined) newValues.has_ramp = result.has_ramp;
+      if (result.has_elevator !== undefined) newValues.has_elevator = result.has_elevator;
+      if (result.has_accessible_restroom !== undefined) newValues.has_accessible_restroom = result.has_accessible_restroom;
+      if (result.has_low_threshold !== undefined) newValues.has_low_threshold = result.has_low_threshold;
+      if (result.has_wide_door !== undefined) newValues.has_wide_door = result.has_wide_door;
+
+      setAccessibilityValues(newValues);
+
+      // Show AI analysis description if available
+      if (result.description) {
+        toast.success(`AI 분석 완료: ${result.description}`, { duration: 5000 });
+      } else {
+        toast.success("AI 분석이 완료되었습니다. 결과를 확인해주세요!");
+      }
+
+    } catch (error) {
+      console.error("AI 분석 실패:", error);
+      toast.error(error instanceof Error ? error.message : "AI 분석에 실패했습니다.");
+    } finally {
+      setAnalyzingAI(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -424,25 +491,51 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
             </label>
           </div>
           {photoPreviews.length > 0 && (
-            <div className="grid grid-cols-3 gap-2 mt-2">
-              {photoPreviews.map((preview, index) => (
-                <div key={index} className="relative aspect-square">
-                  <img
-                    src={preview}
-                    alt={`미리보기 ${index + 1}`}
-                    className="w-full h-full object-cover rounded-lg border"
-                  />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-1 right-1 h-6 w-6"
-                    onClick={() => handleRemovePhoto(index)}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
-              ))}
+            <div className="space-y-3 mt-2">
+              <div className="grid grid-cols-3 gap-2">
+                {photoPreviews.map((preview, index) => (
+                  <div key={index} className="relative aspect-square">
+                    <img
+                      src={preview}
+                      alt={`미리보기 ${index + 1}`}
+                      className="w-full h-full object-cover rounded-lg border"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-1 right-1 h-6 w-6"
+                      onClick={() => handleRemovePhoto(index)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              
+              {/* AI 분석 버튼 */}
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full h-12 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 border-purple-200 dark:border-purple-800 hover:from-purple-100 hover:to-blue-100 dark:hover:from-purple-950/50 dark:hover:to-blue-950/50"
+                onClick={handleAIAnalysis}
+                disabled={analyzingAI}
+              >
+                {analyzingAI ? (
+                  <>
+                    <Loader2 className="h-5 w-5 mr-2 animate-spin text-purple-600" />
+                    <span className="text-purple-700 dark:text-purple-300">AI가 분석 중...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-5 w-5 mr-2 text-purple-600" />
+                    <span className="text-purple-700 dark:text-purple-300 font-medium">AI로 접근성 자동 분석</span>
+                  </>
+                )}
+              </Button>
+              <p className="text-xs text-center text-muted-foreground">
+                🤖 사진을 분석하여 접근성 시설을 자동으로 감지합니다
+              </p>
             </div>
           )}
         </div>
