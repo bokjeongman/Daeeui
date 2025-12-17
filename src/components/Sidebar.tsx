@@ -3,7 +3,7 @@ import { MapPin, FileText, MessageSquare, User, LogOut, Download } from "lucide-
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
 interface SidebarProps {

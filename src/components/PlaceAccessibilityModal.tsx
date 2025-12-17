@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Textarea } from "@/components/ui/textarea";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -231,25 +231,17 @@ const PlaceAccessibilityModal = ({ open, onClose, place }: PlaceAccessibilityMod
         reader.readAsDataURL(photo);
       });
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-accessibility`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ imageBase64: base64 }),
-        }
-      );
+      const { data, error } = await supabase.functions.invoke("analyze-accessibility", {
+        body: { imageBase64: base64 },
+      });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'AI 분석 실패');
+      if (error) {
+        throw new Error(error.message || "AI 분석 실패");
       }
 
-      const result = await response.json();
-      
-      if (result.error) {
+      const result = data as any;
+
+      if (result?.error) {
         throw new Error(result.error);
       }
 
