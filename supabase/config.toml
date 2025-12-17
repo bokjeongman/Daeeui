@@ -46,3 +46,6 @@ verify_jwt = false
 
 [functions.tmap-proxy]
 verify_jwt = false
+
+[functions.analyze-accessibility]
+verify_jwt = false
